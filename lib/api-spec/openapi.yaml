@@ -1,0 +1,2047 @@
+openapi: 3.1.0
+info:
+  title: Api
+  version: 0.1.0
+  description: Snipr URL shortener API
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: auth
+    description: Authentication operations
+  - name: links
+    description: Link management operations
+  - name: redirect
+    description: Short link redirect
+  - name: analytics
+    description: Analytics and click tracking
+  - name: domains
+    description: Custom domain management
+  - name: pixels
+    description: Retargeting pixel management
+  - name: tags
+    description: Tag management
+  - name: folders
+    description: Folder management
+  - name: rules
+    description: Link routing rules
+  - name: conversions
+    description: Conversion tracking and revenue analytics
+  - name: team
+    description: Team members and workspace roles
+  - name: ai
+    description: AI-powered insights and assistance
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+
+  /auth/register:
+    post:
+      operationId: register
+      tags: [auth]
+      summary: Register a new user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterRequest"
+      responses:
+        "201":
+          description: User registered
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "409":
+          description: Email already taken
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/login:
+    post:
+      operationId: login
+      tags: [auth]
+      summary: Login with email and password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: Logged in
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "401":
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/logout:
+    post:
+      operationId: logout
+      tags: [auth]
+      summary: Log out current user
+      responses:
+        "200":
+          description: Logged out
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  /auth/me:
+    get:
+      operationId: getMe
+      tags: [auth]
+      summary: Get current user
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /links:
+    get:
+      operationId: getLinks
+      tags: [links]
+      summary: Get all links for current workspace
+      parameters:
+        - name: folderId
+          in: query
+          schema:
+            type: string
+        - name: tagId
+          in: query
+          schema:
+            type: string
+        - name: search
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of links
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Link"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    post:
+      operationId: createLink
+      tags: [links]
+      summary: Create a new short link
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateLinkRequest"
+      responses:
+        "201":
+          description: Link created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Link"
+        "409":
+          description: Slug already taken
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /links/{id}:
+    get:
+      operationId: getLink
+      tags: [links]
+      summary: Get a link by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Link found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Link"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    put:
+      operationId: updateLink
+      tags: [links]
+      summary: Update a link
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateLinkRequest"
+      responses:
+        "200":
+          description: Link updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Link"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      operationId: deleteLink
+      tags: [links]
+      summary: Delete a link
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /links/{id}/qr:
+    get:
+      operationId: getLinkQr
+      tags: [links]
+      summary: Get QR code SVG for a link
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: QR code data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QrResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /links/{id}/tags:
+    get:
+      operationId: getLinkTags
+      tags: [links]
+      summary: Get tags for a link
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Tags for this link
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Tag"
+    put:
+      operationId: setLinkTags
+      tags: [links]
+      summary: Set tags for a link (replaces all existing)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                tagIds:
+                  type: array
+                  items:
+                    type: string
+              required:
+                - tagIds
+      responses:
+        "200":
+          description: Tags set
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  /links/{id}/rules:
+    get:
+      operationId: getLinkRules
+      tags: [rules]
+      summary: Get routing rules for a link
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of rules
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/LinkRule"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    put:
+      operationId: setLinkRules
+      tags: [rules]
+      summary: Set routing rules for a link (replaces all existing)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                rules:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/CreateLinkRuleRequest"
+              required:
+                - rules
+      responses:
+        "200":
+          description: Rules saved
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/LinkRule"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /domains:
+    get:
+      operationId: getDomains
+      tags: [domains]
+      summary: Get all custom domains for workspace
+      responses:
+        "200":
+          description: List of domains
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Domain"
+    post:
+      operationId: createDomain
+      tags: [domains]
+      summary: Add a custom domain
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateDomainRequest"
+      responses:
+        "201":
+          description: Domain added
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Domain"
+        "409":
+          description: Domain already registered
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /domains/{id}:
+    delete:
+      operationId: deleteDomain
+      tags: [domains]
+      summary: Remove a custom domain
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /pixels:
+    get:
+      operationId: getPixels
+      tags: [pixels]
+      summary: Get all retargeting pixels for workspace
+      responses:
+        "200":
+          description: List of pixels
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Pixel"
+    post:
+      operationId: createPixel
+      tags: [pixels]
+      summary: Add a retargeting pixel
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePixelRequest"
+      responses:
+        "201":
+          description: Pixel added
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Pixel"
+
+  /pixels/{id}:
+    put:
+      operationId: updatePixel
+      tags: [pixels]
+      summary: Update a retargeting pixel
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdatePixelRequest"
+      responses:
+        "200":
+          description: Pixel updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Pixel"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      operationId: deletePixel
+      tags: [pixels]
+      summary: Remove a retargeting pixel
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /tags:
+    get:
+      operationId: getTags
+      tags: [tags]
+      summary: Get all tags for workspace
+      responses:
+        "200":
+          description: List of tags
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Tag"
+    post:
+      operationId: createTag
+      tags: [tags]
+      summary: Create a tag
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTagRequest"
+      responses:
+        "201":
+          description: Tag created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Tag"
+
+  /tags/{id}:
+    put:
+      operationId: updateTag
+      tags: [tags]
+      summary: Update a tag
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateTagRequest"
+      responses:
+        "200":
+          description: Tag updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Tag"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      operationId: deleteTag
+      tags: [tags]
+      summary: Delete a tag
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /folders:
+    get:
+      operationId: getFolders
+      tags: [folders]
+      summary: Get all folders for workspace
+      responses:
+        "200":
+          description: List of folders
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Folder"
+    post:
+      operationId: createFolder
+      tags: [folders]
+      summary: Create a folder
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateFolderRequest"
+      responses:
+        "201":
+          description: Folder created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Folder"
+
+  /folders/{id}:
+    put:
+      operationId: updateFolder
+      tags: [folders]
+      summary: Update a folder
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateFolderRequest"
+      responses:
+        "200":
+          description: Folder updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Folder"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      operationId: deleteFolder
+      tags: [folders]
+      summary: Delete a folder
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /analytics/workspace:
+    get:
+      operationId: getWorkspaceAnalytics
+      tags: [analytics]
+      summary: Get workspace-level analytics overview
+      parameters:
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: to
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: linkId
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Workspace analytics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkspaceAnalytics"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /analytics/workspace/timeseries:
+    get:
+      operationId: getWorkspaceTimeseries
+      tags: [analytics]
+      summary: Get workspace click timeseries
+      parameters:
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: to
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: linkId
+          in: query
+          schema:
+            type: string
+        - name: interval
+          in: query
+          schema:
+            type: string
+            enum: [hour, day, week]
+      responses:
+        "200":
+          description: Timeseries data
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TimeseriesPoint"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /analytics/links/{id}:
+    get:
+      operationId: getLinkAnalytics
+      tags: [analytics]
+      summary: Get analytics for a specific link
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: to
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: Link analytics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LinkAnalytics"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /analytics/links/{id}/timeseries:
+    get:
+      operationId: getLinkTimeseries
+      tags: [analytics]
+      summary: Get click timeseries for a specific link
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: to
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: interval
+          in: query
+          schema:
+            type: string
+            enum: [hour, day, week]
+      responses:
+        "200":
+          description: Timeseries data
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TimeseriesPoint"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /analytics/links/{id}/events:
+    get:
+      operationId: getLinkEvents
+      tags: [analytics]
+      summary: Get recent click events for a link
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: number
+        - name: offset
+          in: query
+          schema:
+            type: number
+      responses:
+        "200":
+          description: Click events
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ClickEvent"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /conversions:
+    post:
+      operationId: trackConversion
+      tags: [conversions]
+      summary: Track a conversion event
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TrackConversionRequest"
+      responses:
+        "201":
+          description: Conversion tracked
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Conversion"
+    get:
+      operationId: getConversions
+      tags: [conversions]
+      summary: List workspace conversions
+      parameters:
+        - name: from
+          in: query
+          schema:
+            type: string
+        - name: to
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Conversions list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ConversionRow"
+
+  /conversions/revenue:
+    get:
+      operationId: getRevenueReport
+      tags: [conversions]
+      summary: Revenue and conversion analytics by link and campaign
+      parameters:
+        - name: from
+          in: query
+          schema:
+            type: string
+        - name: to
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Revenue report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RevenueReport"
+
+  /team:
+    get:
+      operationId: getTeam
+      tags: [team]
+      summary: List workspace members
+      responses:
+        "200":
+          description: Members list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/WorkspaceMember"
+
+  /team/invite:
+    post:
+      operationId: inviteTeamMember
+      tags: [team]
+      summary: Invite a team member
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InviteMemberRequest"
+      responses:
+        "201":
+          description: Invited
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkspaceMember"
+        "409":
+          description: Already a member
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /team/members/{id}:
+    put:
+      operationId: updateTeamMember
+      tags: [team]
+      summary: Update member role
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateMemberRequest"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkspaceMember"
+    delete:
+      operationId: removeTeamMember
+      tags: [team]
+      summary: Remove a team member
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Removed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  /ai/insights:
+    get:
+      operationId: getAiInsights
+      tags: [ai]
+      summary: List AI insights for workspace
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: number
+      responses:
+        "200":
+          description: Insights list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AiInsight"
+
+  /ai/insights/weekly:
+    post:
+      operationId: generateWeeklySummary
+      tags: [ai]
+      summary: Generate an AI weekly performance summary
+      responses:
+        "200":
+          description: Generated summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AiInsight"
+
+  /ai/ask:
+    post:
+      operationId: askAi
+      tags: [ai]
+      summary: Ask an analytics question
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AiAskRequest"
+      responses:
+        "200":
+          description: AI answer
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AiAskResponse"
+
+  /ai/slug-suggest:
+    post:
+      operationId: suggestSlugs
+      tags: [ai]
+      summary: Suggest short link slugs using AI
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SlugSuggestRequest"
+      responses:
+        "200":
+          description: Slug suggestions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SlugSuggestResponse"
+
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+        - status
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+      required:
+        - error
+
+    MessageResponse:
+      type: object
+      properties:
+        message:
+          type: string
+      required:
+        - message
+
+    RegisterRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 8
+      required:
+        - name
+        - email
+        - password
+
+    LoginRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+      required:
+        - email
+        - password
+
+    AuthResponse:
+      type: object
+      properties:
+        user:
+          $ref: "#/components/schemas/UserResponse"
+        workspace:
+          $ref: "#/components/schemas/WorkspaceResponse"
+      required:
+        - user
+        - workspace
+
+    UserResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        email:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - name
+        - email
+        - createdAt
+
+    WorkspaceResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        slug:
+          type: string
+      required:
+        - id
+        - name
+        - slug
+
+    Link:
+      type: object
+      properties:
+        id:
+          type: string
+        workspaceId:
+          type: string
+        slug:
+          type: string
+        destinationUrl:
+          type: string
+        title:
+          type: string
+          nullable: true
+        enabled:
+          type: boolean
+        expiresAt:
+          type: string
+          format: date-time
+          nullable: true
+        folderId:
+          type: string
+          nullable: true
+        clickLimit:
+          type: number
+          nullable: true
+        fallbackUrl:
+          type: string
+          nullable: true
+        hasPassword:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - workspaceId
+        - slug
+        - destinationUrl
+        - enabled
+        - hasPassword
+        - createdAt
+        - updatedAt
+
+    CreateLinkRequest:
+      type: object
+      properties:
+        slug:
+          type: string
+          nullable: true
+          description: "Custom slug. If null, auto-generated."
+        destinationUrl:
+          type: string
+          format: uri
+        title:
+          type: string
+          nullable: true
+        expiresAt:
+          type: string
+          format: date-time
+          nullable: true
+        folderId:
+          type: string
+          nullable: true
+        clickLimit:
+          type: number
+          nullable: true
+        fallbackUrl:
+          type: string
+          nullable: true
+        password:
+          type: string
+          nullable: true
+      required:
+        - destinationUrl
+
+    UpdateLinkRequest:
+      type: object
+      properties:
+        slug:
+          type: string
+          nullable: true
+        destinationUrl:
+          type: string
+          format: uri
+          nullable: true
+        title:
+          type: string
+          nullable: true
+        enabled:
+          type: boolean
+          nullable: true
+        expiresAt:
+          type: string
+          format: date-time
+          nullable: true
+        folderId:
+          type: string
+          nullable: true
+        clickLimit:
+          type: number
+          nullable: true
+        fallbackUrl:
+          type: string
+          nullable: true
+        password:
+          type: string
+          nullable: true
+          description: "Set to empty string to remove password"
+
+    QrResponse:
+      type: object
+      properties:
+        svg:
+          type: string
+        shortUrl:
+          type: string
+      required:
+        - svg
+        - shortUrl
+
+    LinkRule:
+      type: object
+      properties:
+        id:
+          type: string
+        linkId:
+          type: string
+        type:
+          type: string
+          enum: [geo, device, ab, rotator]
+        priority:
+          type: number
+        conditions:
+          type: object
+          description: "geo: {countries:[]}, device: {devices:[]}, ab/rotator: {weight:number}"
+        destinationUrl:
+          type: string
+        label:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - linkId
+        - type
+        - priority
+        - conditions
+        - destinationUrl
+        - createdAt
+
+    CreateLinkRuleRequest:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [geo, device, ab, rotator]
+        priority:
+          type: number
+        conditions:
+          type: object
+        destinationUrl:
+          type: string
+        label:
+          type: string
+          nullable: true
+      required:
+        - type
+        - destinationUrl
+
+    Domain:
+      type: object
+      properties:
+        id:
+          type: string
+        workspaceId:
+          type: string
+        domain:
+          type: string
+        verified:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - workspaceId
+        - domain
+        - verified
+        - createdAt
+        - updatedAt
+
+    CreateDomainRequest:
+      type: object
+      properties:
+        domain:
+          type: string
+      required:
+        - domain
+
+    Pixel:
+      type: object
+      properties:
+        id:
+          type: string
+        workspaceId:
+          type: string
+        name:
+          type: string
+        type:
+          type: string
+          enum: [meta, google_ads, linkedin, tiktok, custom]
+        pixelId:
+          type: string
+          nullable: true
+        customScript:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - workspaceId
+        - name
+        - type
+        - createdAt
+        - updatedAt
+
+    CreatePixelRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+          enum: [meta, google_ads, linkedin, tiktok, custom]
+        pixelId:
+          type: string
+          nullable: true
+        customScript:
+          type: string
+          nullable: true
+      required:
+        - name
+        - type
+
+    UpdatePixelRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        pixelId:
+          type: string
+          nullable: true
+        customScript:
+          type: string
+          nullable: true
+
+    Tag:
+      type: object
+      properties:
+        id:
+          type: string
+        workspaceId:
+          type: string
+        name:
+          type: string
+        color:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - workspaceId
+        - name
+        - color
+        - createdAt
+        - updatedAt
+
+    CreateTagRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        color:
+          type: string
+      required:
+        - name
+
+    UpdateTagRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        color:
+          type: string
+
+    Folder:
+      type: object
+      properties:
+        id:
+          type: string
+        workspaceId:
+          type: string
+        name:
+          type: string
+        color:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - workspaceId
+        - name
+        - color
+        - createdAt
+        - updatedAt
+
+    CreateFolderRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        color:
+          type: string
+      required:
+        - name
+
+    UpdateFolderRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        color:
+          type: string
+
+    TopEntry:
+      type: object
+      properties:
+        label:
+          type: string
+        count:
+          type: number
+      required:
+        - label
+        - count
+
+    TimeseriesPoint:
+      type: object
+      properties:
+        time:
+          type: string
+        clicks:
+          type: number
+        uniqueClicks:
+          type: number
+      required:
+        - time
+        - clicks
+        - uniqueClicks
+
+    WorkspaceAnalytics:
+      type: object
+      properties:
+        totalClicks:
+          type: number
+        uniqueClicks:
+          type: number
+        totalLinks:
+          type: number
+        enabledLinks:
+          type: number
+        topLinks:
+          type: array
+          items:
+            $ref: "#/components/schemas/TopEntry"
+        topCountries:
+          type: array
+          items:
+            $ref: "#/components/schemas/TopEntry"
+        topReferrers:
+          type: array
+          items:
+            $ref: "#/components/schemas/TopEntry"
+        topBrowsers:
+          type: array
+          items:
+            $ref: "#/components/schemas/TopEntry"
+        topDevices:
+          type: array
+          items:
+            $ref: "#/components/schemas/TopEntry"
+      required:
+        - totalClicks
+        - uniqueClicks
+        - totalLinks
+        - enabledLinks
+        - topLinks
+        - topCountries
+        - topReferrers
+        - topBrowsers
+        - topDevices
+
+    LinkAnalytics:
+      type: object
+      properties:
+        totalClicks:
+          type: number
+        uniqueClicks:
+          type: number
+        directClicks:
+          type: number
+        qrClicks:
+          type: number
+        topCountries:
+          type: array
+          items:
+            $ref: "#/components/schemas/TopEntry"
+        topReferrers:
+          type: array
+          items:
+            $ref: "#/components/schemas/TopEntry"
+        topBrowsers:
+          type: array
+          items:
+            $ref: "#/components/schemas/TopEntry"
+        topDevices:
+          type: array
+          items:
+            $ref: "#/components/schemas/TopEntry"
+        topOs:
+          type: array
+          items:
+            $ref: "#/components/schemas/TopEntry"
+      required:
+        - totalClicks
+        - uniqueClicks
+        - directClicks
+        - qrClicks
+        - topCountries
+        - topReferrers
+        - topBrowsers
+        - topDevices
+        - topOs
+
+    ClickEvent:
+      type: object
+      properties:
+        id:
+          type: string
+        linkId:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        referrer:
+          type: string
+          nullable: true
+        browser:
+          type: string
+          nullable: true
+        os:
+          type: string
+          nullable: true
+        device:
+          type: string
+          nullable: true
+        country:
+          type: string
+          nullable: true
+        city:
+          type: string
+          nullable: true
+        isQr:
+          type: boolean
+        utmSource:
+          type: string
+          nullable: true
+        utmMedium:
+          type: string
+          nullable: true
+        utmCampaign:
+          type: string
+          nullable: true
+      required:
+        - id
+        - linkId
+        - timestamp
+        - isQr
+
+    TrackConversionRequest:
+      type: object
+      properties:
+        slug:
+          type: string
+          nullable: true
+        workspaceId:
+          type: string
+          nullable: true
+        linkId:
+          type: string
+          nullable: true
+        clickEventId:
+          type: string
+          nullable: true
+        eventName:
+          type: string
+        revenue:
+          type: number
+          nullable: true
+        currency:
+          type: string
+          nullable: true
+        utmCampaign:
+          type: string
+          nullable: true
+        utmSource:
+          type: string
+          nullable: true
+        utmMedium:
+          type: string
+          nullable: true
+
+    Conversion:
+      type: object
+      properties:
+        id:
+          type: string
+        workspaceId:
+          type: string
+        linkId:
+          type: string
+          nullable: true
+        eventName:
+          type: string
+        revenue:
+          type: string
+          nullable: true
+        currency:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - workspaceId
+        - eventName
+        - currency
+        - createdAt
+
+    ConversionRow:
+      type: object
+      properties:
+        id:
+          type: string
+        linkId:
+          type: string
+          nullable: true
+        eventName:
+          type: string
+        revenue:
+          type: string
+          nullable: true
+        currency:
+          type: string
+        utmCampaign:
+          type: string
+          nullable: true
+        utmSource:
+          type: string
+          nullable: true
+        utmMedium:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        slug:
+          type: string
+          nullable: true
+        linkTitle:
+          type: string
+          nullable: true
+      required:
+        - id
+        - eventName
+        - currency
+        - createdAt
+
+    RevenueByLink:
+      type: object
+      properties:
+        linkId:
+          type: string
+          nullable: true
+        slug:
+          type: string
+          nullable: true
+        title:
+          type: string
+          nullable: true
+        conversions:
+          type: number
+        revenue:
+          type: number
+      required:
+        - conversions
+        - revenue
+
+    RevenueByCampaign:
+      type: object
+      properties:
+        campaign:
+          type: string
+        conversions:
+          type: number
+        revenue:
+          type: number
+      required:
+        - campaign
+        - conversions
+        - revenue
+
+    RevenueByEvent:
+      type: object
+      properties:
+        eventName:
+          type: string
+        conversions:
+          type: number
+        revenue:
+          type: number
+      required:
+        - eventName
+        - conversions
+        - revenue
+
+    RevenueReport:
+      type: object
+      properties:
+        totalRevenue:
+          type: number
+        totalConversions:
+          type: number
+        byLink:
+          type: array
+          items:
+            $ref: "#/components/schemas/RevenueByLink"
+        byCampaign:
+          type: array
+          items:
+            $ref: "#/components/schemas/RevenueByCampaign"
+        byEvent:
+          type: array
+          items:
+            $ref: "#/components/schemas/RevenueByEvent"
+      required:
+        - totalRevenue
+        - totalConversions
+        - byLink
+        - byCampaign
+        - byEvent
+
+    WorkspaceMember:
+      type: object
+      properties:
+        id:
+          type: string
+        workspaceId:
+          type: string
+        userId:
+          type: string
+          nullable: true
+        email:
+          type: string
+        role:
+          type: string
+          enum: [owner, admin, member, viewer]
+        status:
+          type: string
+          enum: [active, invited, removed]
+        name:
+          type: string
+          nullable: true
+        invitedAt:
+          type: string
+          format: date-time
+        joinedAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - email
+        - role
+        - status
+        - invitedAt
+
+    InviteMemberRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        role:
+          type: string
+          enum: [admin, member, viewer]
+          default: member
+      required:
+        - email
+
+    UpdateMemberRequest:
+      type: object
+      properties:
+        role:
+          type: string
+          enum: [owner, admin, member, viewer]
+      required:
+        - role
+
+    AiInsight:
+      type: object
+      properties:
+        id:
+          type: string
+        workspaceId:
+          type: string
+        type:
+          type: string
+        content:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - workspaceId
+        - type
+        - content
+        - createdAt
+
+    AiAskRequest:
+      type: object
+      properties:
+        question:
+          type: string
+      required:
+        - question
+
+    AiAskResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        question:
+          type: string
+        answer:
+          type: string
+      required:
+        - id
+        - question
+        - answer
+
+    SlugSuggestRequest:
+      type: object
+      properties:
+        url:
+          type: string
+          nullable: true
+        title:
+          type: string
+          nullable: true
+
+    SlugSuggestResponse:
+      type: object
+      properties:
+        suggestions:
+          type: array
+          items:
+            type: string
+      required:
+        - suggestions

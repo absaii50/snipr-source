@@ -1,0 +1,89 @@
+Redesign only the frontend of my app and do not change backend logic, database, APIs, authentication flow, or existing core functionality.
+
+I want a clean, minimal, modern, and unique SaaS design for these pages only:
+- Homepage
+- Pricing Page
+- Login Page
+- Signup Page
+
+Design direction:
+- minimal but premium
+- unique, not a generic template look
+- modern B2B SaaS style
+- clean spacing
+- strong typography
+- soft shadows
+- rounded cards
+- subtle gradients
+- elegant hover states
+- responsive on mobile, tablet, and desktop
+- fast-loading UI
+- visually polished but not overdesigned
+
+Use:
+- Next.js frontend
+- Tailwind CSS
+- clean reusable components
+- accessible form design
+- simple subtle animations only where helpful
+
+Important rules:
+- do not rebuild the whole app
+- do not touch dashboard pages
+- do not touch backend code
+- do not change working auth functionality
+- only improve visual design and frontend structure of these 4 pages
+- preserve existing routing and forms
+- keep the code modular and maintainable
+
+Homepage requirements:
+- modern hero section
+- strong headline and subheadline for an AI-powered link intelligence SaaS
+- clean CTA buttons
+- feature highlights section
+- product benefits section
+- simple “how it works” section
+- minimalist testimonial or trust section
+- polished footer
+- overall look should feel original and premium
+
+Pricing page requirements:
+- clean pricing cards
+- 3 tiers: Free, Pro, Growth
+- highlight the recommended plan
+- comparison-friendly layout
+- modern toggle or layout if useful
+- FAQ section at bottom
+- visually consistent with homepage
+
+Login page requirements:
+- minimal and elegant auth layout
+- clean card or split layout
+- excellent input styling
+- clear CTA
+- proper spacing and hierarchy
+- modern but simple design
+
+Signup page requirements:
+- same design system as login
+- polished signup form
+- optional trust text or benefits sidebar
+- clean visual hierarchy
+
+Brand style:
+- product name: Snipr
+- style should feel like a modern startup product
+- use a refined light theme
+- color palette should feel fresh, premium, and tech-focused
+- avoid noisy backgrounds and avoid generic stock-template design
+
+Content direction:
+- write polished SaaS copy for homepage and pricing page
+- positioning: Snipr is an AI-powered link intelligence platform for branded short links, analytics, attribution, routing, and insights
+- keep copy concise and premium
+
+Final output:
+- deliver polished frontend pages for Homepage, Pricing, Login, and Signup
+- preserve functionality
+- improve only UI/UX
+- when complete, stop and wait for my next instruction

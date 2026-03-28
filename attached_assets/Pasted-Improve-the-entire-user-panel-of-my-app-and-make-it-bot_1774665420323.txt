@@ -1,0 +1,117 @@
+Improve the entire user panel of my app and make it both much faster and much more premium.
+
+Important:
+- do not rebuild the whole app from scratch
+- do not break existing backend logic, routing, authentication, or working features
+- extend and optimize the current codebase carefully
+- focus only on improving the user panel experience, speed, and usability
+- when complete, stop and wait for my next instruction
+
+Main goal:
+I want the user panel to feel like a real high-quality SaaS product dashboard, not a generic AI-generated dashboard.
+It should be visually premium, highly usable, and noticeably faster in real usage.
+
+What I want you to improve:
+
+1. PERFORMANCE FIRST
+Make the user panel significantly faster and smoother.
+
+Optimize for:
+- faster initial load
+- faster dashboard navigation
+- faster table rendering
+- faster chart rendering
+- fewer unnecessary re-renders
+- lighter client-side JavaScript
+- better data loading behavior
+- smoother user interactions
+- better perceived performance with loading states and skeletons
+
+Apply practical improvements such as:
+- reducing unnecessary re-renders
+- using memoization where appropriate
+- lazy loading heavy components if needed
+- improving data fetching patterns
+- improving caching where appropriate
+- optimizing large lists, tables, and analytics components
+- avoiding expensive logic in the UI
+- keeping the dashboard responsive and smooth
+
+2. MAKE THE USER PANEL FEEL NEXT-LEVEL
+Upgrade the dashboard UI/UX so it feels premium, modern, and product-grade.
+
+Improve:
+- dashboard overview layout
+- visual hierarchy
+- sidebar and topbar
+- cards
+- tables
+- filters
+- charts
+- activity sections
+- analytics presentation
+- account/settings pages if part of user panel
+- empty states
+- loading states
+- success/error states
+
+The user panel should feel:
+- premium
+- clean
+- modern
+- custom-designed
+- fast
+- trustworthy
+- like a serious B2B SaaS product
+
+3. BETTER USER EXPERIENCE
+Improve the overall usability of the user panel.
+
+Focus on:
+- cleaner spacing and alignment
+- stronger typography hierarchy
+- better grouping of information
+- more intuitive actions
+- clearer buttons and status badges
+- better search/filter experience
+- better organization of links, analytics, and user data
+- polished responsive layout for desktop, tablet, and mobile
+
+4. KEEP THE PANEL PRACTICAL
+Do not just make it pretty.
+Make it more useful.
+
+Improve the panel so users can quickly:
+- understand their key metrics
+- find important links
+- review analytics faster
+- take quick actions
+- understand what matters most without confusion
+
+5. TECHNICAL DIRECTION
+Use the existing stack and project structure.
+Do not rewrite everything unnecessarily.
+Create reusable components where useful.
+Keep the code scalable and maintainable.
+
+If the app uses Next.js, optimize with a better balance of server-rendered vs client-side components where appropriate.
+If the app uses React-heavy client rendering, reduce unnecessary re-renders and improve performance carefully.
+
+6. FINAL STANDARD
+I want the user panel to be:
+- faster in real usage
+- more polished visually
+- more professional
+- less generic
+- less AI-template-like
+- more like a top-tier SaaS dashboard
+
+Do not add random unrelated features.
+Do not redesign the public website.
+Do not break existing functionality.
+
+Final task:
+Make the overall user panel faster, cleaner, smarter, and much more premium.
+Prioritize real speed improvements and better user experience, not just visual changes.
+
+When complete, stop and wait for my next instruction.

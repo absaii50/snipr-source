@@ -1,0 +1,75 @@
+Redesign this “Use Cases” section only and make it feel more premium, modern, and visually distinctive.
+
+Goals:
+- keep the 3-card use case layout
+- improve hierarchy, spacing, typography, and card styling
+- make the section feel less generic and more like a polished B2B SaaS product
+- keep the design minimal, elegant, and conversion-focused
+
+What to improve:
+- strengthen the headline and add a short supporting subheading
+- make one of the 3 cards visually featured so the layout has a focal point
+- shorten and improve the copy inside each card so it feels more outcome-driven and premium
+- improve icon badges so each card has a clearer identity
+- refine the bullet list styling and spacing
+- use better shadows, border treatment, and hover states
+- improve the section background with a subtle premium neutral tone or very soft gradient
+- keep everything responsive and clean on mobile
+
+Design direction:
+- light theme
+- refined B2B SaaS style
+- soft shadows
+- rounded cards
+- elegant typography
+- subtle accent colors for each audience type
+- avoid generic template feel
+- do not overdesign
+
+Content structure:
+- small eyebrow label
+- strong heading
+- one-line subheading
+- 3 use-case cards
+- optional CTA below cards
+
+Suggested headline:
+Built for teams that do more than share links
+
+Suggested subheading:
+Whether you run campaigns, publish content, or manage growth across products, Snipr gives every team clearer data, better control, and smarter workflows.
+
+Use-case cards:
+1. Growth Marketers
+Headline: Run smarter campaigns with measurable outcomes
+Body: Track which channels drive performance, split traffic intelligently, and optimize every campaign with real analytics.
+Bullets:
+- UTM-ready branded links
+- Channel attribution
+- A/B traffic routing
+- Conversion tracking
+
+2. Content Creators
+Headline: Turn link clicks into audience insight
+Body: Share cleaner links, understand what content performs, and see how your audience engages across channels.
+Bullets:
+- Branded link profiles
+- Click + geography data
+- QR support for offline content
+- Weekly AI summaries
+
+3. SaaS & Startup Teams
+Headline: Manage links across products, teams, and campaigns
+Body: Organize shared link workflows with domains, permissions, tags, and reporting built for scale.
+Bullets:
+- Team roles and permissions
+- Tags and folders
+- API access
+- Custom domains
+
+Important:
+- redesign only this section
+- keep the rest of the page untouched
+- do not change backend or functionality
+- use clean reusable frontend components
+- when complete, stop and wait for my next instruction

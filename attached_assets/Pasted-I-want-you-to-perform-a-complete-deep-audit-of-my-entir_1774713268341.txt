@@ -1,0 +1,59 @@
+I want you to perform a complete deep audit of my entire codebase.
+
+Important:
+I am a non-technical person, so I need you to inspect the whole project extremely carefully.
+Do not give me a shallow answer.
+Do not fix just one issue and stop.
+Do not assume things without checking the actual code.
+
+Your task is to review the entire codebase file by file, line by line as thoroughly as possible, and make sure no important part is skipped.
+
+What I want:
+1. Read and inspect every relevant file in the project
+2. Check the full frontend, backend, routing, database logic, auth flow, API calls, dashboard logic, admin logic, UI behavior, and config files
+3. Identify all major and medium issues, not just critical ones
+4. Find broken code, weak code, duplicate code, unstable logic, bad structure, possible runtime errors, bad imports, invalid state handling, broken routing, broken API usage, database mistakes, auth/session issues, and anything that may fail in production
+5. Do not only detect symptoms — find the real root cause of each issue
+6. Fix issues carefully without breaking existing working functionality
+7. Preserve the project structure unless a change is genuinely needed
+8. Improve error handling and code stability where needed
+9. After fixes, re-check the project again to make sure the fixes did not create new issues
+
+I want a true whole-project audit, which means:
+- inspect all pages
+- inspect all components
+- inspect all layouts
+- inspect all API routes
+- inspect all utility files
+- inspect all hooks
+- inspect all database-related files
+- inspect all auth-related files
+- inspect all config/environment usage
+- inspect all reusable UI logic
+- inspect all important imports and dependencies
+- inspect all major user flows end-to-end
+
+Audit standard:
+- do not skip files just because they look small
+- do not skip files just because they look unused
+- check whether unused code is actually safe to remove or still important
+- check whether there are hidden bugs, silent failures, or fragile logic
+- check whether there are mismatched types, broken props, inconsistent naming, bad patterns, and maintainability problems
+- check whether current code is safe for production use
+
+How to work:
+1. First inspect the entire codebase and create an internal checklist of all important files/modules
+2. Then audit each part carefully
+3. Then fix the issues in a safe order:
+   - critical errors first
+   - broken functionality second
+   - stability and maintainability issues third
+4. Then test the app flows again after fixes
+5. Then provide me a simple final summary
+
+Output requirements:
+At the end, give me a very simple non-technical report with:
+- what files/areas were checked
+- what major issues were found
+- what was fixed
+- what is still risky or incomplete<span class="cursor">█</span>

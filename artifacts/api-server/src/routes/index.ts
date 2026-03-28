@@ -1,0 +1,38 @@
+import { Router, type IRouter } from "express";
+import healthRouter from "./health";
+import authRouter from "./auth";
+import linksRouter from "./links";
+import analyticsRouter from "./analytics";
+import domainsRouter from "./domains";
+import pixelsRouter from "./pixels";
+import tagsRouter from "./tags";
+import foldersRouter from "./folders";
+import linkRulesRouter from "./link-rules";
+import conversionsRouter from "./conversions";
+import teamRouter from "./team";
+import aiRouter from "./ai";
+import integrationsRouter from "./integrations";
+import adminRouter from "./admin";
+import realtimeRouter from "./realtime";
+import billingRouter from "./billing";
+
+const router: IRouter = Router();
+
+router.use(healthRouter);
+router.use(adminRouter);
+router.use(billingRouter);
+router.use(authRouter);
+router.use(linksRouter);
+router.use(analyticsRouter);
+router.use(domainsRouter);
+router.use(pixelsRouter);
+router.use(tagsRouter);
+router.use(foldersRouter);
+router.use(linkRulesRouter);
+router.use(conversionsRouter);
+router.use(teamRouter);
+router.use(aiRouter);
+router.use(integrationsRouter);
+router.use(realtimeRouter);
+
+export default router;

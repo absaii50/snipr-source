@@ -1,0 +1,5 @@
+packages: {}
+images: []
+notes:
+  - Redesigning only the 4 public pages (Home, Pricing, Login, Signup)
+  - Preserved all existing auth logic and hooks

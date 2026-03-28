@@ -1,0 +1,145 @@
+Redesign only the frontend of my app and do not change backend logic, database, APIs, authentication flow, or existing core functionality.
+
+I want a clean, minimal, modern, and unique SaaS design for these pages only:
+- Homepage
+- Pricing Page
+- Login Page
+- Signup Page
+
+Use:
+- Next.js frontend
+- Tailwind CSS
+- reusable clean components
+- responsive layout for mobile, tablet, desktop
+
+Important rules:
+- do not rebuild the whole app
+- do not change backend logic
+- do not change database
+- do not break existing auth flow
+- do not touch dashboard pages
+- preserve existing routing and forms
+- only redesign these 4 frontend pages
+- improve UI/UX and content only
+- keep the code modular and maintainable
+
+Brand:
+- Product name: Snipr
+- Product type: AI-powered link intelligence platform
+- Positioning: branded short links, analytics, attribution, routing, and insights
+- Style: modern startup, premium, minimal, unique
+- Theme: refined light theme
+- Visual feel: elegant, clean spacing, rounded cards, subtle gradients, soft shadows, polished hover effects, high-end SaaS aesthetic
+- Avoid generic template look
+- Avoid noisy backgrounds
+- Avoid overdesigned flashy sections
+
+CONTENT REQUIREMENTS
+
+Write polished, concise, premium SaaS copy for all 4 pages.
+
+Homepage content structure:
+1. Hero section
+   Headline:
+   "Short links, smarter decisions."
+   
+   Subheadline:
+   "Snipr helps you create branded short links, track every click, understand performance, and turn link data into actionable insights."
+
+   Primary CTA:
+   "Start Free"
+
+   Secondary CTA:
+   "See Pricing"
+
+2. Trust / value strip
+   Short items:
+   - Branded Links
+   - Real-Time Analytics
+   - Smart Routing
+   - AI Insights
+
+3. Features section
+   Section title:
+   "Everything you need beyond basic URL shortening"
+
+   Feature cards:
+   - Branded Short Links
+     "Create clean, memorable links using your own brand and custom slugs."
+   - Analytics Dashboard
+     "Track clicks, locations, devices, referrers, and campaign performance in one place."
+   - Smart Routing
+     "Send users to the right destination based on rules like device, country, or campaign."
+   - AI Insights
+     "Get fast summaries, performance signals, and smarter recommendations from your link data."
+
+4. Benefits section
+   Section title:
+   "Built for modern marketing teams"
+   
+   Content blocks:
+   - "Launch campaigns faster with links you can trust and manage at scale."
+   - "Understand what is working with simple, actionable analytics."
+   - "Optimize traffic with smarter routing and cleaner reporting."
+
+5. How it works section
+   Section title:
+   "How Snipr works"
+
+   Steps:
+   - Create
+     "Create a branded short link in seconds."
+   - Share
+     "Use it across ads, social media, email, SMS, and QR campaigns."
+   - Track
+     "Measure clicks, behavior, and results from one dashboard."
+   - Improve
+     "Use insights to optimize performance and make better decisions."
+
+6. Mini testimonial / social proof section
+   Section title:
+   "Made for teams that care about performance"
+   
+   Content:
+   "From creators to marketers to SaaS teams, Snipr gives every shared link more clarity, control, and value."
+
+7. Final CTA section
+   Headline:
+   "Turn every link into a smarter growth asset."
+   CTA:
+   "Create your first link"
+
+8. Footer
+   Simple footer with:
+   - Product
+   - Pricing
+   - Login
+   - Signup
+   - Short copyright line
+
+Pricing page content structure:
+1. Header
+   Title:
+   "Simple pricing for growing teams"
+   Subtitle:
+   "Start free, upgrade when you need more control, analytics, and insight."
+
+2. Pricing cards
+   Plan 1: Free
+   Price: "$0"
+   Description: "For getting started"
+   Features:
+   - Basic short links
+   - Limited analytics
+   - 1 workspace
+   - QR code support
+
+   Plan 2: Pro
+   Price: "$19/mo"
+   Description: "For marketers and creators"
+   Features:
+   - Branded links
+   - Advanced analytics
+   - Custom slugs
+   - Smart routing
+   - Better<span class="cursor">█</span>

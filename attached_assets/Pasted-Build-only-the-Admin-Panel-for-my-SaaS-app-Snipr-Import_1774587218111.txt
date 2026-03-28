@@ -1,0 +1,142 @@
+Build only the Admin Panel for my SaaS app Snipr.
+
+Important:
+- do not redesign the public landing page
+- do not change login/signup functionality unless needed for admin access control
+- do not rebuild the whole app
+- only create and improve the admin panel
+- keep the code clean, modular, and scalable
+- use the existing project structure
+- use Next.js + Tailwind CSS
+- create a modern, clean, premium SaaS admin dashboard UI
+- keep it responsive on desktop, tablet, and mobile
+- when complete, stop and wait for my next instruction
+
+Admin panel purpose:
+The admin panel should help the platform owner manage users, links, analytics, domains, plans, and platform health from one place.
+
+Create these admin pages and features:
+
+1. Admin Dashboard Overview
+- total users
+- total active users
+- total links created
+- total clicks
+- total conversions if available
+- recent signups
+- recent links created
+- top performing links
+- basic charts for growth trends
+- system summary cards
+
+2. Users Management
+- list all users
+- search users
+- filter by plan, status, signup date
+- view user details
+- suspend user
+- activate user
+- delete user
+- see number of links created by each user
+- see user activity summary
+- see workspace/team count if available
+
+3. Links Management
+- list all links in the system
+- search by short code, slug, domain, or user
+- filter by status, date, clicks
+- view link details
+- disable link
+- activate link
+- delete link
+- inspect destination URL
+- view link analytics summary
+
+4. Domains Management
+- list all connected domains
+- show owner/user
+- verification status
+- SSL status if available
+- connected date
+- deactivate domain
+- remove domain
+- search and filter domains
+
+5. Analytics Overview
+- platform-wide clicks chart
+- top countries
+- top devices
+- top referrers
+- top domains
+- top users by traffic
+- top links by traffic
+- date range filtering
+- clean chart layout
+
+6. Plans / Subscription Management
+- show all plans
+- users per plan
+- active subscriptions
+- free vs paid users
+- allow admin to view plan assignments
+- prepare structure for plan upgrade/downgrade management
+- keep billing management basic if no full billing exists yet
+
+7. Reports / Activity Logs
+- recent admin activity
+- recent user activity
+- recent link events
+- recent suspicious actions
+- searchable logs table
+- filter logs by type and date
+
+8. AI / Insights Section
+- admin-level AI insights overview if available
+- show summaries like top growth source, unusual spikes, or suspicious traffic trends
+- if AI system is not fully built, create a placeholder admin insights page prepared for future integration
+
+9. Settings / Platform Control
+- general platform settings page
+- branding fields placeholder
+- platform limits placeholder
+- feature toggles placeholder
+- maintenance mode placeholder
+- admin-only configuration layout
+
+10. Access Control
+- create proper admin-only route protection
+- non-admin users must not access admin pages
+- add role-based guard structure for future expansion
+
+Design requirements:
+- premium B2B SaaS admin panel
+- clean sidebar
+- top navbar
+- modern cards
+- polished tables
+- good empty states
+- clean filters and search bars
+- elegant chart sections
+- soft shadows
+- rounded corners
+- excellent spacing and typography
+- light theme
+- visually clear and usable, not flashy
+
+Sidebar navigation should include:
+- Overview
+- Users
+- Links
+- Domains
+- Analytics
+- Plans
+- Reports
+- AI Insights
+- Settings
+
+Technical requirements:
+- use reusable components
+- create modular admin layout
+- preserve current app architecture
+- do not break existing app features
+- keep admin panel extendable for future billing, moderation, and AI features

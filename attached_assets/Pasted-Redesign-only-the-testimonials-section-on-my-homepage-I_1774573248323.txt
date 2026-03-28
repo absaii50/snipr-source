@@ -1,0 +1,70 @@
+Redesign only the testimonials section on my homepage.
+
+I want a premium, minimal, editorial-style testimonials section inspired by a modern social-proof wall.
+
+Design requirements:
+- white or very light background
+- centered layout
+- small uppercase label at the top: TESTIMONIALS
+- large bold premium heading in the center
+- short italic supporting quote under the heading
+- author name under the quote
+- below that, create a wall of testimonial cards in a tweet-style layout
+- cards should look like real social posts or clean mini review cards
+- use a staggered grid or slightly imperfect masonry-style arrangement
+- add subtle rotation to a few cards for a natural handcrafted look
+- cards should not look too uniform or too template-like
+- keep it elegant, minimal, and modern
+
+Card design requirements:
+- user avatar
+- user name
+- username/handle
+- short testimonial text
+- optional hashtag/accent text in brand color
+- small verified/check style icon if it fits the design
+- rounded corners
+- soft border or subtle shadow
+- clean spacing and typography
+- cards should feel premium and readable
+- avoid heavy colors or noisy backgrounds
+
+Layout requirements:
+- make the section visually balanced
+- desktop should show a beautiful wall/grid of cards
+- tablet and mobile should remain clean and responsive
+- maintain good spacing between cards
+- slight vertical offsets are welcome
+- section should feel unique and polished, not generic
+
+Style direction:
+- minimal
+- high-end SaaS
+- editorial and elegant
+- subtle motion only if useful
+- refined typography
+- light theme
+- premium whitespace
+
+Technical requirements:
+- use Next.js + Tailwind CSS
+- create clean reusable testimonial card components
+- do not change backend or other sections
+- only improve this testimonials section
+- preserve responsiveness
+- make it easy to edit testimonial data from an array
+
+Content:
+Use 8 testimonial cards with realistic sample content for a SaaS product called Snipr, an AI-powered link intelligence platform.
+
+Section content:
+- label: TESTIMONIALS
+- heading: Trusted by modern teams worldwide
+- sub quote: "Snipr helped us turn simple short links into something measurable, scalable, and far more useful for growth."
+- quote author: Sarah M., Growth Lead
+
+Important:
+- do not copy the reference exactly
+- create an original design inspired by the same visual structure and premium feel
+- keep the section more polished and modern than the reference
+- when complete, stop and wait for my next instruction

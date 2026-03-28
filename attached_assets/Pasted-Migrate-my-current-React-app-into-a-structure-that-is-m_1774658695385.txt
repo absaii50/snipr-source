@@ -1,0 +1,54 @@
+Migrate my current React app into a structure that is much better for SEO, crawlability, and Google bots.
+
+Important:
+- do not rebuild everything from scratch unless absolutely necessary
+- preserve existing functionality as much as possible
+- improve the app architecture so it behaves more like a search-engine-friendly HTML website, not just a client-side React SPA
+- keep the code clean, scalable, and production-ready
+- when complete, stop and wait for my next instruction
+
+Goal:
+I want this app to be more SEO-friendly and more easily crawlable by search engines.
+It should render in a way that is much better for Google bots, social previews, and overall discoverability.
+I want the site to feel closer to a proper HTML-first website experience while still keeping modern app functionality.
+
+Use:
+- Next.js App Router
+- Tailwind CSS
+- clean reusable components
+- server-rendered or statically generated output wherever appropriate
+- metadata support
+- semantic HTML structure
+- scalable project organization
+
+What I want:
+- move away from a purely client-side React SPA approach
+- make the site much better for SEO and indexing
+- make the output more search-engine-friendly
+- use proper server-side rendering or static generation where appropriate
+- make sure content is structured in a way that is easier for bots to crawl
+- improve page metadata handling
+- improve heading hierarchy and semantic markup
+- support strong link preview metadata
+- prepare the project for sitemap, robots.txt, canonical tags, and structured SEO improvements
+- make the app architecture better for performance and discoverability
+
+Technical direction:
+- preserve existing routes and working functionality where possible
+- do not over-engineer
+- do not add random extra features
+- organize the app cleanly for future scalability
+- keep interactive dashboard/app areas efficient, but make the overall website architecture much better for SEO and bots
+
+Design/markup direction:
+- use semantic HTML
+- proper heading structure
+- accessible markup
+- clean metadata support
+- strong performance foundation
+- modern SaaS architecture with SEO-friendly rendering
+
+Final objective:
+Convert the current React-based app into a cleaner Next.js-based architecture that is much better for SEO, Google bot crawling, metadata, structured rendering, and discoverability, while preserving existing functionality as much as possible.
+
+When complete, stop and wait for my next instruction.

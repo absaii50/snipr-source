@@ -1,0 +1,81 @@
+I want you to perform a deep technical scalability review of my entire system.
+
+Please thoroughly check whether this system is realistically capable of handling:
+- 1,000,000 traffic requests per day
+- 10,000 new links created per day
+
+Important:
+- do not give a shallow answer
+- do not just say “yes” or “no”
+- inspect the system deeply
+- review the current architecture, database design, API structure, redirect flow, analytics flow, caching strategy, background jobs, and deployment setup
+- identify real bottlenecks, weak points, and scaling risks
+- tell me what will break first under load
+- when complete, stop and wait for my next instruction
+
+I want a thorough system audit covering:
+
+1. Traffic handling capacity
+- can the system handle 1M redirects/clicks per day?
+- can it handle traffic spikes, not just average daily traffic?
+- what happens if many users hit the same short links at once?
+
+2. Link creation capacity
+- can the system handle 10K new links per day safely?
+- is the short-link generation logic scalable?
+- are there collision risks or database issues?
+
+3. Database review
+- check whether the database schema, indexes, queries, and table structure are efficient enough
+- identify slow query risks
+- identify tables that may grow too fast
+- identify whether analytics/click tables will become a bottleneck
+
+4. Redirect flow review
+- check if redirects are lightweight and optimized
+- identify latency risks in redirect handling
+- check if analytics logging may slow redirects
+- suggest whether async logging, queues, or caching are needed
+
+5. Analytics and tracking review
+- check whether click tracking is scalable
+- identify whether storing every event in the current setup will cause performance issues
+- review whether analytics should be separated from the main transactional database
+
+6. Backend and API review
+- check if the backend structure is scalable enough
+- identify expensive routes, blocking logic, or poor architecture decisions
+- review whether rate limiting, queues, workers, or caching are needed
+
+7. Infrastructure review
+- check whether the current hosting/deployment approach is enough for this scale
+- identify whether CDN, Redis, load balancing, background workers, or separate services are needed
+- assess whether this is production-ready for high traffic or only MVP-ready
+
+8. Failure points
+- tell me exactly what is most likely to fail first under load
+- rank the biggest scalability risks
+- explain why each risk matters
+
+9. Readiness score
+At the end, give me:
+- a verdict: capable / partially capable / not ready
+- a scalability score out of 10
+- the top improvements required before handling this scale
+
+10. Improvement roadmap
+- give a practical step-by-step plan to make the system capable of handling this load
+- separate improvements into:
+  - urgent
+  - recommended
+  - future-scale upgrades
+
+Output format:
+- short verdict first
+- then detailed audit
+- then bottlenecks
+- then recommended fixes
+- then final readiness score
+
+Do not rewrite the whole app yet.
+First, deeply evaluate whether the current system can realistically handle this scale.

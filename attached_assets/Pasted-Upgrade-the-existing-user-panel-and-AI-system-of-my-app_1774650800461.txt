@@ -1,0 +1,92 @@
+Upgrade the existing user panel and AI system of my app without rebuilding the whole project.
+
+Important:
+- do not redesign the public landing page
+- do not rebuild the app from scratch
+- do not break existing backend logic, authentication, routing, or working features
+- extend the current codebase carefully
+- keep the code modular, scalable, and maintainable
+- when complete, stop and wait for my next instruction
+
+Goal:
+Make the user panel feel much more advanced, premium, and useful.
+Also improve the AI system so it feels like a real product intelligence assistant, not just a basic feature.
+
+1. USER PANEL IMPROVEMENTS
+
+Upgrade the user panel with a more advanced SaaS dashboard experience.
+
+Improve and add these user-facing areas:
+- better dashboard overview
+- stronger visual hierarchy
+- cleaner sidebar and topbar
+- more polished cards, tables, filters, and empty states
+- responsive layout for desktop, tablet, and mobile
+
+Add or improve these user panel sections:
+- Overview dashboard
+- My Links
+- Analytics
+- AI Insights
+- Domains
+- Routing Rules
+- Profile / Account Settings
+- Workspace / Team area if already supported
+
+The dashboard should include:
+- total links
+- total clicks
+- top-performing links
+- recent activity
+- quick actions
+- usage summary
+- charts for link performance
+- clean filters and search where relevant
+
+The links area should include:
+- better table UI
+- search and filters
+- sorting
+- bulk actions if possible
+- clearer status badges
+- quick actions like copy, edit, disable, delete, view analytics
+
+The analytics area should feel more advanced:
+- better charts
+- date filters
+- top countries
+- top devices
+- top referrers
+- click trends
+- top links
+- more polished analytics cards and layout
+
+2. AI SYSTEM IMPROVEMENTS
+
+Make the AI system much more useful and product-focused.
+
+Upgrade the AI system into an intelligent assistant for link performance and decision-making.
+
+Add or improve these AI capabilities:
+- AI analytics summary
+- AI weekly performance digest
+- AI recommendations based on real data
+- AI answers for user questions about their links and analytics
+- AI slug suggestions for new links
+- AI explanation of spikes or drops in traffic
+- AI insights such as best performing links, weak campaigns, and growth opportunities
+
+The AI should help answer questions like:
+- Which links performed best this week?
+- Why did traffic drop yesterday?
+- Which country or device performs best?
+- Which links need improvement?
+- What slug should I use for this URL?
+- What actions should I take based on the analytics?
+
+AI requirements:
+- AI must use real app data
+- do not invent numbers
+- responses should be short, clear, useful, and actionable
+- show insights in a polished UI
+- include<span class="cursor">█</span>
