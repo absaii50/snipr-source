@@ -227,7 +227,7 @@ export function LinkModal({ isOpen, onClose, link, initialSlug }: LinkModalProps
                           variant="outline" 
                           onClick={handleSuggest}
                           disabled={suggestMutation.isPending}
-                          className="h-12 w-12 rounded-xl shrink-0 border-[#4A4A52] text-[#728DA7] hover:bg-[#728DA7]/10 hover:text-[#728DA7]"
+                          className="h-12 w-12 rounded-xl shrink-0 border-[#E5E7EB] text-[#728DA7] hover:bg-[#728DA7]/10 hover:text-[#728DA7]"
                         >
                           {suggestMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-5 h-5" />}
                         </Button>
@@ -274,7 +274,7 @@ export function LinkModal({ isOpen, onClose, link, initialSlug }: LinkModalProps
             </div>
 
             {isEdit && (
-              <div className="flex items-center justify-between p-5 border border-border/60 rounded-xl bg-[#2E2E35]">
+              <div className="flex items-center justify-between p-5 border border-[#E5E7EB] rounded-xl bg-[#F8F9FB]">
                 <div className="space-y-1">
                   <Label className="text-foreground font-semibold text-base">Link Status</Label>
                   <p className="text-sm text-muted-foreground">Enable or disable this redirect.</p>

@@ -29,85 +29,85 @@ export default function Signup() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center font-sans bg-[#080708] px-4 py-16">
+    <div className="min-h-screen flex items-center justify-center font-sans bg-[#F8F9FB] px-4 py-16">
       <div className="w-full max-w-sm">
 
         {/* Logo */}
         <div className="flex flex-col items-center mb-10">
-          <div className="bg-[#728DA7] text-white p-2.5 rounded-xl mb-4">
+          <div className="bg-gradient-to-br from-[#728DA7] to-[#5A7A94] text-white p-3 rounded-2xl mb-4 shadow-lg shadow-[#728DA7]/20">
             <Link2 className="w-5 h-5" />
           </div>
-          <span className="font-display font-bold text-[20px] text-[#EFEFF0] tracking-tight">Snipr</span>
-          <span className="text-[13px] text-[#5A5C60] mt-1">AI-powered link intelligence</span>
+          <span className="font-display font-bold text-[20px] text-[#0A0A0A] tracking-tight">Snipr</span>
+          <span className="text-[13px] text-[#6B7280] mt-1">AI-powered link intelligence</span>
         </div>
 
         {/* Card */}
-        <div className="bg-[#3C3C44] border border-[#4A4A52] rounded-2xl p-8">
-          <h1 className="text-[22px] font-bold text-[#EFEFF0] mb-1">Create your account</h1>
-          <p className="text-[13px] text-[#5A5C60] mb-7">Start for free, upgrade anytime.</p>
+        <div className="bg-white border border-[#E5E7EB] rounded-2xl p-8 shadow-sm">
+          <h1 className="text-[22px] font-bold text-[#0A0A0A] mb-1">Create your account</h1>
+          <p className="text-[13px] text-[#6B7280] mb-7">Start for free, upgrade anytime.</p>
 
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
             <div className="space-y-1.5">
-              <Label htmlFor="name" className="text-[13px] font-medium text-[#C3C3C1]">Full Name</Label>
+              <Label htmlFor="name" className="text-[13px] font-medium text-[#374151]">Full Name</Label>
               <Input
                 id="name"
                 placeholder="Jane Doe"
                 {...form.register("name")}
-                className="rounded-lg h-11 text-[14px] bg-[#2E2E35] border border-[#4A4A52] text-[#EFEFF0] placeholder:text-[#5A5C60] focus-visible:ring-[#728DA7] focus-visible:border-[#728DA7] transition-all"
+                className="rounded-xl h-11 text-[14px] bg-[#F8F9FB] border border-[#E5E7EB] text-[#0A0A0A] placeholder:text-[#9CA3AF] focus-visible:ring-[#728DA7] focus-visible:border-[#728DA7] transition-all"
               />
               {form.formState.errors.name && (
-                <p className="text-xs text-red-400 font-medium mt-1">{form.formState.errors.name.message}</p>
+                <p className="text-xs text-red-500 font-medium mt-1">{form.formState.errors.name.message}</p>
               )}
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="email" className="text-[13px] font-medium text-[#C3C3C1]">Email</Label>
+              <Label htmlFor="email" className="text-[13px] font-medium text-[#374151]">Email</Label>
               <Input
                 id="email"
                 type="email"
                 placeholder="you@example.com"
                 {...form.register("email")}
-                className="rounded-lg h-11 text-[14px] bg-[#2E2E35] border border-[#4A4A52] text-[#EFEFF0] placeholder:text-[#5A5C60] focus-visible:ring-[#728DA7] focus-visible:border-[#728DA7] transition-all"
+                className="rounded-xl h-11 text-[14px] bg-[#F8F9FB] border border-[#E5E7EB] text-[#0A0A0A] placeholder:text-[#9CA3AF] focus-visible:ring-[#728DA7] focus-visible:border-[#728DA7] transition-all"
               />
               {form.formState.errors.email && (
-                <p className="text-xs text-red-400 font-medium mt-1">{form.formState.errors.email.message}</p>
+                <p className="text-xs text-red-500 font-medium mt-1">{form.formState.errors.email.message}</p>
               )}
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="password" className="text-[13px] font-medium text-[#C3C3C1]">Password</Label>
+              <Label htmlFor="password" className="text-[13px] font-medium text-[#374151]">Password</Label>
               <Input
                 id="password"
                 type="password"
                 placeholder="Min. 8 characters"
                 {...form.register("password")}
-                className="rounded-lg h-11 text-[14px] bg-[#2E2E35] border border-[#4A4A52] text-[#EFEFF0] placeholder:text-[#5A5C60] focus-visible:ring-[#728DA7] focus-visible:border-[#728DA7] transition-all"
+                className="rounded-xl h-11 text-[14px] bg-[#F8F9FB] border border-[#E5E7EB] text-[#0A0A0A] placeholder:text-[#9CA3AF] focus-visible:ring-[#728DA7] focus-visible:border-[#728DA7] transition-all"
               />
               {form.formState.errors.password && (
-                <p className="text-xs text-red-400 font-medium mt-1">{form.formState.errors.password.message}</p>
+                <p className="text-xs text-red-500 font-medium mt-1">{form.formState.errors.password.message}</p>
               )}
             </div>
 
             <button
               type="submit"
               disabled={isRegistering}
-              className="w-full h-11 mt-2 rounded-lg text-[14px] font-semibold bg-[#728DA7] hover:bg-[#5a7a94] text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full h-11 mt-2 rounded-xl text-[14px] font-semibold bg-[#0A0A0A] hover:bg-[#1A1A1A] text-white transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isRegistering ? "Creating account..." : "Sign up"}
+              {isRegistering ? "Creating account..." : "Create account"}
             </button>
           </form>
 
-          <div className="mt-7 text-center text-[13px] text-[#5A5C60]">
+          <div className="mt-7 text-center text-[13px] text-[#6B7280]">
             Already have an account?{" "}
-            <Link href="/login" className="text-[#728DA7] font-medium hover:text-[#8fa8be] transition-colors">
+            <Link href="/login" className="text-[#728DA7] font-semibold hover:text-[#5A7A94] transition-colors">
               Log in
             </Link>
           </div>
         </div>
 
         <div className="mt-6 text-center">
-          <Link href="/" className="text-[13px] text-[#5A5C60] hover:text-[#C3C3C1] transition-colors">
-            ← Back to home
+          <Link href="/" className="text-[13px] text-[#6B7280] hover:text-[#374151] transition-colors">
+            &larr; Back to home
           </Link>
         </div>
 
