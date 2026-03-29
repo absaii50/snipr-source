@@ -2,517 +2,543 @@
 import { useMemo, useState, useEffect } from "react";
 import { ProtectedLayout } from "@/components/layout/ProtectedLayout";
 import {
-  useGetLinks,
-  useGetAiInsights,
-  useGenerateWeeklySummary,
-  getGetAiInsightsQueryKey,
-  useGetWorkspaceAnalytics,
-  useGetWorkspaceTimeseries,
-  useGetDomains,
+  useGetLinks, useGetAiInsights, useGenerateWeeklySummary,
+  getGetAiInsightsQueryKey, useGetWorkspaceAnalytics,
+  useGetWorkspaceTimeseries, useGetDomains,
 } from "@workspace/api-client-react";
 import {
-  LinkIcon, Sparkles, Loader2, ArrowRight,
-  Plus, BarChart3, Zap, TrendingUp, MousePointerClick,
-  ExternalLink, RefreshCw, ArrowUpRight, ArrowDownRight,
-  Globe, Copy, CheckCircle2, Rocket,
+  LinkIcon, Sparkles, Loader2, ArrowRight, Plus,
+  BarChart3, Zap, MousePointerClick, ExternalLink, RefreshCw,
+  ArrowUpRight, ArrowDownRight, Globe, Copy, CheckCircle2,
+  Rocket, Monitor, Smartphone, Activity, Chrome, Wifi,
+  Users, TrendingUp,
 } from "lucide-react";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { useAuth } from "@/hooks/use-auth";
 import { format, parseISO, subDays } from "date-fns";
 import {
-  BarChart, Bar, XAxis, YAxis, ResponsiveContainer,
-  Tooltip, CartesianGrid, Cell,
+  AreaChart, Area, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid,
 } from "recharts";
 
-/* ── Constants ─────────────────────────────────────────────── */
-const CORAL = "#E05A3A";
-const CORAL_LIGHT = "#FDF1EE";
+/* ─────────────────────────────────────────────────────────────
+   Design tokens
+───────────────────────────────────────────────────────────── */
+const I = "#4F46E5"; // indigo accent
 
-type Period = "7d" | "30d" | "all";
+/* ─────────────────────────────────────────────────────────────
+   Helpers
+───────────────────────────────────────────────────────────── */
+type Period = "7d" | "30d" | "3m" | "all";
 
-function getPeriodRange(p: Period) {
+function getPeriodConfig(p: Period) {
   const today = new Date();
-  const todayStr = today.toISOString().split("T")[0];
-  if (p === "7d") {
-    return { from: subDays(today, 6).toISOString().split("T")[0], to: todayStr, interval: "day" as const };
-  }
-  if (p === "30d") {
-    return { from: subDays(today, 29).toISOString().split("T")[0], to: todayStr, interval: "day" as const };
-  }
-  return { from: "2020-01-01", to: todayStr, interval: "month" as const };
+  const iso = (d: Date) => d.toISOString().split("T")[0];
+  if (p === "7d")  return { from: iso(subDays(today, 6)),  to: iso(today), interval: "day"   as const, days: 7   };
+  if (p === "30d") return { from: iso(subDays(today, 29)), to: iso(today), interval: "day"   as const, days: 30  };
+  if (p === "3m")  return { from: iso(subDays(today, 89)), to: iso(today), interval: "week"  as const, days: 90  };
+  return           { from: "2020-01-01",                   to: iso(today), interval: "month" as const, days: 9999 };
 }
 
-function getGreeting() {
-  const h = new Date().getHours();
-  if (h < 12) return "Good morning";
-  if (h < 17) return "Good afternoon";
-  return "Good evening";
-}
-
-function fmtK(n: number): string {
+function fmtNum(n: number): string {
   if (n >= 1_000_000) return (n / 1_000_000).toFixed(1).replace(/\.0$/, "") + "M";
-  if (n >= 1_000) return (n / 1_000).toFixed(1).replace(/\.0$/, "") + "K";
+  if (n >= 10_000)    return (n / 1_000).toFixed(0) + "K";
+  if (n >= 1_000)     return (n / 1_000).toFixed(1).replace(/\.0$/, "") + "K";
   return n.toLocaleString();
+}
+
+function fmtDay(time: string, interval: string, p: Period): string {
+  try {
+    const d = parseISO(time);
+    if (interval === "month") return format(d, "MMM ''yy");
+    if (p === "7d")           return format(d, "EEE");
+    if (p === "3m")           return format(d, "MMM d");
+    return format(d, "MMM d");
+  } catch { return time; }
 }
 
 function getFlagEmoji(code: string): string {
   if (!code || code.length !== 2) return "🌍";
-  const pts = [...code.toUpperCase()].map((c) => 0x1f1e6 + c.charCodeAt(0) - 65);
-  return String.fromCodePoint(...pts);
+  return String.fromCodePoint(...[...code.toUpperCase()].map(c => 0x1f1e6 + c.charCodeAt(0) - 65));
 }
 
-const COUNTRY_NAMES: Record<string, string> = {
-  US: "United States", GB: "United Kingdom", DE: "Germany", FR: "France",
-  NL: "Netherlands", IT: "Italy", VN: "Vietnam", CA: "Canada", AU: "Australia",
-  JP: "Japan", CN: "China", KR: "South Korea", BR: "Brazil", MX: "Mexico",
-  IN: "India", ES: "Spain", PL: "Poland", SE: "Sweden", NO: "Norway",
-  DK: "Denmark", FI: "Finland", CH: "Switzerland", AT: "Austria", BE: "Belgium",
-  PT: "Portugal", CZ: "Czech Republic", TR: "Turkey", RU: "Russia",
-  UA: "Ukraine", PK: "Pakistan", BD: "Bangladesh", NG: "Nigeria", ZA: "South Africa",
-  EG: "Egypt", AR: "Argentina", CL: "Chile", CO: "Colombia", ID: "Indonesia",
-  TH: "Thailand", MY: "Malaysia", SG: "Singapore", PH: "Philippines",
-  HK: "Hong Kong", TW: "Taiwan", NZ: "New Zealand", IE: "Ireland",
-  IL: "Israel", AE: "UAE", SA: "Saudi Arabia", GR: "Greece", RO: "Romania",
-  HU: "Hungary", SK: "Slovakia", HR: "Croatia", RS: "Serbia",
+function cleanReferrer(r: string): string {
+  if (!r || r === "(none)" || r === "(direct)") return "Direct";
+  try { return new URL(r.startsWith("http") ? r : `https://${r}`).hostname.replace(/^www\./, ""); }
+  catch { return r.slice(0, 32); }
+}
+
+const COUNTRY: Record<string, string> = {
+  US:"United States", GB:"United Kingdom", DE:"Germany", FR:"France",
+  NL:"Netherlands", IT:"Italy", VN:"Vietnam", CA:"Canada", AU:"Australia",
+  JP:"Japan", CN:"China", KR:"South Korea", BR:"Brazil", MX:"Mexico",
+  IN:"India", ES:"Spain", PL:"Poland", SE:"Sweden", NO:"Norway",
+  DK:"Denmark", FI:"Finland", CH:"Switzerland", AT:"Austria", BE:"Belgium",
+  PT:"Portugal", CZ:"Czech Republic", TR:"Turkey", RU:"Russia", UA:"Ukraine",
+  PK:"Pakistan", BD:"Bangladesh", NG:"Nigeria", ZA:"South Africa", EG:"Egypt",
+  AR:"Argentina", CL:"Chile", CO:"Colombia", ID:"Indonesia", TH:"Thailand",
+  MY:"Malaysia", SG:"Singapore", PH:"Philippines", HK:"Hong Kong", TW:"Taiwan",
+  NZ:"New Zealand", IE:"Ireland", IL:"Israel", AE:"UAE", SA:"Saudi Arabia",
+  GR:"Greece", RO:"Romania", HU:"Hungary", SK:"Slovakia", HR:"Croatia",
 };
 
 async function fetchTodayClicks({ signal }: { signal: AbortSignal }): Promise<number> {
   try {
-    const res = await fetch("/api/stats/today", { credentials: "include", signal });
-    if (!res.ok) return 0;
-    const data = await res.json();
-    return data.clicks ?? 0;
+    const r = await fetch("/api/stats/today", { credentials: "include", signal });
+    if (!r.ok) return 0;
+    return (await r.json()).clicks ?? 0;
   } catch { return 0; }
 }
-
 async function fetchLinkClicks({ signal }: { signal: AbortSignal }): Promise<Record<string, number>> {
   try {
-    const res = await fetch("/api/links/clicks", { credentials: "include", signal });
-    if (!res.ok) return {};
-    return res.json();
+    const r = await fetch("/api/links/clicks", { credentials: "include", signal });
+    if (!r.ok) return {};
+    return r.json();
   } catch { return {}; }
 }
 
-/* ── Custom Tooltip ─────────────────────────────────────────── */
-function ChartTooltip({ active, payload, label }: any) {
+/* ─────────────────────────────────────────────────────────────
+   Custom chart tooltip
+───────────────────────────────────────────────────────────── */
+function ChartTip({ active, payload, label }: any) {
   if (!active || !payload?.length) return null;
   return (
-    <div className="bg-[#0A0A0A] text-white px-3.5 py-2.5 rounded-xl shadow-xl text-[12px]">
-      <p className="font-semibold mb-0.5">{label}</p>
-      <p className="text-[#9CA3AF] flex items-center gap-1.5">
-        <span className="w-2 h-2 rounded-full bg-[#E05A3A] inline-block" />
-        {payload[0].value?.toLocaleString()} clicks
-      </p>
+    <div className="bg-[#0F172A] text-white px-3.5 py-2.5 rounded-xl shadow-2xl text-[12px] pointer-events-none">
+      <p className="text-[#64748B] font-medium mb-1">{label}</p>
+      <p className="font-bold text-[15px]">{payload[0]?.value?.toLocaleString()} <span className="text-[#64748B] font-normal text-[11px]">clicks</span></p>
+      {payload[1] && <p className="text-[#818CF8] mt-0.5">{payload[1]?.value?.toLocaleString()} unique</p>}
     </div>
   );
 }
 
-/* ── Main Component ─────────────────────────────────────────── */
+/* ─────────────────────────────────────────────────────────────
+   Main dashboard
+───────────────────────────────────────────────────────────── */
 export default function Dashboard() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const [mounted, setMounted] = useState(false);
-  const [period, setPeriod] = useState<Period>("7d");
   const [origin, setOrigin] = useState("");
+  const [period, setPeriod] = useState<Period>("30d");
+  const [breakdownTab, setBreakdownTab] = useState<"browser" | "device" | "os">("browser");
+
   useEffect(() => { setMounted(true); setOrigin(window.location.origin); }, []);
 
   const { data: links, isLoading } = useGetLinks();
   const { data: allDomains } = useGetDomains();
   const domainMap = useMemo(() => {
-    const map: Record<string, string> = {};
-    allDomains?.forEach((d: any) => { if (d.id) map[d.id] = d.domain; });
-    return map;
+    const m: Record<string, string> = {};
+    allDomains?.forEach((d: any) => { if (d.id) m[d.id] = d.domain; });
+    return m;
   }, [allDomains]);
 
-  const { data: insights } = useGetAiInsights({ limit: 10 });
+  const { data: aiInsights } = useGetAiInsights({ limit: 10 });
   const summaryMutation = useGenerateWeeklySummary();
 
-  const { from: allFrom, to: allTo } = getPeriodRange("all");
-  const { from, to, interval } = getPeriodRange(period);
+  const { from, to, interval, days } = getPeriodConfig(period);
+  const prevFrom = subDays(new Date(from), days).toISOString().split("T")[0];
+  const prevTo   = subDays(new Date(from), 1).toISOString().split("T")[0];
 
-  const prevFrom = subDays(new Date(from), (period === "7d" ? 7 : period === "30d" ? 30 : 365)).toISOString().split("T")[0];
-  const prevTo = subDays(new Date(from), 1).toISOString().split("T")[0];
-
-  const { data: allStats } = useGetWorkspaceAnalytics({ from: allFrom, to: allTo });
-  const { data: stats } = useGetWorkspaceAnalytics({ from, to });
+  const { data: allStats }  = useGetWorkspaceAnalytics({ from: "2020-01-01", to: new Date().toISOString().split("T")[0] });
+  const { data: stats }     = useGetWorkspaceAnalytics({ from, to });
   const { data: prevStats } = useGetWorkspaceAnalytics({ from: prevFrom, to: prevTo });
   const { data: todayClicks = 0 } = useQuery({ queryKey: ["stats-today"], queryFn: fetchTodayClicks, staleTime: 30_000 });
   const { data: clickCounts = {} } = useQuery({ queryKey: ["links-clicks"], queryFn: fetchLinkClicks, staleTime: 60_000 });
 
-  const timeseriesResult = useGetWorkspaceTimeseries({ from, to, interval });
+  const tsResult = useGetWorkspaceTimeseries({ from, to, interval });
   const timeseries = useMemo(() => {
-    if (!timeseriesResult.data) return [];
-    return timeseriesResult.data.map((pt) => {
-      let day: string;
-      try {
-        const d = parseISO(pt.time);
-        if (interval === "month") day = format(d, "MMM");
-        else if (period === "7d") day = format(d, "EEE");
-        else day = format(d, "MMM d");
-      } catch { day = pt.time; }
-      return { ...pt, day };
-    });
-  }, [timeseriesResult.data, interval, period]);
+    if (!tsResult.data) return [];
+    return tsResult.data.map(pt => ({ ...pt, day: fmtDay(pt.time, interval, period) }));
+  }, [tsResult.data, interval, period]);
 
-  const totalLinks = links?.length ?? 0;
+  const totalLinks  = links?.length ?? 0;
   const activeLinks = links?.filter((l) => l.enabled).length ?? 0;
-  const latestSummary = insights?.find((i) => i.type === "weekly_summary");
-  const firstName = user?.name?.split(" ")[0] ?? "";
+  const firstName   = user?.name?.split(" ")[0] ?? "there";
+  const latestAI    = aiInsights?.find((i) => i.type === "weekly_summary");
 
-  const clicksNow = stats?.totalClicks ?? 0;
+  const clicksNow  = stats?.totalClicks ?? 0;
   const clicksPrev = prevStats?.totalClicks ?? 0;
-  const clickDelta = clicksPrev > 0 ? Math.round(((clicksNow - clicksPrev) / clicksPrev) * 100) : null;
+  const delta      = clicksPrev > 0 ? Math.round(((clicksNow - clicksPrev) / clicksPrev) * 100) : null;
+  const allTime    = allStats?.totalClicks ?? 0;
+  const uniqueNow  = stats?.uniqueClicks ?? 0;
 
+  const topLinks = useMemo(() =>
+    !links ? [] : [...links].sort((a, b) => (clickCounts[b.id] ?? 0) - (clickCounts[a.id] ?? 0)).slice(0, 6),
+    [links, clickCounts]
+  );
   const topCountries = useMemo(() => (stats?.topCountries ?? []).slice(0, 7), [stats]);
-  const maxCountryCount = Math.max(...topCountries.map((c: any) => c.count), 1);
-
-  const topLinks = useMemo(() => {
-    if (!links) return [];
-    return [...links].sort((a, b) => (clickCounts[b.id] ?? 0) - (clickCounts[a.id] ?? 0)).slice(0, 5);
-  }, [links, clickCounts]);
-
-  const handleGenerateSummary = async () => {
-    try {
-      await summaryMutation.mutateAsync();
-      queryClient.invalidateQueries({ queryKey: getGetAiInsightsQueryKey() });
-    } catch (e) { console.error(e); }
-  };
+  const topRefs      = useMemo(() => (stats?.topReferrers ?? []).slice(0, 6), [stats]);
+  const breakdownData = useMemo(() => {
+    if (breakdownTab === "browser") return (stats?.topBrowsers  ?? []).slice(0, 6);
+    if (breakdownTab === "device")  return (stats?.topDevices   ?? []).slice(0, 6);
+    return                                 ((stats as any)?.topOs ?? []).slice(0, 6);
+  }, [stats, breakdownTab]);
+  const maxBreakdown = Math.max(...breakdownData.map((d: any) => d.count), 1);
 
   const showOnboarding = !isLoading && totalLinks === 0;
 
   return (
     <ProtectedLayout>
-      <div className="px-6 lg:px-8 py-6 max-w-[1180px] mx-auto w-full space-y-5">
+      <div className="min-h-full bg-[#F1F3F9] px-6 lg:px-8 py-7 space-y-5 max-w-[1200px] mx-auto w-full">
 
-        {/* ── Header ──────────────────────────────────────────── */}
-        <div className="flex items-start justify-between gap-4">
+        {/* ══ HEADER ══════════════════════════════════════════════════ */}
+        <div className="flex items-center justify-between gap-4">
           <div>
-            <h1 className="text-[24px] font-bold tracking-tight text-[#0A0A0A] leading-tight" suppressHydrationWarning>
-              {mounted ? getGreeting() : "Welcome"}, {firstName || "there"} 👋
+            <h1 className="text-[22px] font-bold text-[#0F172A] tracking-tight leading-none" suppressHydrationWarning>
+              {mounted ? (new Date().getHours() < 12 ? "Good morning" : new Date().getHours() < 17 ? "Good afternoon" : "Good evening") : "Welcome"}, {firstName}
             </h1>
-            <p className="text-[13px] text-[#9CA3AF] mt-1" suppressHydrationWarning>
-              {mounted ? format(new Date(), "EEEE, MMMM d") : ""} · Here's your link performance overview
+            <p className="text-[12px] text-[#94A3B8] mt-1.5 font-medium" suppressHydrationWarning>
+              {mounted ? format(new Date(), "EEEE, MMMM d, yyyy") : ""}
             </p>
           </div>
           <Link href="/links">
-            <button className="inline-flex items-center gap-2 bg-[#0A0A0A] hover:bg-[#1F1F1F] active:scale-[0.97] text-white text-[13px] font-semibold px-4 py-2.5 rounded-xl transition-all shadow-sm shrink-0">
+            <button className="inline-flex items-center gap-2 bg-[#4F46E5] hover:bg-[#4338CA] text-white text-[13px] font-semibold px-4 py-2.5 rounded-xl transition-colors shadow-sm shrink-0">
               <Plus className="w-3.5 h-3.5" />
               New Link
             </button>
           </Link>
         </div>
 
-        {/* ── KPI Row ─────────────────────────────────────────── */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          {/* Hero card — dark */}
-          <div className="bg-[#0A0A0A] rounded-2xl p-4 text-white relative overflow-hidden col-span-1">
-            <div className="absolute inset-0 opacity-[0.06]" style={{ backgroundImage: "radial-gradient(circle at 80% 20%, #E05A3A 0%, transparent 60%)" }} />
-            <div className="relative z-10">
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-[11px] font-semibold text-white/40 uppercase tracking-wide">All-Time Clicks</span>
-                <div className="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center">
-                  <MousePointerClick className="w-3.5 h-3.5 text-white" />
-                </div>
-              </div>
-              {allStats == null ? (
-                <div className="h-8 w-20 rounded-lg bg-white/10 animate-pulse" />
-              ) : (
-                <p className="text-[28px] font-bold leading-none tracking-tight tabular-nums">
-                  {fmtK(allStats.totalClicks)}
-                </p>
-              )}
-              <p className="text-[11px] text-white/35 mt-2">
-                {allStats?.uniqueClicks != null ? `${fmtK(allStats.uniqueClicks)} unique` : " "}
-              </p>
-            </div>
-          </div>
-
-          <KpiCard
-            label="Today"
-            value={todayClicks}
-            icon={<Zap className="w-4 h-4" />}
-            iconBg="bg-amber-50"
-            iconColor="text-amber-500"
-            sublabel="clicks today"
-          />
-          <KpiCard
-            label={period === "7d" ? "Last 7 Days" : period === "30d" ? "Last 30 Days" : "All Time"}
-            value={stats?.totalClicks ?? null}
-            icon={<TrendingUp className="w-4 h-4" />}
-            iconBg="bg-blue-50"
-            iconColor="text-blue-500"
-            delta={clickDelta}
-          />
-          <KpiCard
-            label="Active Links"
-            value={isLoading ? null : activeLinks}
-            icon={<LinkIcon className="w-4 h-4" />}
-            iconBg="bg-emerald-50"
-            iconColor="text-emerald-500"
-            sublabel={isLoading || totalLinks === 0 ? undefined : `of ${totalLinks} total`}
-          />
-        </div>
-
-        {/* ── Onboarding banner ───────────────────────────────── */}
+        {/* ══ ONBOARDING ═══════════════════════════════════════════════ */}
         {showOnboarding && (
-          <div className="bg-gradient-to-br from-[#0A0A0A] to-[#1a1a2e] rounded-2xl p-6 lg:p-8 text-white relative overflow-hidden">
-            <div className="absolute inset-0 opacity-[0.04]" style={{ backgroundImage: "radial-gradient(circle at 1px 1px, white 1px, transparent 0)", backgroundSize: "20px 20px" }} />
-            <div className="relative z-10 flex flex-col lg:flex-row items-start lg:items-center gap-6">
+          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#312E81] via-[#4338CA] to-[#6D28D9] p-6 text-white">
+            <div className="absolute inset-0 opacity-[0.07]" style={{ backgroundImage: "radial-gradient(circle at 1px 1px,white 1px,transparent 0)", backgroundSize: "22px 22px" }} />
+            <div className="relative flex flex-col sm:flex-row items-start sm:items-center gap-5">
               <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center shrink-0">
                 <Rocket className="w-6 h-6" />
               </div>
               <div className="flex-1">
-                <h3 className="text-lg font-bold mb-1">Welcome to Snipr!</h3>
-                <p className="text-white/60 text-sm leading-relaxed max-w-lg">
-                  Create your first short link to start tracking clicks, analyzing traffic, and optimizing your marketing.
-                </p>
+                <p className="font-bold text-[16px]">Welcome to Snipr</p>
+                <p className="text-white/60 text-[13px] mt-0.5 max-w-md">Create your first short link to start tracking clicks, analyzing traffic sources, and understanding your audience.</p>
               </div>
               <Link href="/links">
-                <button className="inline-flex items-center gap-2 bg-white text-[#0A0A0A] text-sm font-semibold px-5 py-2.5 rounded-xl hover:bg-white/90 active:scale-[0.97] transition-all shrink-0">
-                  <Plus className="w-4 h-4" />
-                  Create your first link
+                <button className="bg-white text-[#4338CA] text-[13px] font-bold px-5 py-2.5 rounded-xl hover:bg-white/90 transition-colors shrink-0">
+                  Create first link
                 </button>
               </Link>
             </div>
           </div>
         )}
 
-        {/* ── Chart + Countries ────────────────────────────────── */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-
-          {/* Bar Chart */}
-          <div className="lg:col-span-2 bg-white border border-[#ECEDF0] rounded-2xl overflow-hidden">
-            <div className="px-5 pt-5 pb-3 flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <div className="flex items-baseline gap-2">
-                  <p className="text-[22px] font-bold text-[#0A0A0A] leading-none tabular-nums">
-                    {fmtK(clicksNow)}
-                  </p>
-                  <span className="text-[13px] text-[#9CA3AF] font-medium">Total Clicks</span>
-                  {clickDelta !== null && (
-                    <span className={`inline-flex items-center gap-0.5 text-[12px] font-semibold ${clickDelta >= 0 ? "text-emerald-500" : "text-red-400"}`}>
-                      {clickDelta >= 0 ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
-                      {Math.abs(clickDelta)}%
-                    </span>
-                  )}
+        {/* ══ KPI STRIP ════════════════════════════════════════════════ */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          {/* Hero card */}
+          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#3730A3] to-[#4F46E5] p-5 text-white">
+            <div className="absolute top-0 right-0 w-32 h-32 rounded-full bg-white/5 -translate-y-8 translate-x-8" />
+            <div className="absolute bottom-0 right-4 w-20 h-20 rounded-full bg-white/5 translate-y-6" />
+            <div className="relative z-10">
+              <div className="flex items-center justify-between mb-4">
+                <span className="text-[10px] font-bold uppercase tracking-[0.1em] text-indigo-200">All-Time Clicks</span>
+                <div className="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center">
+                  <MousePointerClick className="w-3.5 h-3.5" />
                 </div>
-                <p className="text-[11px] text-[#C4C9D4] mt-1">Click activity over time</p>
               </div>
-              {/* Period tabs */}
-              <div className="flex items-center gap-1 bg-[#F3F4F6] rounded-xl p-1 shrink-0">
-                {(["7d", "30d", "all"] as Period[]).map((p) => (
-                  <button
-                    key={p}
-                    onClick={() => setPeriod(p)}
-                    className={`text-[11px] font-semibold px-3 py-1.5 rounded-lg transition-all ${
-                      period === p
-                        ? "bg-white text-[#0A0A0A] shadow-sm"
-                        : "text-[#9CA3AF] hover:text-[#6B7280]"
-                    }`}
-                  >
-                    {p === "7d" ? "7 Days" : p === "30d" ? "30 Days" : "All time"}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="px-2 pb-4 h-[220px]">
-              {timeseries.length > 0 ? (
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={timeseries} barSize={period === "all" ? 16 : period === "30d" ? 8 : 22} margin={{ top: 4, right: 12, bottom: 0, left: -24 }}>
-                    <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="#F3F4F6" />
-                    <XAxis
-                      dataKey="day"
-                      axisLine={false}
-                      tickLine={false}
-                      tick={{ fill: "#C4C9D4", fontSize: 10, fontWeight: 500 }}
-                      dy={6}
-                      interval={period === "30d" ? 4 : 0}
-                    />
-                    <YAxis axisLine={false} tickLine={false} tick={{ fill: "#C4C9D4", fontSize: 10 }} allowDecimals={false} />
-                    <Tooltip content={<ChartTooltip />} cursor={{ fill: "#F9FAFB", radius: 4 }} />
-                    <Bar dataKey="clicks" radius={[5, 5, 0, 0]}>
-                      {timeseries.map((_, i) => (
-                        <Cell key={i} fill={CORAL} fillOpacity={0.85} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="h-full flex items-center justify-center">
-                  <div className="text-center">
-                    <BarChart3 className="w-8 h-8 mx-auto mb-2 text-[#E5E7EB]" />
-                    <p className="text-[12px] text-[#C4C9D4]">No click data for this period</p>
-                  </div>
-                </div>
-              )}
+              {allStats == null
+                ? <div className="h-9 w-24 bg-white/15 rounded-lg animate-pulse" />
+                : <p className="text-[34px] font-bold leading-none tabular-nums tracking-tight">{fmtNum(allTime)}</p>
+              }
+              <p className="text-[11px] text-indigo-200/70 mt-2">
+                {allStats?.uniqueClicks != null ? `${fmtNum(allStats.uniqueClicks)} unique visitors` : "\u00a0"}
+              </p>
             </div>
           </div>
 
-          {/* Top Countries */}
-          <div className="bg-white border border-[#ECEDF0] rounded-2xl overflow-hidden flex flex-col">
-            <div className="px-5 pt-5 pb-3 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="w-1 h-5 rounded-full bg-[#E05A3A]" />
-                <h3 className="font-bold text-[14px] text-[#0A0A0A]">Top countries</h3>
+          <StatCard
+            label="Period Clicks"
+            sublabel={period === "7d" ? "Last 7 days" : period === "30d" ? "Last 30 days" : period === "3m" ? "Last 90 days" : "All time"}
+            value={stats?.totalClicks ?? null}
+            delta={delta}
+            icon={<TrendingUp className="w-4 h-4 text-[#4F46E5]" />}
+            iconBg="bg-indigo-50"
+          />
+          <StatCard
+            label="Unique Visitors"
+            sublabel={period === "7d" ? "Last 7 days" : period === "30d" ? "Last 30 days" : period === "3m" ? "Last 90 days" : "All time"}
+            value={uniqueNow}
+            icon={<Users className="w-4 h-4 text-[#0EA5E9]" />}
+            iconBg="bg-sky-50"
+          />
+          <StatCard
+            label="Active Links"
+            sublabel={isLoading ? undefined : `${totalLinks} total`}
+            value={isLoading ? null : activeLinks}
+            icon={<LinkIcon className="w-4 h-4 text-[#10B981]" />}
+            iconBg="bg-emerald-50"
+          />
+        </div>
+
+        {/* ══ AREA CHART ═══════════════════════════════════════════════ */}
+        <div className="bg-white rounded-2xl border border-[#E8EAEF] shadow-[0_1px_4px_rgba(0,0,0,0.04)] overflow-hidden">
+          <div className="px-6 pt-5 pb-3 flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-[#94A3B8] mb-1">Click Activity</p>
+              <div className="flex items-baseline gap-3">
+                <span className="text-[30px] font-bold text-[#0F172A] tabular-nums tracking-tight leading-none">
+                  {fmtNum(clicksNow)}
+                </span>
+                <span className="text-[13px] text-[#94A3B8]">clicks</span>
+                {delta !== null && (
+                  <span className={`inline-flex items-center gap-0.5 text-[12px] font-bold px-2 py-0.5 rounded-full ${delta >= 0 ? "bg-emerald-50 text-emerald-600" : "bg-red-50 text-red-500"}`}>
+                    {delta >= 0 ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
+                    {Math.abs(delta)}%
+                  </span>
+                )}
               </div>
-              <Globe className="w-4 h-4 text-[#D1D5DB]" />
             </div>
-            <div className="flex-1 divide-y divide-[#F9FAFB] overflow-auto px-5 pb-4">
-              {topCountries.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-full py-10 gap-2 text-center">
-                  <Globe className="w-8 h-8 text-[#E5E7EB]" />
-                  <p className="text-[12px] text-[#C4C9D4]">No geographic data yet</p>
-                </div>
-              ) : (
-                topCountries.map((c: any) => {
-                  const pct = Math.round((c.count / maxCountryCount) * 100);
-                  const name = COUNTRY_NAMES[c.label] ?? c.label;
-                  const flag = getFlagEmoji(c.label);
+            {/* Period tabs */}
+            <div className="flex items-center gap-1 bg-[#F1F3F9] rounded-xl p-1 shrink-0">
+              {(["7d","30d","3m","all"] as Period[]).map(p => (
+                <button key={p} onClick={() => setPeriod(p)}
+                  className={`text-[11px] font-bold px-3.5 py-1.5 rounded-lg transition-all ${period === p ? "bg-white text-[#0F172A] shadow-sm" : "text-[#94A3B8] hover:text-[#64748B]"}`}>
+                  {p === "7d" ? "7D" : p === "30d" ? "30D" : p === "3m" ? "3M" : "All"}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="h-[200px] px-2 pb-4">
+            {tsResult.isLoading ? (
+              <div className="h-full flex items-center justify-center">
+                <Loader2 className="w-5 h-5 animate-spin text-[#E2E8F0]" />
+              </div>
+            ) : timeseries.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={timeseries} margin={{ top: 4, right: 16, bottom: 0, left: -24 }}>
+                  <defs>
+                    <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%"   stopColor={I} stopOpacity={0.15} />
+                      <stop offset="100%" stopColor={I} stopOpacity={0} />
+                    </linearGradient>
+                    <linearGradient id="uniqueGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%"   stopColor="#818CF8" stopOpacity={0.08} />
+                      <stop offset="100%" stopColor="#818CF8" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid vertical={false} stroke="#F1F3F9" strokeDasharray="4 4" />
+                  <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fill: "#CBD5E1", fontSize: 10, fontWeight: 500 }} dy={6}
+                    interval={period === "all" ? 1 : period === "30d" ? 4 : 0} />
+                  <YAxis axisLine={false} tickLine={false} tick={{ fill: "#CBD5E1", fontSize: 10 }} allowDecimals={false} />
+                  <Tooltip content={<ChartTip />} cursor={{ stroke: "#E2E8F0", strokeWidth: 1 }} />
+                  <Area type="monotone" dataKey="uniqueClicks" name="Unique" stroke="#818CF8" strokeWidth={1.5}
+                    fill="url(#uniqueGrad)" dot={false} activeDot={{ r: 3, fill: "#818CF8", strokeWidth: 2, stroke: "#fff" }} />
+                  <Area type="monotone" dataKey="clicks" name="Clicks" stroke={I} strokeWidth={2}
+                    fill="url(#areaGrad)" dot={false} activeDot={{ r: 4, fill: I, strokeWidth: 2, stroke: "#fff" }} />
+                </AreaChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-full flex flex-col items-center justify-center gap-2">
+                <BarChart3 className="w-8 h-8 text-[#E2E8F0]" />
+                <p className="text-[12px] text-[#CBD5E1] font-medium">No click data for this period</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* ══ 3-COLUMN BREAKDOWN ═══════════════════════════════════════ */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+
+          {/* Top Links */}
+          <Card title="Top Links" action={<Link href="/links" className="text-[11px] text-[#94A3B8] hover:text-[#4F46E5] font-semibold flex items-center gap-1 transition-colors">View all <ArrowRight className="w-3 h-3" /></Link>}>
+            {isLoading ? (
+              <SkeletonRows n={5} />
+            ) : topLinks.length === 0 ? (
+              <EmptyState icon={<LinkIcon className="w-5 h-5" />} label="No links yet" />
+            ) : (
+              <div className="space-y-1 mt-1">
+                {topLinks.map((link, i) => {
+                  const clicks   = clickCounts[link.id] ?? 0;
+                  const maxC     = Math.max(...topLinks.map(l => clickCounts[l.id] ?? 0), 1);
+                  const pct      = Math.max((clicks / maxC) * 100, 3);
+                  const domain   = link.domainId ? domainMap[link.domainId] : null;
+                  const shortUrl = domain ? `https://${domain}/${link.slug}` : `${origin}/r/${link.slug}`;
                   return (
-                    <div key={c.label} className="flex items-center gap-3 py-2.5">
-                      <span className="text-[20px] leading-none shrink-0">{flag}</span>
+                    <LinkRowItem key={link.id} rank={i + 1} slug={link.slug} domain={domain} shortUrl={shortUrl}
+                      enabled={link.enabled} clicks={clicks} pct={pct} />
+                  );
+                })}
+              </div>
+            )}
+          </Card>
+
+          {/* Traffic Sources */}
+          <Card title="Traffic Sources">
+            {topRefs.length === 0 ? (
+              <EmptyState icon={<Wifi className="w-5 h-5" />} label="No referrer data yet" />
+            ) : (
+              <div className="space-y-2.5 mt-1">
+                {topRefs.map((r: any, i: number) => {
+                  const label = cleanReferrer(r.label);
+                  const total = Math.max(...topRefs.map((x: any) => x.count), 1);
+                  const pct   = Math.round((r.count / total) * 100);
+                  return (
+                    <div key={i} className="flex items-center gap-2.5">
+                      <div className="w-6 h-6 rounded-lg bg-[#F8FAFC] border border-[#E8EAEF] flex items-center justify-center shrink-0">
+                        <Globe className="w-3 h-3 text-[#94A3B8]" />
+                      </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between mb-1">
-                          <span className="text-[12px] font-medium text-[#374151] truncate">{name}</span>
-                          <span className="text-[12px] font-bold text-[#0A0A0A] tabular-nums ml-2 shrink-0">{c.count.toLocaleString()}</span>
+                          <span className="text-[12px] font-semibold text-[#0F172A] truncate max-w-[120px]">{label}</span>
+                          <span className="text-[11px] text-[#64748B] tabular-nums font-medium ml-1 shrink-0">{r.count.toLocaleString()}</span>
                         </div>
-                        <div className="h-1 bg-[#F3F4F6] rounded-full overflow-hidden">
-                          <div className="h-full rounded-full bg-[#E05A3A] transition-all duration-500" style={{ width: `${pct}%`, opacity: 0.7 }} />
+                        <div className="h-1 bg-[#F1F3F9] rounded-full overflow-hidden">
+                          <div className="h-full rounded-full bg-[#4F46E5]" style={{ width: `${pct}%`, opacity: 0.55 }} />
                         </div>
                       </div>
                     </div>
                   );
-                })
-              )}
-            </div>
-          </div>
+                })}
+              </div>
+            )}
+          </Card>
+
+          {/* Device Breakdown */}
+          <Card
+            title="Audience Breakdown"
+            action={
+              <div className="flex gap-0.5 bg-[#F1F3F9] rounded-lg p-0.5">
+                {(["browser","device","os"] as const).map(t => (
+                  <button key={t} onClick={() => setBreakdownTab(t)}
+                    className={`text-[10px] font-bold px-2.5 py-1 rounded-md transition-all capitalize ${breakdownTab === t ? "bg-white text-[#0F172A] shadow-sm" : "text-[#94A3B8]"}`}>
+                    {t === "os" ? "OS" : t.charAt(0).toUpperCase() + t.slice(1)}
+                  </button>
+                ))}
+              </div>
+            }
+          >
+            {breakdownData.length === 0 ? (
+              <EmptyState icon={<Monitor className="w-5 h-5" />} label="No data yet" />
+            ) : (
+              <div className="space-y-2.5 mt-1">
+                {breakdownData.map((d: any, i: number) => {
+                  const pct = Math.round((d.count / maxBreakdown) * 100);
+                  const ico = breakdownTab === "device"
+                    ? (d.label?.toLowerCase().includes("mobile") || d.label?.toLowerCase().includes("phone")
+                        ? <Smartphone className="w-3 h-3 text-[#94A3B8]" />
+                        : <Monitor className="w-3 h-3 text-[#94A3B8]" />)
+                    : <Chrome className="w-3 h-3 text-[#94A3B8]" />;
+                  return (
+                    <div key={i} className="flex items-center gap-2.5">
+                      <div className="w-6 h-6 rounded-lg bg-[#F8FAFC] border border-[#E8EAEF] flex items-center justify-center shrink-0">
+                        {ico}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-[12px] font-semibold text-[#0F172A] truncate max-w-[100px]">{d.label || "Unknown"}</span>
+                          <span className="text-[11px] text-[#64748B] tabular-nums font-medium shrink-0">{pct}%</span>
+                        </div>
+                        <div className="h-1 bg-[#F1F3F9] rounded-full overflow-hidden">
+                          <div className="h-full rounded-full bg-[#0EA5E9]" style={{ width: `${pct}%`, opacity: 0.65 }} />
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </Card>
         </div>
 
-        {/* ── Bottom row ──────────────────────────────────────── */}
+        {/* ══ COUNTRIES + AI ═══════════════════════════════════════════ */}
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
 
-          {/* Top Links */}
-          <div className="lg:col-span-3 bg-white rounded-2xl border border-[#ECEDF0] overflow-hidden">
-            <div className="px-5 py-4 flex items-center justify-between border-b border-[#F3F4F6]">
-              <div className="flex items-center gap-2">
-                <div className="w-1 h-5 rounded-full bg-[#0A0A0A]" />
-                <h3 className="font-bold text-[14px] text-[#0A0A0A]">Top Performing Links</h3>
-              </div>
-              <Link href="/links" className="text-[12px] text-[#9CA3AF] hover:text-[#0A0A0A] font-medium flex items-center gap-1 transition-colors">
-                View all <ArrowRight className="w-3 h-3" />
-              </Link>
-            </div>
-
-            {/* Column headers */}
-            <div className="grid grid-cols-[auto_1fr_auto] gap-3 px-5 py-2 border-b border-[#F9FAFB]">
-              <span className="text-[10px] font-bold text-[#D1D5DB] uppercase tracking-wider w-4">#</span>
-              <span className="text-[10px] font-bold text-[#D1D5DB] uppercase tracking-wider">Link</span>
-              <span className="text-[10px] font-bold text-[#D1D5DB] uppercase tracking-wider">Clicks</span>
-            </div>
-
-            <div className="divide-y divide-[#F9FAFB]">
-              {isLoading ? (
-                <div className="h-[260px] flex items-center justify-center">
-                  <Loader2 className="w-5 h-5 animate-spin text-[#D1D5DB]" />
-                </div>
-              ) : topLinks.length === 0 ? (
-                <div className="h-[260px] flex flex-col items-center justify-center text-center px-6">
-                  <div className="w-12 h-12 rounded-2xl bg-[#F3F4F6] flex items-center justify-center mb-3">
-                    <LinkIcon className="w-5 h-5 text-[#D1D5DB]" />
-                  </div>
-                  <p className="text-sm font-medium text-[#374151]">No links yet</p>
-                  <p className="text-xs text-[#9CA3AF] mt-1">Create your first link to see it here</p>
-                </div>
+          {/* Countries — 3 cols */}
+          <div className="lg:col-span-3">
+            <Card title="Geographic Distribution">
+              {topCountries.length === 0 ? (
+                <EmptyState icon={<Globe className="w-5 h-5" />} label="No geographic data yet" />
               ) : (
-                topLinks.map((link, i) => {
-                  const clicks = clickCounts[link.id] ?? 0;
-                  const maxClicks = Math.max(...topLinks.map((l) => clickCounts[l.id] ?? 0), 1);
-                  return (
-                    <LinkRow key={link.id} link={link} clicks={clicks} maxClicks={maxClicks} rank={i + 1} origin={origin} domainMap={domainMap} />
-                  );
-                })
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 mt-1">
+                  {topCountries.map((c: any, i: number) => {
+                    const pct = Math.round((c.count / Math.max(...topCountries.map((x: any) => x.count), 1)) * 100);
+                    return (
+                      <div key={c.label} className="flex items-center gap-2.5 py-1">
+                        <span className="text-[18px] leading-none shrink-0">{getFlagEmoji(c.label)}</span>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-[12px] font-semibold text-[#0F172A] truncate">{COUNTRY[c.label] ?? c.label}</span>
+                            <span className="text-[11px] tabular-nums text-[#64748B] font-medium shrink-0 ml-1">{fmtNum(c.count)}</span>
+                          </div>
+                          <div className="h-1 bg-[#F1F3F9] rounded-full overflow-hidden">
+                            <div className="h-full rounded-full bg-[#10B981]" style={{ width: `${pct}%`, opacity: 0.65 }} />
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               )}
-            </div>
+            </Card>
           </div>
 
-          {/* AI Insights */}
-          <div className="lg:col-span-2 bg-white rounded-2xl border border-[#ECEDF0] overflow-hidden flex flex-col">
-            <div className="px-5 py-4 flex items-center justify-between border-b border-[#F3F4F6]">
-              <div className="flex items-center gap-2">
-                <div className="w-1 h-5 rounded-full bg-purple-400" />
-                <h3 className="font-bold text-[14px] text-[#0A0A0A] flex items-center gap-1.5">
-                  <Sparkles className="w-3.5 h-3.5 text-purple-500" />
-                  AI Insights
-                </h3>
-              </div>
-              <button
-                onClick={handleGenerateSummary}
-                disabled={summaryMutation.isPending}
-                className="inline-flex items-center gap-1.5 text-[11px] font-semibold bg-purple-50 hover:bg-purple-100 text-purple-600 px-3 py-1.5 rounded-lg disabled:opacity-40 transition-colors"
-              >
-                {summaryMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
-                {summaryMutation.isPending ? "Analyzing..." : "Generate"}
-              </button>
-            </div>
-            <div className="p-5 flex-1 flex flex-col min-h-[240px]">
+          {/* AI Insights — 2 cols */}
+          <div className="lg:col-span-2">
+            <Card
+              title="AI Insights"
+              titleIcon={<Sparkles className="w-3.5 h-3.5 text-[#8B5CF6]" />}
+              action={
+                <button onClick={async () => {
+                  try { await summaryMutation.mutateAsync(); queryClient.invalidateQueries({ queryKey: getGetAiInsightsQueryKey() }); }
+                  catch {}
+                }} disabled={summaryMutation.isPending}
+                  className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide bg-violet-50 text-violet-600 hover:bg-violet-100 px-2.5 py-1.5 rounded-lg transition-colors disabled:opacity-40">
+                  {summaryMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
+                  {summaryMutation.isPending ? "Analyzing…" : "Generate"}
+                </button>
+              }
+              minH="240px"
+            >
               {summaryMutation.isPending ? (
-                <div className="flex-1 flex flex-col items-center justify-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-purple-50 flex items-center justify-center relative">
-                    <Sparkles className="w-5 h-5 text-purple-500" />
-                    <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-purple-500 rounded-full animate-ping" />
+                <div className="flex flex-col items-center justify-center flex-1 gap-3 py-10">
+                  <div className="relative w-10 h-10 rounded-xl bg-violet-50 flex items-center justify-center">
+                    <Sparkles className="w-5 h-5 text-violet-500" />
+                    <span className="absolute -top-1 -right-1 w-3 h-3 bg-violet-500 rounded-full animate-ping" />
                   </div>
-                  <p className="text-xs text-[#9CA3AF]">Analyzing your data...</p>
+                  <p className="text-[12px] text-[#94A3B8]">Analyzing your link performance…</p>
                 </div>
-              ) : latestSummary ? (
-                <>
-                  <div className="flex-1 text-[13px] text-[#4B5563] leading-[1.7] overflow-auto max-h-52">
-                    {latestSummary.content}
-                  </div>
-                  <Link href="/ai" className="mt-4 inline-flex items-center gap-1.5 text-[12px] font-semibold text-purple-600 hover:text-purple-700 transition-colors">
-                    View all insights <ArrowRight className="w-3 h-3" />
+              ) : latestAI ? (
+                <div className="mt-2 flex flex-col gap-3">
+                  <p className="text-[13px] text-[#475569] leading-[1.7] line-clamp-6">{latestAI.content}</p>
+                  <Link href="/ai" className="inline-flex items-center gap-1 text-[11px] font-bold text-violet-600 hover:text-violet-700">
+                    View full insights <ArrowRight className="w-3 h-3" />
                   </Link>
-                </>
+                </div>
               ) : (
-                <div className="flex-1 flex flex-col items-center justify-center text-center gap-3">
-                  <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-purple-50 to-indigo-50 flex items-center justify-center">
-                    <Sparkles className="w-6 h-6 text-purple-400" />
+                <div className="flex flex-col items-center justify-center flex-1 text-center gap-3 py-8">
+                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-violet-50 to-indigo-50 flex items-center justify-center">
+                    <Sparkles className="w-6 h-6 text-violet-400" />
                   </div>
-                  <div>
-                    <p className="text-sm font-medium text-[#374151]">No insights yet</p>
-                    <p className="text-xs text-[#9CA3AF] mt-1 max-w-[200px] mx-auto">Generate a summary to see AI-powered performance analysis</p>
-                  </div>
-                  <button
-                    onClick={handleGenerateSummary}
-                    className="inline-flex items-center gap-1.5 text-xs font-semibold bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg transition-colors active:scale-[0.97]"
-                  >
-                    <Zap className="w-3 h-3" /> Generate now
+                  <p className="text-[13px] font-semibold text-[#374151]">No insights yet</p>
+                  <p className="text-[11px] text-[#94A3B8] max-w-[180px]">Generate an AI-powered weekly summary of your link performance</p>
+                  <button onClick={async () => {
+                    try { await summaryMutation.mutateAsync(); queryClient.invalidateQueries({ queryKey: getGetAiInsightsQueryKey() }); }
+                    catch {}
+                  }} className="inline-flex items-center gap-1.5 text-[12px] font-bold bg-violet-600 hover:bg-violet-700 text-white px-4 py-2 rounded-xl transition-colors">
+                    <Zap className="w-3.5 h-3.5" /> Generate now
                   </button>
                 </div>
               )}
-            </div>
+            </Card>
           </div>
         </div>
 
-        {/* ── Quick Actions ────────────────────────────────────── */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        {/* ══ QUICK ACTIONS FOOTER ═══════════════════════════════════ */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {[
-            { icon: Plus, label: "New Link", desc: "Shorten a URL instantly", href: "/links", bg: "bg-[#0A0A0A]", iconColor: "text-white", dark: true },
-            { icon: BarChart3, label: "Analytics", desc: "Deep dive into traffic", href: "/analytics", bg: "bg-blue-50", iconColor: "text-blue-600" },
-            { icon: Globe, label: "Domains", desc: "Add a custom domain", href: "/domains", bg: "bg-emerald-50", iconColor: "text-emerald-600" },
-            { icon: Sparkles, label: "AI Insights", desc: "Smart weekly summaries", href: "/ai", bg: "bg-purple-50", iconColor: "text-purple-600" },
-          ].map((a) => (
+            { icon: Plus,      label: "New Link",    desc: "Shorten a URL",      href: "/links",     bg: "bg-[#4F46E5]", ic: "text-white",    dark: true },
+            { icon: BarChart3, label: "Analytics",   desc: "Deep dive",          href: "/analytics", bg: "bg-blue-50",   ic: "text-blue-500" },
+            { icon: Globe,     label: "Domains",     desc: "Manage domains",     href: "/domains",   bg: "bg-emerald-50",ic: "text-emerald-500" },
+            { icon: Sparkles,  label: "AI Insights", desc: "Weekly summary",     href: "/ai",        bg: "bg-violet-50", ic: "text-violet-500" },
+          ].map(a => (
             <Link key={a.href} href={a.href}>
-              <div className="group flex items-center gap-3 bg-white hover:bg-[#FAFAFA] border border-[#ECEDF0] hover:border-[#D1D5DB] rounded-xl p-3.5 cursor-pointer transition-all hover:shadow-sm">
-                <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${a.bg} ${a.iconColor}`}>
+              <div className={`group flex items-center gap-3 rounded-xl p-3.5 cursor-pointer transition-all hover:shadow-sm border ${a.dark ? "bg-[#4F46E5] border-[#4338CA] hover:bg-[#4338CA]" : "bg-white border-[#E8EAEF] hover:border-[#D1D8E8]"}`}>
+                <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${a.dark ? "bg-white/10" : a.bg} ${a.ic}`}>
                   <a.icon className="w-3.5 h-3.5" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-[12px] font-bold text-[#0A0A0A]">{a.label}</p>
-                  <p className="text-[10px] text-[#9CA3AF] truncate">{a.desc}</p>
+                  <p className={`text-[12px] font-bold ${a.dark ? "text-white" : "text-[#0F172A]"}`}>{a.label}</p>
+                  <p className={`text-[10px] truncate ${a.dark ? "text-indigo-200" : "text-[#94A3B8]"}`}>{a.desc}</p>
                 </div>
-                <ArrowRight className="w-3 h-3 text-[#E5E7EB] group-hover:text-[#9CA3AF] group-hover:translate-x-0.5 transition-all shrink-0" />
+                <ArrowRight className={`w-3 h-3 shrink-0 group-hover:translate-x-0.5 transition-transform ${a.dark ? "text-indigo-200" : "text-[#D1D8E8]"}`} />
               </div>
             </Link>
           ))}
@@ -523,98 +549,107 @@ export default function Dashboard() {
   );
 }
 
-/* ── KPI Card ──────────────────────────────────────────────── */
-function KpiCard({ label, value, icon, iconBg, iconColor, delta, sublabel }: {
-  label: string;
-  value: number | null;
-  icon: React.ReactNode;
-  iconBg: string;
-  iconColor: string;
-  delta?: number | null;
-  sublabel?: string;
+/* ─────────────────────────────────────────────────────────────
+   Sub-components
+───────────────────────────────────────────────────────────── */
+function Card({ title, titleIcon, action, children, minH }: {
+  title: string; titleIcon?: React.ReactNode; action?: React.ReactNode;
+  children: React.ReactNode; minH?: string;
 }) {
   return (
-    <div className="bg-white border border-[#ECEDF0] rounded-2xl p-4 hover:shadow-md transition-all group cursor-default">
-      <div className="flex items-center justify-between mb-3">
-        <span className="text-[11px] font-semibold text-[#9CA3AF] uppercase tracking-wide">{label}</span>
-        <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${iconBg} ${iconColor}`}>
-          {icon}
-        </div>
-      </div>
-      {value === null ? (
-        <div className="h-8 w-16 rounded-lg bg-[#F3F4F6] animate-pulse" />
-      ) : (
-        <p className="text-[26px] font-bold text-[#0A0A0A] leading-none tracking-tight tabular-nums">
-          {fmtK(value)}
+    <div className="bg-white rounded-2xl border border-[#E8EAEF] shadow-[0_1px_4px_rgba(0,0,0,0.04)] overflow-hidden h-full flex flex-col" style={minH ? { minHeight: minH } : undefined}>
+      <div className="px-5 pt-4 pb-3 flex items-center justify-between shrink-0 border-b border-[#F1F3F9]">
+        <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-[#94A3B8] flex items-center gap-1.5">
+          {titleIcon}{title}
         </p>
-      )}
-      <div className="mt-1.5 h-4">
-        {delta !== null && delta !== undefined ? (
-          <span className={`inline-flex items-center gap-0.5 text-[11px] font-semibold ${delta >= 0 ? "text-emerald-500" : "text-red-400"}`}>
-            {delta >= 0 ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
-            {Math.abs(delta)}% <span className="text-[#D1D5DB] font-normal">vs prior</span>
-          </span>
-        ) : sublabel ? (
-          <span className="text-[11px] text-[#C4C9D4]">{sublabel}</span>
-        ) : null}
+        {action}
       </div>
+      <div className="px-5 pb-4 flex-1 flex flex-col">{children}</div>
     </div>
   );
 }
 
-/* ── Link Row ──────────────────────────────────────────────── */
-function LinkRow({ link, clicks, maxClicks, rank, origin, domainMap }: {
-  link: any;
-  clicks: number;
-  maxClicks: number;
-  rank: number;
-  origin: string;
-  domainMap: Record<string, string>;
+function StatCard({ label, sublabel, value, delta, icon, iconBg }: {
+  label: string; sublabel?: string; value: number | null;
+  delta?: number | null; icon: React.ReactNode; iconBg: string;
+}) {
+  return (
+    <div className="bg-white rounded-2xl border border-[#E8EAEF] shadow-[0_1px_4px_rgba(0,0,0,0.04)] p-5">
+      <div className="flex items-center justify-between mb-3">
+        <span className="text-[10px] font-bold uppercase tracking-[0.1em] text-[#94A3B8]">{label}</span>
+        <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${iconBg}`}>{icon}</div>
+      </div>
+      {value === null
+        ? <div className="h-8 w-20 bg-[#F1F3F9] rounded-lg animate-pulse" />
+        : <p className="text-[28px] font-bold text-[#0F172A] leading-none tabular-nums tracking-tight">{fmtNum(value)}</p>
+      }
+      <p className="text-[11px] text-[#94A3B8] mt-1.5 h-4">
+        {delta !== null && delta !== undefined ? (
+          <span className={`inline-flex items-center gap-0.5 font-bold ${delta >= 0 ? "text-emerald-500" : "text-red-400"}`}>
+            {delta >= 0 ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
+            {Math.abs(delta)}% <span className="text-[#CBD5E1] font-normal">vs prior</span>
+          </span>
+        ) : sublabel ?? ""}
+      </p>
+    </div>
+  );
+}
+
+function SkeletonRows({ n }: { n: number }) {
+  return (
+    <div className="space-y-3 mt-2">
+      {Array.from({ length: n }).map((_, i) => (
+        <div key={i} className="flex items-center gap-2.5 animate-pulse">
+          <div className="w-4 h-4 bg-[#F1F3F9] rounded" />
+          <div className="flex-1 h-3 bg-[#F1F3F9] rounded" />
+          <div className="w-8 h-3 bg-[#F1F3F9] rounded" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function EmptyState({ icon, label }: { icon: React.ReactNode; label: string }) {
+  return (
+    <div className="flex flex-col items-center justify-center gap-2 py-10 text-center">
+      <div className="w-10 h-10 rounded-2xl bg-[#F8FAFC] border border-[#E8EAEF] flex items-center justify-center text-[#CBD5E1]">
+        {icon}
+      </div>
+      <p className="text-[12px] text-[#CBD5E1] font-medium">{label}</p>
+    </div>
+  );
+}
+
+function LinkRowItem({ rank, slug, domain, shortUrl, enabled, clicks, pct }: {
+  rank: number; slug: string; domain: string | null; shortUrl: string;
+  enabled: boolean; clicks: number; pct: number;
 }) {
   const [copied, setCopied] = useState(false);
-  const domainName = link.domainId ? domainMap[link.domainId] : null;
-  const shortUrl = domainName ? `https://${domainName}/${link.slug}` : `${origin}/r/${link.slug}`;
-
-  function copyLink() {
-    navigator.clipboard.writeText(shortUrl);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
-  }
-
-  const pct = Math.max((clicks / maxClicks) * 100, 4);
-
+  function copy() { navigator.clipboard.writeText(shortUrl); setCopied(true); setTimeout(() => setCopied(false), 1500); }
   return (
-    <div className="flex items-center gap-3 px-5 py-3.5 hover:bg-[#FAFAFA] transition-colors group">
-      {/* Rank */}
-      <span className="text-[11px] font-bold text-[#E5E7EB] w-4 shrink-0 text-center tabular-nums">{rank}</span>
-
-      {/* Link info */}
+    <div className="group flex items-center gap-2.5 py-2 rounded-xl hover:bg-[#F8FAFC] px-2 -mx-2 transition-colors cursor-default">
+      <span className="text-[10px] font-bold text-[#E2E8F0] w-3.5 shrink-0 tabular-nums text-right">{rank}</span>
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 mb-1.5">
-          <p className="text-[13px] font-semibold text-[#0A0A0A] truncate">
-            {domainName ?? "/"}{link.slug}
+        <div className="flex items-center gap-1.5 mb-1.5">
+          <p className="text-[12px] font-semibold text-[#0F172A] truncate">
+            <span className="text-[#94A3B8]">{domain ? domain + "/" : ""}</span>{slug}
           </p>
-          <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full shrink-0 ${link.enabled ? "bg-emerald-50 text-emerald-600" : "bg-gray-100 text-gray-400"}`}>
-            {link.enabled ? "LIVE" : "OFF"}
+          <span className={`text-[8px] font-black px-1.5 py-0.5 rounded-full shrink-0 tracking-wide ${enabled ? "bg-emerald-50 text-emerald-600" : "bg-[#F1F3F9] text-[#94A3B8]"}`}>
+            {enabled ? "LIVE" : "OFF"}
           </span>
         </div>
-        {/* Progress bar */}
-        <div className="h-1 bg-[#F3F4F6] rounded-full overflow-hidden">
-          <div className="h-full rounded-full transition-all duration-700" style={{ width: `${pct}%`, backgroundColor: CORAL, opacity: 0.6 }} />
+        <div className="h-1 bg-[#F1F3F9] rounded-full overflow-hidden">
+          <div className="h-full rounded-full bg-[#4F46E5]" style={{ width: `${pct}%`, opacity: 0.5, transition: "width 0.6s ease" }} />
         </div>
       </div>
-
-      {/* Clicks + actions */}
-      <div className="flex items-center gap-1.5 shrink-0">
-        <span className="text-[14px] font-bold text-[#0A0A0A] tabular-nums min-w-[32px] text-right">{clicks.toLocaleString()}</span>
-        <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-          <button onClick={copyLink} className="p-1.5 rounded-lg hover:bg-[#F3F4F6] transition-colors" title="Copy link">
-            {copied ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5 text-[#C4C9D4]" />}
-          </button>
-          <a href={shortUrl} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="p-1.5 rounded-lg hover:bg-[#F3F4F6] transition-colors">
-            <ExternalLink className="w-3.5 h-3.5 text-[#C4C9D4]" />
-          </a>
-        </div>
+      <span className="text-[13px] font-bold text-[#0F172A] tabular-nums shrink-0 min-w-[28px] text-right">{fmtNum(clicks)}</span>
+      <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+        <button onClick={copy} className="p-1.5 rounded-lg hover:bg-[#F1F3F9] transition-colors">
+          {copied ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5 text-[#CBD5E1]" />}
+        </button>
+        <a href={shortUrl} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className="p-1.5 rounded-lg hover:bg-[#F1F3F9] transition-colors">
+          <ExternalLink className="w-3.5 h-3.5 text-[#CBD5E1]" />
+        </a>
       </div>
     </div>
   );
