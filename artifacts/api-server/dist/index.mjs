@@ -79014,6 +79014,7 @@ var import_express5 = __toESM(require_express2(), 1);
 import { createHash as createHash2 } from "crypto";
 import dns from "dns/promises";
 var SERVER_IP = process.env.SERVER_IP || "163.245.216.153";
+var CNAME_TARGET = process.env.CNAME_TARGET || "snipr.sh";
 function getDomainVerifyToken(domainId) {
   return "sniprverify-" + createHash2("sha256").update(domainId + "snipr-dns-verify-2025").digest("hex").slice(0, 16);
 }
@@ -79027,7 +79028,10 @@ async function checkDomainDns(domainName, token) {
   try {
     const cnames = await dns.resolveCname(domainName);
     cnameTarget = cnames[0] ?? null;
-    cnameOk = cnames.some((c) => c.toLowerCase().includes("snipr.sh") || c.toLowerCase().includes("replit"));
+    cnameOk = cnames.some((c) => {
+      const lc = c.toLowerCase().replace(/\.$/, "");
+      return lc === CNAME_TARGET.toLowerCase() || lc.endsWith(".replit.app") || lc.endsWith(".replit.dev");
+    });
   } catch {
   }
   if (!cnameOk) {
@@ -79134,7 +79138,7 @@ router5.get("/domains/:id/setup-info", requireAuth, async (req, res) => {
       );
     }
   } else {
-    records.push({ type: "CNAME", name: cnameHost, value: "snipr.sh", priority: "Required" });
+    records.push({ type: "CNAME", name: cnameHost, value: CNAME_TARGET, priority: "Required" });
     if (purpose === "has_website") {
       warnings.push("This subdomain will be used for short links. Your main website at " + rootDomain + " will not be affected.");
     }
@@ -79151,7 +79155,7 @@ router5.get("/domains/:id/setup-info", requireAuth, async (req, res) => {
     isRootDomain,
     rootDomain,
     cnameHost,
-    cnameTarget: "snipr.sh",
+    cnameTarget: CNAME_TARGET,
     txtHost: `_snipr-verify.${domain2.domain}`,
     txtValue: token,
     recommendations: {

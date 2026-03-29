@@ -1,8 +1,12 @@
 import { createHash } from "crypto";
 import dns from "dns/promises";
 
-// Your server IP - update this to match your production server
 const SERVER_IP = process.env.SERVER_IP || "163.245.216.153";
+
+// The hostname users should CNAME their subdomain to.
+// Operators must set CNAME_TARGET to the publicly accessible hostname of this server
+// (e.g. "myapp.replit.app" or "snipr.sh"). Falls back to snipr.sh as a safe default.
+export const CNAME_TARGET = process.env.CNAME_TARGET || "snipr.sh";
 
 export interface DnsCheckResult {
   cnameOk: boolean;
@@ -30,7 +34,13 @@ export async function checkDomainDns(domainName: string, token: string): Promise
   try {
     const cnames = await dns.resolveCname(domainName);
     cnameTarget = cnames[0] ?? null;
-    cnameOk = cnames.some((c) => c.toLowerCase().includes("snipr.sh") || c.toLowerCase().includes("replit"));
+    // Accept an exact match on the configured target, or any replit.app/.replit.dev domain
+    cnameOk = cnames.some((c) => {
+      const lc = c.toLowerCase().replace(/\.$/, "");
+      return lc === CNAME_TARGET.toLowerCase() ||
+             lc.endsWith(".replit.app") ||
+             lc.endsWith(".replit.dev");
+    });
   } catch {}
 
   // Check A record (for root domains like example.com)

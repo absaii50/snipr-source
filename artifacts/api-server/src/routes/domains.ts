@@ -2,7 +2,7 @@ import { Router, type IRouter } from "express";
 import { eq, and } from "drizzle-orm";
 import { db, domainsTable } from "@workspace/db";
 import { requireAuth } from "../lib/auth";
-import { getDomainVerifyToken, checkDomainDns } from "../lib/dns-utils";
+import { getDomainVerifyToken, checkDomainDns, CNAME_TARGET } from "../lib/dns-utils";
 
 const SERVER_IP = process.env.SERVER_IP || "163.245.216.153";
 
@@ -131,7 +131,7 @@ router.get("/domains/:id/setup-info", requireAuth, async (req, res): Promise<voi
       );
     }
   } else {
-    records.push({ type: "CNAME", name: cnameHost, value: "snipr.sh", priority: "Required" });
+    records.push({ type: "CNAME", name: cnameHost, value: CNAME_TARGET, priority: "Required" });
     if (purpose === "has_website") {
       warnings.push("This subdomain will be used for short links. Your main website at " + rootDomain + " will not be affected.");
     }
@@ -152,7 +152,7 @@ router.get("/domains/:id/setup-info", requireAuth, async (req, res): Promise<voi
     isRootDomain,
     rootDomain,
     cnameHost,
-    cnameTarget: "snipr.sh",
+    cnameTarget: CNAME_TARGET,
     txtHost: `_snipr-verify.${domain.domain}`,
     txtValue: token,
     recommendations: {
