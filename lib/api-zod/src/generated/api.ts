@@ -101,7 +101,7 @@ export const CreateLinkBody = zod.object({
     .describe("Custom slug. If null, auto-generated."),
   destinationUrl: zod.string().url(),
   title: zod.string().nullish(),
-  expiresAt: zod.date().nullish(),
+  expiresAt: zod.coerce.date().nullish(),
   folderId: zod.string().nullish(),
   /** Required: a verified custom domain must be supplied. */
   domainId: zod.string().min(1),
@@ -148,7 +148,7 @@ export const UpdateLinkBody = zod.object({
   destinationUrl: zod.string().url().nullish(),
   title: zod.string().nullish(),
   enabled: zod.boolean().nullish(),
-  expiresAt: zod.date().nullish(),
+  expiresAt: zod.coerce.date().nullish(),
   folderId: zod.string().nullish(),
   /** Must be a verified custom domain. Cannot be set to null. */
   domainId: zod.string().min(1).optional(),

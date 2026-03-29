@@ -51982,7 +51982,7 @@ var CreateLinkBody = objectType({
   slug: stringType().nullish().describe("Custom slug. If null, auto-generated."),
   destinationUrl: stringType().url(),
   title: stringType().nullish(),
-  expiresAt: dateType().nullish(),
+  expiresAt: coerce.date().nullish(),
   folderId: stringType().nullish(),
   /** Required: a verified custom domain must be supplied. */
   domainId: stringType().min(1),
@@ -52019,7 +52019,7 @@ var UpdateLinkBody = objectType({
   destinationUrl: stringType().url().nullish(),
   title: stringType().nullish(),
   enabled: booleanType().nullish(),
-  expiresAt: dateType().nullish(),
+  expiresAt: coerce.date().nullish(),
   folderId: stringType().nullish(),
   /** Must be a verified custom domain. Cannot be set to null. */
   domainId: stringType().min(1).optional(),
@@ -78301,7 +78301,7 @@ async function getLinkBySlug(slug, domainId) {
     return hit.link;
   }
   const [link] = await db.select().from(linksTable).where(
-    domainId ? { slug, domainId } : { slug, domainId: null }
+    domainId ? and(eq(linksTable.slug, slug), eq(linksTable.domainId, domainId)) : eq(linksTable.slug, slug)
   );
   if (link) {
     if (cache.size >= CACHE_MAX_SIZE) {
@@ -89242,7 +89242,7 @@ router18.post("/r/:slug", async (req, res) => {
     res.redirect(302, `/r/${slug}`);
     return;
   }
-  const { password } = req.body;
+  const { password } = req.body ?? {};
   if (!password) {
     servePasswordPage(req, res, slug, "Please enter a password.");
     return;

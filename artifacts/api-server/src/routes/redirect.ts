@@ -427,7 +427,7 @@ router.post("/r/:slug", async (req, res): Promise<void> => {
     return;
   }
 
-  const { password } = req.body as { password?: string };
+  const { password } = ((req.body ?? {}) as { password?: string });
 
   if (!password) {
     servePasswordPage(req, res, slug, "Please enter a password.");

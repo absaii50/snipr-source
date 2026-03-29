@@ -1,5 +1,5 @@
 import { db, linksTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { eq, and, isNull } from "drizzle-orm";
 
 const CACHE_TTL_MS = 30_000;
 const CACHE_MAX_SIZE = 10_000;
@@ -38,13 +38,15 @@ export async function getLinkBySlug(slug: string, domainId?: string | null): Pro
     return hit.link;
   }
 
-  // Query database with domain scope
+  // Query database with domain scope.
+  // When domainId is provided, match exactly. When absent, match any link with
+  // that slug (fallback for /r/:slug path when no custom-domain routing applies).
   const [link] = await db
     .select()
     .from(linksTable)
     .where(domainId
-      ? { slug, domainId }
-      : { slug, domainId: null }
+      ? and(eq(linksTable.slug, slug), eq(linksTable.domainId, domainId))
+      : eq(linksTable.slug, slug)
     );
 
   if (link) {
