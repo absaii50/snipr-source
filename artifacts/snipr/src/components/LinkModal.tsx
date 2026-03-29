@@ -210,6 +210,27 @@ export function LinkModal({ isOpen, onClose, link, initialSlug }: LinkModalProps
               )}
             </div>
 
+            {/* Domain Selector - shown prominently when verified domains exist */}
+            {verifiedDomains.length > 0 && (
+              <div className="space-y-2">
+                <Label className="text-foreground font-semibold">Domain</Label>
+                <Select
+                  value={form.watch("domainId") || "default"}
+                  onValueChange={(val) => form.setValue("domainId", val === "default" ? null : val)}
+                >
+                  <SelectTrigger className="rounded-xl h-12 bg-background border-border shadow-sm">
+                    <SelectValue placeholder="Select domain" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="default">Default (snipr.sh/r/slug)</SelectItem>
+                    {verifiedDomains.map((d: any) => (
+                      <SelectItem key={d.id} value={d.id}>{d.domain}/slug</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5 items-end">
               <div className="space-y-2">
                 <Label htmlFor="slug" className="text-foreground font-semibold">Custom Slug</Label>
@@ -306,28 +327,6 @@ export function LinkModal({ isOpen, onClose, link, initialSlug }: LinkModalProps
 
               {showAdvanced && (
                 <div className="mt-5 p-5 rounded-xl border border-primary/20 bg-primary/5 space-y-5 animate-in slide-in-from-top-2 fade-in duration-200">
-                  {/* Domain Selector */}
-                  {verifiedDomains.length > 0 && (
-                    <div className="space-y-2">
-                      <Label className="text-foreground font-semibold text-sm">Domain</Label>
-                      <Select
-                        value={form.watch("domainId") || "default"}
-                        onValueChange={(val) => form.setValue("domainId", val === "default" ? null : val)}
-                      >
-                        <SelectTrigger className="rounded-xl h-11 bg-background">
-                          <SelectValue placeholder="Select domain" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="default">Default (snipr.sh)</SelectItem>
-                          {verifiedDomains.map((d: any) => (
-                            <SelectItem key={d.id} value={d.id}>{d.domain}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <p className="text-xs text-muted-foreground">Choose which domain this short link will use</p>
-                    </div>
-                  )}
-
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                     <div className="space-y-2">
                       <Label htmlFor="folderId" className="text-foreground font-semibold text-sm">Folder</Label>
