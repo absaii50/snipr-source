@@ -625,7 +625,7 @@ export default function Links() {
         link={editingLink}
         initialSlug={editingLink ? undefined : prefilledSlug}
       />
-      <QrModal link={qrLink} onClose={() => setQrLink(null)} />
+      <QrModal link={qrLink} onClose={() => setQrLink(null)} domainMap={domainMap} />
     </ProtectedLayout>
   );
 }

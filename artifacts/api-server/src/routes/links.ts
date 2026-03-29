@@ -591,15 +591,21 @@ router.get("/links/:id/qr", requireAuth, async (req, res): Promise<void> => {
     return;
   }
 
-  const protocol = process.env.NODE_ENV === "production" ? "https" : "http";
-  const host = process.env.REPLIT_DOMAINS
-    ? process.env.REPLIT_DOMAINS.split(",")[0]
-    : "localhost:80";
-  const shortUrl = `${protocol}://${host}/r/${link.slug}?qr=1`;
+  // Build the short URL — use custom domain if link has one, otherwise use FRONTEND_URL
+  let shortUrl: string;
+  if (link.domainId) {
+    const [domain] = await db
+      .select({ domain: domainsTable.domain })
+      .from(domainsTable)
+      .where(eq(domainsTable.id, link.domainId));
+    shortUrl = domain ? `https://${domain.domain}/${link.slug}` : `${process.env.FRONTEND_URL || "https://snipr.sh"}/r/${link.slug}`;
+  } else {
+    shortUrl = `${process.env.FRONTEND_URL || "https://snipr.sh"}/r/${link.slug}`;
+  }
 
-  const svg = await QRCode.toString(shortUrl, { type: "svg" });
+  const svg = await QRCode.toString(`${shortUrl}?qr=1`, { type: "svg" });
 
-  res.json({ svg, shortUrl: `${protocol}://${host}/r/${link.slug}` });
+  res.json({ svg, shortUrl });
 });
 
 // POST /api/links/:id/duplicate — duplicate a link with a new slug

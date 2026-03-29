@@ -9,12 +9,11 @@ import type { Link } from "@workspace/api-client-react";
 interface QrModalProps {
   link: Link | null;
   onClose: () => void;
+  domainMap?: Record<string, string>;
 }
 
-export function QrModal({ link, onClose }: QrModalProps) {
+export function QrModal({ link, onClose, domainMap = {} }: QrModalProps) {
   const isOpen = !!link;
-  const [origin, setOrigin] = useState("");
-  useEffect(() => { setOrigin(window.location.origin); }, []);
 
   const { data, isLoading } = useGetLinkQr(link?.id || "", {
     query: {
@@ -42,7 +41,7 @@ export function QrModal({ link, onClose }: QrModalProps) {
         <DialogHeader>
           <DialogTitle className="text-2xl font-display text-center">QR Code</DialogTitle>
           <DialogDescription className="text-center">
-            Scan to visit <span className="font-semibold text-foreground">{data?.shortUrl || (link && `${origin}/r/${link.slug}`)}</span>
+            Scan to visit <span className="font-semibold text-foreground">{data?.shortUrl || (link && ((link as any).domainId && domainMap[(link as any).domainId] ? `https://${domainMap[(link as any).domainId]}/${link.slug}` : link.slug))}</span>
           </DialogDescription>
         </DialogHeader>
 

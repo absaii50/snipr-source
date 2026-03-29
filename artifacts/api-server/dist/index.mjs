@@ -78712,11 +78712,15 @@ router3.get("/links/:id/qr", requireAuth, async (req, res) => {
     res.status(404).json({ error: "Not found", message: "Link not found." });
     return;
   }
-  const protocol = process.env.NODE_ENV === "production" ? "https" : "http";
-  const host = process.env.REPLIT_DOMAINS ? process.env.REPLIT_DOMAINS.split(",")[0] : "localhost:80";
-  const shortUrl = `${protocol}://${host}/r/${link.slug}?qr=1`;
-  const svg = await import_qrcode.default.toString(shortUrl, { type: "svg" });
-  res.json({ svg, shortUrl: `${protocol}://${host}/r/${link.slug}` });
+  let shortUrl;
+  if (link.domainId) {
+    const [domain2] = await db.select({ domain: domainsTable.domain }).from(domainsTable).where(eq(domainsTable.id, link.domainId));
+    shortUrl = domain2 ? `https://${domain2.domain}/${link.slug}` : `${process.env.FRONTEND_URL || "https://snipr.sh"}/r/${link.slug}`;
+  } else {
+    shortUrl = `${process.env.FRONTEND_URL || "https://snipr.sh"}/r/${link.slug}`;
+  }
+  const svg = await import_qrcode.default.toString(`${shortUrl}?qr=1`, { type: "svg" });
+  res.json({ svg, shortUrl });
 });
 router3.post("/links/:id/duplicate", requireAuth, async (req, res) => {
   const workspaceId = req.session.workspaceId;
