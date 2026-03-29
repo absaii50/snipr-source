@@ -78964,7 +78964,7 @@ var import_express5 = __toESM(require_express2(), 1);
 // src/lib/dns-utils.ts
 import { createHash as createHash2 } from "crypto";
 import dns from "dns/promises";
-var SERVER_IP = process.env.SERVER_IP || "104.218.51.234";
+var SERVER_IP = process.env.SERVER_IP || "163.245.216.153";
 function getDomainVerifyToken(domainId) {
   return "sniprverify-" + createHash2("sha256").update(domainId + "snipr-dns-verify-2025").digest("hex").slice(0, 16);
 }
@@ -79007,7 +79007,7 @@ async function checkDomainDns(domainName, token) {
 }
 
 // src/routes/domains.ts
-var SERVER_IP2 = process.env.SERVER_IP || "104.218.51.234";
+var SERVER_IP2 = process.env.SERVER_IP || "163.245.216.153";
 var router5 = (0, import_express5.Router)();
 router5.get("/domains", requireAuth, async (req, res) => {
   const workspaceId = req.session.workspaceId;
@@ -88926,6 +88926,94 @@ function serveGonePage(res, message, fallbackUrl) {
 </body>
 </html>`);
 }
+function getCustomDomainLandingPage(domain2) {
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${domain2} \u2014 Branded Short Domain</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>\u{1F517}</text></svg>">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#f8f9fb;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Inter',sans-serif;color:#0a0a0a}
+.card{background:#fff;border:1px solid #e5e7eb;border-radius:20px;padding:48px 40px;width:100%;max-width:480px;margin:24px;text-align:center;box-shadow:0 4px 24px rgba(0,0,0,.04)}
+.icon-wrap{width:72px;height:72px;border-radius:50%;background:#f0fdf4;display:flex;align-items:center;justify-content:center;margin:0 auto 24px}
+.icon-wrap svg{width:32px;height:32px;color:#10b981}
+.badge{display:inline-flex;align-items:center;gap:6px;background:#ecfdf5;color:#059669;font-size:12px;font-weight:700;padding:5px 14px;border-radius:20px;margin-bottom:20px;letter-spacing:.5px}
+.badge::before{content:'';width:6px;height:6px;background:#10b981;border-radius:50%}
+h1{font-size:24px;font-weight:800;color:#0a0a0a;margin-bottom:24px;letter-spacing:-.5px}
+h1::after{content:'';display:block;width:40px;height:3px;background:#e5e7eb;border-radius:2px;margin:16px auto 0}
+.domain{font-weight:700;color:#0a0a0a}
+.desc{font-size:14px;color:#6b7280;line-height:1.7;margin-bottom:8px}
+.back-link{font-size:13px;color:#9ca3af}
+.back-link a{color:#6b7280;text-decoration:underline;text-underline-offset:2px}
+.back-link a:hover{color:#0a0a0a}
+.divider{width:100%;height:1px;background:#f3f4f6;margin:28px 0}
+.cta-text{font-size:15px;font-weight:600;color:#0a0a0a;margin-bottom:16px}
+.btn{display:inline-flex;align-items:center;gap:8px;background:#0a0a0a;color:#fff;font-size:14px;font-weight:600;padding:12px 32px;border-radius:12px;text-decoration:none;transition:background .15s,transform .1s;letter-spacing:.3px}
+.btn:hover{background:#1f1f1f;transform:translateY(-1px)}
+.btn:active{transform:scale(.98)}
+.footer{margin-top:32px;font-size:11px;color:#d1d5db;max-width:360px;line-height:1.6}
+.powered{margin-top:16px;font-size:11px;color:#d1d5db}
+.powered a{color:#9ca3af;text-decoration:none;font-weight:600}
+.powered a:hover{color:#0a0a0a}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="icon-wrap">
+    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+  </div>
+  <div class="badge">ACTIVE</div>
+  <h1>Branded Short Domain</h1>
+  <p class="desc"><span class="domain">${domain2}</span> is configured for link redirection.</p>
+  <p class="back-link">If you arrived here by mistake, you can <a href="javascript:history.back()">go back</a>.</p>
+  <div class="divider"></div>
+  <p class="cta-text">Create your own branded short links</p>
+  <a href="https://snipr.sh/signup" class="btn">GET STARTED</a>
+</div>
+<p class="footer">Domain owners can set up redirects for their main domain in Domain Settings for free</p>
+<p class="powered">Powered by <a href="https://snipr.sh">Snipr</a></p>
+</body>
+</html>`;
+}
+function getCustomDomain404Page(domain2) {
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Link Not Found \u2014 ${domain2}</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#f8f9fb;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Inter',sans-serif}
+.card{background:#fff;border:1px solid #e5e7eb;border-radius:20px;padding:48px 40px;width:100%;max-width:440px;margin:24px;text-align:center;box-shadow:0 4px 24px rgba(0,0,0,.04)}
+.icon-wrap{width:64px;height:64px;border-radius:50%;background:#fef2f2;display:flex;align-items:center;justify-content:center;margin:0 auto 20px}
+.icon-wrap svg{width:28px;height:28px;color:#ef4444}
+h1{font-size:22px;font-weight:800;color:#0a0a0a;margin-bottom:8px}
+p{font-size:14px;color:#6b7280;line-height:1.6}
+.back{margin-top:20px}
+.back a{color:#6b7280;font-size:13px;text-decoration:underline;text-underline-offset:2px}
+.back a:hover{color:#0a0a0a}
+.powered{margin-top:24px;font-size:11px;color:#d1d5db}
+.powered a{color:#9ca3af;text-decoration:none;font-weight:600}
+.powered a:hover{color:#0a0a0a}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="icon-wrap">
+    <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+  </div>
+  <h1>Link Not Found</h1>
+  <p>This short link does not exist or has been removed from <strong>${domain2}</strong>.</p>
+  <p class="back"><a href="javascript:history.back()">Go back</a></p>
+</div>
+<p class="powered">Powered by <a href="https://snipr.sh">Snipr</a></p>
+</body>
+</html>`;
+}
 router18.use(async (req, res, next) => {
   if (req.method !== "GET" && req.method !== "HEAD") return next();
   const rawHost = req.headers["x-forwarded-host"] || (req.headers.host ?? "");
@@ -88934,7 +89022,7 @@ router18.use(async (req, res, next) => {
     return next();
   }
   const slug = req.path.slice(1).split("/")[0];
-  if (!slug || slug.includes(".") || slug === "favicon" || slug === "robots") return next();
+  if (slug && (slug.includes(".") || slug === "favicon" || slug === "robots")) return next();
   const { subdomain, domain: parentDomain } = extractSubdomainAndDomain(host);
   let [domainRecord] = await db.select({ id: domainsTable.id, workspaceId: domainsTable.workspaceId }).from(domainsTable).where(and(eq(domainsTable.domain, host), eq(domainsTable.verified, true)));
   if (!domainRecord && subdomain) {
@@ -88945,13 +89033,17 @@ router18.use(async (req, res, next) => {
     ));
   }
   if (!domainRecord) return next();
+  if (!slug) {
+    res.status(200).send(getCustomDomainLandingPage(host));
+    return;
+  }
   const [link] = await db.select().from(linksTable).where(and(
     eq(linksTable.slug, slug),
     eq(linksTable.workspaceId, domainRecord.workspaceId),
     eq(linksTable.domainId, domainRecord.id)
   ));
   if (!link || !link.enabled) {
-    res.status(404).send(`<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>Not Found</title><style>body{font-family:-apple-system,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;background:#f8fafc}.card{text-align:center;padding:40px;background:#fff;border-radius:16px;border:1px solid #e2e8f0;box-shadow:0 4px 24px rgba(0,0,0,.06)}h2{color:#0f172a;font-size:22px;margin-bottom:8px}p{color:#64748b;font-size:14px}</style></head><body><div class="card"><div style="font-size:48px;margin-bottom:16px">\u{1F517}</div><h2>Link not found</h2><p>This link does not exist or has been removed.</p></div></body></html>`);
+    res.status(404).send(getCustomDomain404Page(host));
     return;
   }
   setImmediate(() => {

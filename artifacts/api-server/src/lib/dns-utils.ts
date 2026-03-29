@@ -2,7 +2,7 @@ import { createHash } from "crypto";
 import dns from "dns/promises";
 
 // Your server IP - update this to match your production server
-const SERVER_IP = process.env.SERVER_IP || "104.218.51.234";
+const SERVER_IP = process.env.SERVER_IP || "163.245.216.153";
 
 export interface DnsCheckResult {
   cnameOk: boolean;

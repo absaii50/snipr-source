@@ -39,7 +39,7 @@ export default function Domains() {
         {/* Header */}
         <div className="flex items-start justify-between gap-4 mb-6">
           <div>
-            <h1 className="text-[22px] font-bold tracking-tight text-[#0A0A0A]">Custom Domains</h1>
+            <h1 className="text-[22px] font-bold tracking-tight text-[#0A0A0A]">Custom Domains </h1>
             <p className="text-[13px] text-[#9CA3AF] mt-1">Use your own branding for short links</p>
           </div>
           <button onClick={openNewWizard}

@@ -4,7 +4,7 @@ import { db, domainsTable } from "@workspace/db";
 import { requireAuth } from "../lib/auth";
 import { getDomainVerifyToken, checkDomainDns } from "../lib/dns-utils";
 
-const SERVER_IP = process.env.SERVER_IP || "104.218.51.234";
+const SERVER_IP = process.env.SERVER_IP || "163.245.216.153";
 
 const router: IRouter = Router();
 
