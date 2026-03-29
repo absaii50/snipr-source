@@ -72810,6 +72810,7 @@ var domainsTable = pgTable("domains", {
   verified: boolean("verified").notNull().default(false),
   isParentDomain: boolean("is_parent_domain").notNull().default(false),
   supportsSubdomains: boolean("supports_subdomains").notNull().default(false),
+  purpose: text("purpose").default("links_only"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => /* @__PURE__ */ new Date())
 }, (table) => [
@@ -79006,6 +79007,7 @@ async function checkDomainDns(domainName, token) {
 }
 
 // src/routes/domains.ts
+var SERVER_IP2 = process.env.SERVER_IP || "104.218.51.234";
 var router5 = (0, import_express5.Router)();
 router5.get("/domains", requireAuth, async (req, res) => {
   const workspaceId = req.session.workspaceId;
@@ -79014,7 +79016,7 @@ router5.get("/domains", requireAuth, async (req, res) => {
 });
 router5.post("/domains", requireAuth, async (req, res) => {
   const workspaceId = req.session.workspaceId;
-  const { domain: domain2, supportsSubdomains } = req.body;
+  const { domain: domain2, supportsSubdomains, purpose } = req.body;
   if (!domain2 || typeof domain2 !== "string") {
     res.status(422).json({ error: "Validation error", message: "domain is required" });
     return;
@@ -79030,11 +79032,13 @@ router5.post("/domains", requireAuth, async (req, res) => {
     return;
   }
   const isParent = supportsSubdomains === true;
+  const validPurpose = purpose === "has_website" ? "has_website" : "links_only";
   const [created] = await db.insert(domainsTable).values({
     workspaceId,
     domain: normalized,
     isParentDomain: isParent,
-    supportsSubdomains: isParent
+    supportsSubdomains: isParent,
+    purpose: validPurpose
   }).returning();
   res.status(201).json(created);
 });
@@ -79048,10 +79052,7 @@ router5.patch("/domains/:id", requireAuth, async (req, res) => {
     return;
   }
   const isParent = supportsSubdomains === true;
-  const [updated] = await db.update(domainsTable).set({
-    isParentDomain: isParent,
-    supportsSubdomains: isParent
-  }).where(eq(domainsTable.id, id)).returning();
+  const [updated] = await db.update(domainsTable).set({ isParentDomain: isParent, supportsSubdomains: isParent }).where(eq(domainsTable.id, id)).returning();
   res.json(updated);
 });
 router5.get("/domains/:id/setup-info", requireAuth, async (req, res) => {
@@ -79063,16 +79064,53 @@ router5.get("/domains/:id/setup-info", requireAuth, async (req, res) => {
     return;
   }
   const token = getDomainVerifyToken(domain2.id);
-  const subdomain = domain2.domain.split(".").slice(0, -2).join(".") || "@";
+  const parts = domain2.domain.split(".");
+  const isRootDomain = parts.length <= 2;
+  const rootDomain = isRootDomain ? domain2.domain : parts.slice(-2).join(".");
+  const cnameHost = isRootDomain ? "@" : parts.slice(0, -2).join(".");
+  const purpose = domain2.purpose || "links_only";
+  const records = [];
+  const warnings = [];
+  const suggestedSubdomains = [];
+  if (isRootDomain) {
+    records.push({ type: "A", name: "@", value: SERVER_IP2, priority: "Required" });
+    if (purpose === "has_website") {
+      warnings.push("Changing your A record will redirect ALL traffic from your root domain to Snipr. Your existing website will stop working on this domain.");
+      warnings.push("We strongly recommend using a subdomain instead.");
+      suggestedSubdomains.push(
+        `go.${domain2.domain}`,
+        `link.${domain2.domain}`,
+        `to.${domain2.domain}`,
+        `s.${domain2.domain}`
+      );
+    }
+  } else {
+    records.push({ type: "CNAME", name: cnameHost, value: "snipr.sh", priority: "Required" });
+    if (purpose === "has_website") {
+      warnings.push("This subdomain will be used for short links. Your main website at " + rootDomain + " will not be affected.");
+    }
+  }
+  records.push({ type: "TXT", name: `_snipr-verify.${domain2.domain}`, value: token, priority: "Optional" });
+  const cloudflareUrl = `https://dash.cloudflare.com/?to=/:account/${rootDomain}/dns`;
   res.json({
     id: domain2.id,
     domain: domain2.domain,
     verified: domain2.verified,
     token,
-    cnameHost: subdomain,
+    purpose,
+    domainType: isRootDomain ? "root" : "subdomain",
+    isRootDomain,
+    rootDomain,
+    cnameHost,
     cnameTarget: "snipr.sh",
     txtHost: `_snipr-verify.${domain2.domain}`,
-    txtValue: token
+    txtValue: token,
+    recommendations: {
+      records,
+      warnings,
+      suggestedSubdomains,
+      cloudflareUrl
+    }
   });
 });
 router5.get("/domains/:id/dns-check", requireAuth, async (req, res) => {
@@ -79085,12 +79123,7 @@ router5.get("/domains/:id/dns-check", requireAuth, async (req, res) => {
   }
   const token = getDomainVerifyToken(domain2.id);
   const dnsResult = await checkDomainDns(domain2.domain, token);
-  res.json({
-    domain: domain2.domain,
-    verified: domain2.verified,
-    token,
-    ...dnsResult
-  });
+  res.json({ domain: domain2.domain, verified: domain2.verified, token, ...dnsResult });
 });
 router5.patch("/domains/:id/verify", requireAuth, async (req, res) => {
   const workspaceId = req.session.workspaceId;
@@ -79105,7 +79138,7 @@ router5.patch("/domains/:id/verify", requireAuth, async (req, res) => {
   if (!dnsResult.ready) {
     res.status(422).json({
       error: "dns_not_configured",
-      message: "DNS records not found yet. Add the CNAME or TXT record and try again.",
+      message: "DNS records not found yet. Add the CNAME or A record and try again.",
       token
     });
     return;

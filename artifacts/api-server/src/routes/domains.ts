@@ -4,6 +4,8 @@ import { db, domainsTable } from "@workspace/db";
 import { requireAuth } from "../lib/auth";
 import { getDomainVerifyToken, checkDomainDns } from "../lib/dns-utils";
 
+const SERVER_IP = process.env.SERVER_IP || "104.218.51.234";
+
 const router: IRouter = Router();
 
 router.get("/domains", requireAuth, async (req, res): Promise<void> => {
@@ -18,7 +20,11 @@ router.get("/domains", requireAuth, async (req, res): Promise<void> => {
 
 router.post("/domains", requireAuth, async (req, res): Promise<void> => {
   const workspaceId = req.session.workspaceId!;
-  const { domain, supportsSubdomains } = req.body as { domain?: string; supportsSubdomains?: boolean };
+  const { domain, supportsSubdomains, purpose } = req.body as {
+    domain?: string;
+    supportsSubdomains?: boolean;
+    purpose?: string;
+  };
 
   if (!domain || typeof domain !== "string") {
     res.status(422).json({ error: "Validation error", message: "domain is required" });
@@ -27,7 +33,7 @@ router.post("/domains", requireAuth, async (req, res): Promise<void> => {
 
   const normalized = domain.trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/.*$/, "");
 
-  // Block snipr.sh - it's the main app domain, not for redirects
+  // Block snipr.sh
   if (normalized === "snipr.sh" || normalized === "www.snipr.sh" || normalized.endsWith(".snipr.sh")) {
     res.status(422).json({ error: "Validation error", message: "snipr.sh is the main app domain and cannot be used for short link redirects." });
     return;
@@ -43,8 +49,8 @@ router.post("/domains", requireAuth, async (req, res): Promise<void> => {
     return;
   }
 
-  // SUBDOMAIN SUPPORT: Set isParentDomain if supportsSubdomains is enabled
   const isParent = supportsSubdomains === true;
+  const validPurpose = purpose === "has_website" ? "has_website" : "links_only";
 
   const [created] = await db
     .insert(domainsTable)
@@ -53,13 +59,13 @@ router.post("/domains", requireAuth, async (req, res): Promise<void> => {
       domain: normalized,
       isParentDomain: isParent,
       supportsSubdomains: isParent,
+      purpose: validPurpose,
     })
     .returning();
 
   res.status(201).json(created);
 });
 
-// SUBDOMAIN SUPPORT: Update domain subdomain settings
 router.patch("/domains/:id", requireAuth, async (req, res): Promise<void> => {
   const workspaceId = req.session.workspaceId!;
   const { id } = req.params;
@@ -78,17 +84,14 @@ router.patch("/domains/:id", requireAuth, async (req, res): Promise<void> => {
   const isParent = supportsSubdomains === true;
   const [updated] = await db
     .update(domainsTable)
-    .set({
-      isParentDomain: isParent,
-      supportsSubdomains: isParent,
-    })
+    .set({ isParentDomain: isParent, supportsSubdomains: isParent })
     .where(eq(domainsTable.id, id))
     .returning();
 
   res.json(updated);
 });
 
-/* ── DNS Setup Info (for wizard) ─────────────────────────────────── */
+/* ── DNS Setup Info (enhanced for wizard) ─────────────────────────── */
 router.get("/domains/:id/setup-info", requireAuth, async (req, res): Promise<void> => {
   const workspaceId = req.session.workspaceId!;
   const { id } = req.params;
@@ -104,21 +107,64 @@ router.get("/domains/:id/setup-info", requireAuth, async (req, res): Promise<voi
   }
 
   const token = getDomainVerifyToken(domain.id);
-  const subdomain = domain.domain.split(".").slice(0, -2).join(".") || "@";
+  const parts = domain.domain.split(".");
+  const isRootDomain = parts.length <= 2;
+  const rootDomain = isRootDomain ? domain.domain : parts.slice(-2).join(".");
+  const cnameHost = isRootDomain ? "@" : parts.slice(0, -2).join(".");
+  const purpose = domain.purpose || "links_only";
+
+  // Build purpose-aware DNS records
+  const records: { type: string; name: string; value: string; priority?: string }[] = [];
+  const warnings: string[] = [];
+  const suggestedSubdomains: string[] = [];
+
+  if (isRootDomain) {
+    records.push({ type: "A", name: "@", value: SERVER_IP, priority: "Required" });
+    if (purpose === "has_website") {
+      warnings.push("Changing your A record will redirect ALL traffic from your root domain to Snipr. Your existing website will stop working on this domain.");
+      warnings.push("We strongly recommend using a subdomain instead.");
+      suggestedSubdomains.push(
+        `go.${domain.domain}`,
+        `link.${domain.domain}`,
+        `to.${domain.domain}`,
+        `s.${domain.domain}`,
+      );
+    }
+  } else {
+    records.push({ type: "CNAME", name: cnameHost, value: "snipr.sh", priority: "Required" });
+    if (purpose === "has_website") {
+      warnings.push("This subdomain will be used for short links. Your main website at " + rootDomain + " will not be affected.");
+    }
+  }
+
+  // TXT verification always
+  records.push({ type: "TXT", name: `_snipr-verify.${domain.domain}`, value: token, priority: "Optional" });
+
+  const cloudflareUrl = `https://dash.cloudflare.com/?to=/:account/${rootDomain}/dns`;
 
   res.json({
     id: domain.id,
     domain: domain.domain,
     verified: domain.verified,
     token,
-    cnameHost: subdomain,
+    purpose,
+    domainType: isRootDomain ? "root" : "subdomain",
+    isRootDomain,
+    rootDomain,
+    cnameHost,
     cnameTarget: "snipr.sh",
     txtHost: `_snipr-verify.${domain.domain}`,
     txtValue: token,
+    recommendations: {
+      records,
+      warnings,
+      suggestedSubdomains,
+      cloudflareUrl,
+    },
   });
 });
 
-/* ── DNS Check (for wizard) ──────────────────────────────────────── */
+/* ── DNS Check ────────────────────────────────────────────────────── */
 router.get("/domains/:id/dns-check", requireAuth, async (req, res): Promise<void> => {
   const workspaceId = req.session.workspaceId!;
   const { id } = req.params;
@@ -136,15 +182,10 @@ router.get("/domains/:id/dns-check", requireAuth, async (req, res): Promise<void
   const token = getDomainVerifyToken(domain.id);
   const dnsResult = await checkDomainDns(domain.domain, token);
 
-  res.json({
-    domain: domain.domain,
-    verified: domain.verified,
-    token,
-    ...dnsResult,
-  });
+  res.json({ domain: domain.domain, verified: domain.verified, token, ...dnsResult });
 });
 
-/* ── Verify Domain (for wizard) ──────────────────────────────────── */
+/* ── Verify Domain ────────────────────────────────────────────────── */
 router.patch("/domains/:id/verify", requireAuth, async (req, res): Promise<void> => {
   const workspaceId = req.session.workspaceId!;
   const { id } = req.params;
@@ -165,17 +206,13 @@ router.patch("/domains/:id/verify", requireAuth, async (req, res): Promise<void>
   if (!dnsResult.ready) {
     res.status(422).json({
       error: "dns_not_configured",
-      message: "DNS records not found yet. Add the CNAME or TXT record and try again.",
+      message: "DNS records not found yet. Add the CNAME or A record and try again.",
       token,
     });
     return;
   }
 
-  await db
-    .update(domainsTable)
-    .set({ verified: true })
-    .where(eq(domainsTable.id, domain.id));
-
+  await db.update(domainsTable).set({ verified: true }).where(eq(domainsTable.id, domain.id));
   res.json({ ok: true, domain: domain.domain });
 });
 

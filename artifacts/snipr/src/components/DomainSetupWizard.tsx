@@ -1,68 +1,64 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import {
-  Globe, CheckCircle2, Copy, CheckCircle, Loader2, X,
-  ArrowRight, ArrowLeft, Wifi, WifiOff, ShieldCheck, PartyPopper, Link2,
+  Globe, CheckCircle2, Copy, CheckCircle, Loader2, X, ArrowRight, ArrowLeft,
+  Wifi, WifiOff, ShieldCheck, PartyPopper, Link2, AlertTriangle, ExternalLink,
+  Zap, Monitor,
 } from "lucide-react";
 
 interface DomainSetupWizardProps {
   open: boolean;
   onClose: () => void;
-  domain: { id: string; domain: string; verified: boolean };
+  domain?: { id: string; domain: string; verified: boolean; purpose?: string } | null;
   mode: "admin" | "user";
   onVerified?: () => void;
+  onDomainCreated?: (domain: any) => void;
 }
 
 interface SetupInfo {
-  token: string;
-  cnameHost: string;
-  cnameTarget: string;
-  txtHost: string;
-  txtValue: string;
+  token: string; cnameHost: string; cnameTarget: string;
+  txtHost: string; txtValue: string; purpose: string;
+  domainType: string; isRootDomain: boolean; rootDomain: string;
+  recommendations: {
+    records: { type: string; name: string; value: string; priority?: string }[];
+    warnings: string[]; suggestedSubdomains: string[]; cloudflareUrl: string;
+  };
 }
 
 interface DnsResult {
-  cnameOk: boolean;
-  cnameTarget: string | null;
-  aRecordOk: boolean;
-  aRecordIp: string | null;
-  txtOk: boolean;
-  txtFound: string | null;
-  ready: boolean;
+  cnameOk: boolean; cnameTarget: string | null;
+  aRecordOk: boolean; aRecordIp: string | null;
+  txtOk: boolean; txtFound: string | null; ready: boolean;
 }
 
 function CopyBtn({ value }: { value: string }) {
   const [copied, setCopied] = useState(false);
   return (
-    <button
-      onClick={() => { navigator.clipboard.writeText(value); setCopied(true); setTimeout(() => setCopied(false), 1500); }}
-      className="ml-1.5 p-1 rounded hover:bg-black/5 transition-colors"
-      title="Copy"
-    >
-      {copied ? <CheckCircle className="w-3.5 h-3.5 text-green-500" /> : <Copy className="w-3.5 h-3.5 text-gray-400" />}
+    <button onClick={() => { navigator.clipboard.writeText(value); setCopied(true); setTimeout(() => setCopied(false), 1500); }}
+      className="ml-1.5 p-1 rounded-md hover:bg-gray-100 transition-colors" title="Copy">
+      {copied ? <CheckCircle className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5 text-gray-400" />}
     </button>
   );
 }
 
-function StepIndicator({ current, total }: { current: number; total: number }) {
+function StepBar({ current, total, labels }: { current: number; total: number; labels: string[] }) {
   return (
-    <div className="flex items-center justify-center gap-2 mb-6">
+    <div className="flex items-center justify-center gap-1 mb-6">
       {Array.from({ length: total }, (_, i) => {
         const step = i + 1;
         const isActive = step === current;
         const isDone = step < current;
         return (
-          <div key={step} className="flex items-center gap-2">
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
-              isDone ? "bg-green-500 text-white" :
-              isActive ? "bg-[#0A0A0A] text-white shadow-lg" :
-              "bg-gray-100 text-gray-400"
-            }`}>
-              {isDone ? <CheckCircle className="w-4 h-4" /> : step}
+          <div key={step} className="flex items-center gap-1">
+            <div className="flex flex-col items-center gap-1">
+              <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold transition-all ${
+                isDone ? "bg-emerald-500 text-white" : isActive ? "bg-[#0A0A0A] text-white shadow-md" : "bg-gray-100 text-gray-400"
+              }`}>
+                {isDone ? <CheckCircle className="w-3.5 h-3.5" /> : step}
+              </div>
+              <span className={`text-[9px] font-medium ${isActive ? "text-[#0A0A0A]" : "text-gray-400"}`}>{labels[i]}</span>
             </div>
-            {step < total && (
-              <div className={`w-8 h-0.5 rounded ${step < current ? "bg-green-500" : "bg-gray-200"}`} />
-            )}
+            {step < total && <div className={`w-6 h-0.5 rounded mb-4 ${step < current ? "bg-emerald-500" : "bg-gray-200"}`} />}
           </div>
         );
       })}
@@ -70,87 +66,131 @@ function StepIndicator({ current, total }: { current: number; total: number }) {
   );
 }
 
-export default function DomainSetupWizard({ open, onClose, domain, mode, onVerified }: DomainSetupWizardProps) {
-  const [step, setStep] = useState(domain.verified ? 4 : 1);
-  const [dnsTab, setDnsTab] = useState<"cname" | "a" | "txt">("cname");
+export default function DomainSetupWizard({ open, onClose, domain, mode, onVerified, onDomainCreated }: DomainSetupWizardProps) {
+  const initialStep = domain ? (domain.verified ? 5 : 3) : 1;
+  const [step, setStep] = useState(initialStep);
+  const [domainInput, setDomainInput] = useState("");
+  const [parsedType, setParsedType] = useState<"root" | "subdomain" | null>(null);
+  const [purpose, setPurpose] = useState<"links_only" | "has_website" | null>(null);
+  const [currentDomain, setCurrentDomain] = useState(domain || null);
   const [setupInfo, setSetupInfo] = useState<SetupInfo | null>(null);
   const [dnsResult, setDnsResult] = useState<DnsResult | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [checking, setChecking] = useState(false);
   const [verifying, setVerifying] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showCloudflare, setShowCloudflare] = useState(false);
 
-  const apiBase = mode === "admin" ? "/api/admin/domains" : "/api/domains";
+  // Parse domain type
+  useEffect(() => {
+    const clean = domainInput.trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/.*$/, "");
+    if (!clean || !clean.includes(".")) { setParsedType(null); return; }
+    const parts = clean.replace(/^www\./, "").split(".");
+    setParsedType(parts.length <= 2 ? "root" : "subdomain");
+  }, [domainInput]);
+
+  // Fetch setup info when domain is set
+  const fetchSetupInfo = useCallback(async (domId: string) => {
+    try {
+      const r = await fetch(`/api/domains/${domId}/setup-info`, { credentials: "include" });
+      if (r.ok) setSetupInfo(await r.json());
+    } catch {}
+  }, []);
 
   useEffect(() => {
-    if (!open || domain.verified) return;
-    fetch(`/api/domains/${domain.id}/setup-info`, { credentials: "include" })
-      .then((r) => r.json())
-      .then((d) => setSetupInfo(d))
-      .catch(() => {});
-  }, [open, domain.id, domain.verified]);
+    if (currentDomain?.id && step >= 3) fetchSetupInfo(currentDomain.id);
+  }, [currentDomain?.id, step, fetchSetupInfo]);
+
+  const normalizedInput = domainInput.trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/.*$/, "");
+  const isValidDomain = normalizedInput.includes(".") && normalizedInput.length > 3 && !normalizedInput.endsWith(".snipr.sh") && normalizedInput !== "snipr.sh";
+
+  async function createDomain(domainName: string, selectedPurpose: string) {
+    setCreating(true); setError(null);
+    try {
+      const r = await fetch("/api/domains", {
+        method: "POST", credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ domain: domainName, purpose: selectedPurpose }),
+      });
+      const data = await r.json();
+      if (!r.ok) { setError(data.message || data.error || "Failed to add domain"); setCreating(false); return; }
+      setCurrentDomain(data);
+      onDomainCreated?.(data);
+      setStep(3);
+    } catch { setError("Network error. Please try again."); }
+    setCreating(false);
+  }
 
   async function checkDns() {
-    setLoading(true);
-    setError(null);
+    if (!currentDomain) return;
+    setChecking(true); setError(null);
     try {
-      const r = await fetch(`${apiBase}/${domain.id}/dns-check`, { credentials: "include" });
-      const d = await r.json();
-      setDnsResult(d);
-      if (!setupInfo && d.token) {
-        setSetupInfo({
-          token: d.token,
-          cnameHost: domain.domain.split(".").slice(0, -2).join(".") || "@",
-          cnameTarget: "snipr.sh",
-          txtHost: `_snipr-verify.${domain.domain}`,
-          txtValue: d.token,
-        });
+      const r = await fetch(`/api/domains/${currentDomain.id}/dns-check`, { credentials: "include" });
+      if (r.ok) {
+        const data = await r.json();
+        setDnsResult(data);
+        if (!setupInfo && data.token) fetchSetupInfo(currentDomain.id);
       }
-    } catch {
-      setError("Failed to check DNS. Please try again.");
-    } finally {
-      setLoading(false);
-    }
+    } catch { setError("Failed to check DNS."); }
+    setChecking(false);
   }
 
   async function verifyDomain(force = false) {
-    setVerifying(true);
-    setError(null);
+    if (!currentDomain) return;
+    setVerifying(true); setError(null);
     try {
-      const r = await fetch(`${apiBase}/${domain.id}/verify`, {
-        method: "PATCH",
+      const apiBase = mode === "admin" ? "/api/admin/domains" : "/api/domains";
+      const r = await fetch(`${apiBase}/${currentDomain.id}/verify`, {
+        method: "PATCH", credentials: "include",
         headers: { "Content-Type": "application/json" },
-        credentials: "include",
         body: JSON.stringify({ force }),
       });
-      const d = await r.json();
-      if (d.ok) {
-        setStep(4);
-        onVerified?.();
-      } else {
-        setError(d.message || "Verification failed. DNS records not found yet.");
-      }
-    } catch {
-      setError("Verification failed. Please try again.");
-    } finally {
-      setVerifying(false);
-    }
+      const data = await r.json();
+      if (data.ok) { setStep(5); onVerified?.(); } else { setError(data.message || "Verification failed."); }
+    } catch { setError("Verification failed."); }
+    setVerifying(false);
+  }
+
+  async function switchToSubdomain(subdomain: string) {
+    if (!currentDomain) return;
+    setCreating(true); setError(null);
+    try {
+      await fetch(`/api/domains/${currentDomain.id}`, { method: "DELETE", credentials: "include" });
+      const r = await fetch("/api/domains", {
+        method: "POST", credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ domain: subdomain, purpose: purpose || "links_only" }),
+      });
+      const data = await r.json();
+      if (!r.ok) { setError(data.message || "Failed"); setCreating(false); return; }
+      setCurrentDomain(data); onDomainCreated?.(data);
+      setSetupInfo(null); setDnsResult(null);
+      fetchSetupInfo(data.id);
+    } catch { setError("Network error."); }
+    setCreating(false);
   }
 
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={onClose}>
-      <div
-        className="bg-white rounded-2xl border border-gray-200 shadow-2xl w-full max-w-xl mx-4 max-h-[90vh] overflow-y-auto"
-        onClick={(e) => e.stopPropagation()}
-      >
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-[520px] mx-4 max-h-[92vh] overflow-y-auto border border-gray-200"
+        onClick={(e) => e.stopPropagation()}>
+
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-xl bg-[#0A0A0A] flex items-center justify-center">
               <Globe className="w-4 h-4 text-white" />
             </div>
-            <h2 className="text-lg font-bold text-gray-900">Domain Setup</h2>
+            <div>
+              <h2 className="text-[15px] font-bold text-gray-900">
+                {step <= 2 ? "Add Custom Domain" : step <= 4 ? "Domain Setup" : "Domain Connected"}
+              </h2>
+              {currentDomain && step >= 3 && (
+                <p className="text-[11px] text-gray-400 font-mono">{currentDomain.domain}</p>
+              )}
+            </div>
           </div>
           <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors">
             <X className="w-4 h-4 text-gray-400" />
@@ -158,309 +198,321 @@ export default function DomainSetupWizard({ open, onClose, domain, mode, onVerif
         </div>
 
         <div className="p-6">
-          <StepIndicator current={step} total={4} />
+          {step <= 4 && <StepBar current={Math.min(step, 4)} total={4} labels={["Domain", "Purpose", "DNS", "Verify"]} />}
 
-          {/* Step 1: Domain Added */}
+          {/* ═══ STEP 1: Enter Domain ═══ */}
           {step === 1 && (
-            <div className="text-center space-y-4">
-              <div className="w-16 h-16 rounded-full bg-green-50 flex items-center justify-center mx-auto">
-                <CheckCircle2 className="w-8 h-8 text-green-500" />
+            <div className="space-y-5">
+              <div className="text-center">
+                <h3 className="text-xl font-bold text-gray-900">What domain do you want to use?</h3>
+                <p className="text-sm text-gray-500 mt-1">Enter your custom domain or subdomain</p>
               </div>
-              <div>
-                <h3 className="text-xl font-bold text-gray-900">Domain Added!</h3>
-                <p className="text-gray-500 mt-1">
-                  <span className="font-semibold text-gray-900">{domain.domain}</span> has been added to your account.
-                </p>
+
+              <div className="space-y-2">
+                <div className="relative">
+                  <Globe className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <input
+                    autoFocus value={domainInput}
+                    onChange={(e) => { setDomainInput(e.target.value); setError(null); }}
+                    placeholder="example.com or go.example.com"
+                    className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-[14px] text-gray-900 placeholder:text-gray-400 outline-none focus:border-[#0A0A0A] focus:ring-2 focus:ring-[#0A0A0A]/5 transition-all"
+                  />
+                </div>
+                {parsedType && isValidDomain && (
+                  <div className="flex items-center gap-2">
+                    <span className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full ${
+                      parsedType === "root" ? "bg-blue-50 text-blue-600" : "bg-purple-50 text-purple-600"
+                    }`}>
+                      {parsedType === "root" ? <Globe className="w-3 h-3" /> : <Link2 className="w-3 h-3" />}
+                      {parsedType === "root" ? "Root domain" : `Subdomain of ${normalizedInput.split(".").slice(-2).join(".")}`}
+                    </span>
+                  </div>
+                )}
+                {error && <p className="text-xs text-red-500 font-medium">{error}</p>}
               </div>
-              <p className="text-sm text-gray-400">
-                Next, you'll need to configure your DNS records so we can verify ownership and route traffic.
-              </p>
-              <button
-                onClick={() => setStep(2)}
-                className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-[#0A0A0A] text-white text-sm font-semibold hover:bg-[#1A1A1A] active:scale-[0.98] transition-all"
-              >
-                Continue to DNS Setup <ArrowRight className="w-4 h-4" />
+
+              <button onClick={() => { setError(null); setStep(2); }} disabled={!isValidDomain}
+                className="w-full py-3 rounded-xl bg-[#0A0A0A] text-white text-sm font-semibold hover:bg-[#1F1F1F] disabled:opacity-30 disabled:cursor-not-allowed transition-all active:scale-[0.98]">
+                Continue <ArrowRight className="w-4 h-4 inline ml-1" />
               </button>
             </div>
           )}
 
-          {/* Step 2: Configure DNS */}
+          {/* ═══ STEP 2: Choose Purpose ═══ */}
           {step === 2 && (
-            <div className="space-y-4">
-              <div className="text-center mb-2">
-                <h3 className="text-xl font-bold text-gray-900">Configure DNS Records</h3>
+            <div className="space-y-5">
+              <div className="text-center">
+                <h3 className="text-xl font-bold text-gray-900">How will you use this domain?</h3>
                 <p className="text-sm text-gray-500 mt-1">
-                  Add one of these records at your DNS provider (e.g., Cloudflare, GoDaddy, Namecheap)
+                  This helps us give you the right DNS setup instructions
                 </p>
               </div>
 
-              {/* Tab switcher */}
-              <div className="flex gap-2 justify-center flex-wrap">
-                {([
-                  { key: "cname" as const, label: "CNAME (Subdomains)" },
-                  { key: "a" as const, label: "A Record (Root Domain)" },
-                  { key: "txt" as const, label: "TXT Verification" },
-                ]).map((t) => (
-                  <button
-                    key={t.key}
-                    onClick={() => setDnsTab(t.key)}
-                    className={`px-3 py-2 rounded-xl text-xs font-semibold transition-all ${
-                      dnsTab === t.key ? "bg-[#0A0A0A] text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                    }`}
-                  >
-                    {t.label}
-                  </button>
-                ))}
+              <div className="space-y-3">
+                {/* Card A: Only for links */}
+                <button onClick={() => { setPurpose("links_only"); createDomain(normalizedInput, "links_only"); }} disabled={creating}
+                  className="w-full text-left p-4 rounded-xl border-2 border-gray-200 hover:border-[#0A0A0A] hover:bg-gray-50 transition-all group disabled:opacity-50">
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center shrink-0 group-hover:bg-blue-100 transition-colors">
+                      <Link2 className="w-5 h-5 text-blue-600" />
+                    </div>
+                    <div>
+                      <p className="text-[14px] font-bold text-gray-900">Dedicated short link domain</p>
+                      <p className="text-[12px] text-gray-500 mt-0.5">This domain is empty and will only be used for short links</p>
+                      <p className="text-[11px] text-gray-400 mt-1 font-mono">e.g., {normalizedInput}/my-link</p>
+                    </div>
+                  </div>
+                </button>
+
+                {/* Card B: Has website */}
+                <button onClick={() => { setPurpose("has_website"); createDomain(normalizedInput, "has_website"); }} disabled={creating}
+                  className="w-full text-left p-4 rounded-xl border-2 border-gray-200 hover:border-[#0A0A0A] hover:bg-gray-50 transition-all group disabled:opacity-50">
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center shrink-0 group-hover:bg-amber-100 transition-colors">
+                      <Monitor className="w-5 h-5 text-amber-600" />
+                    </div>
+                    <div>
+                      <p className="text-[14px] font-bold text-gray-900">Domain with existing website</p>
+                      <p className="text-[12px] text-gray-500 mt-0.5">This domain already has a website or blog running on it</p>
+                      <p className="text-[11px] text-gray-400 mt-1">We'll recommend the safest setup to avoid breaking your site</p>
+                    </div>
+                  </div>
+                </button>
               </div>
 
-              {/* DNS record table */}
-              <div className="bg-gray-50 rounded-xl border border-gray-200 overflow-hidden">
-                <table className="w-full text-xs">
-                  <thead>
-                    <tr className="bg-gray-100 border-b border-gray-200">
-                      {["Type", "Name / Host", "Value / Points To"].map((h) => (
-                        <th key={h} className="text-left px-4 py-2.5 text-gray-500 font-semibold uppercase tracking-wide text-[10px]">{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {dnsTab === "cname" ? (
-                      <tr>
-                        <td className="px-4 py-3 font-bold text-blue-600 font-mono">CNAME</td>
-                        <td className="px-4 py-3 font-mono text-gray-900 flex items-center">
-                          {setupInfo?.cnameHost || "@"}
-                          <CopyBtn value={setupInfo?.cnameHost || "@"} />
-                        </td>
-                        <td className="px-4 py-3 font-mono text-gray-900">
-                          <span className="flex items-center">
-                            snipr.sh <CopyBtn value="snipr.sh" />
-                          </span>
-                        </td>
-                      </tr>
-                    ) : dnsTab === "a" ? (
-                      <tr>
-                        <td className="px-4 py-3 font-bold text-emerald-600 font-mono">A</td>
-                        <td className="px-4 py-3 font-mono text-gray-900 flex items-center">
-                          @ <CopyBtn value="@" />
-                        </td>
-                        <td className="px-4 py-3 font-mono text-gray-900">
-                          <span className="flex items-center">
-                            104.218.51.234 <CopyBtn value="104.218.51.234" />
-                          </span>
-                        </td>
-                      </tr>
-                    ) : (
-                      <tr>
-                        <td className="px-4 py-3 font-bold text-purple-600 font-mono">TXT</td>
-                        <td className="px-4 py-3 font-mono text-gray-900">
-                          <span className="flex items-center text-[11px]">
-                            {setupInfo?.txtHost || `_snipr-verify.${domain.domain}`}
-                            <CopyBtn value={setupInfo?.txtHost || `_snipr-verify.${domain.domain}`} />
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 font-mono text-gray-900">
-                          <span className="flex items-center text-[11px] break-all">
-                            {setupInfo?.txtValue || "Loading..."}
-                            {setupInfo?.txtValue && <CopyBtn value={setupInfo.txtValue} />}
-                          </span>
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-
-              {/* Tip box */}
-              <div className="flex items-start gap-2.5 p-3 rounded-xl bg-blue-50 border border-blue-100 text-xs text-blue-700">
-                <Globe className="w-4 h-4 shrink-0 mt-0.5" />
-                <div>
-                  <p className="font-semibold">Which method should I use?</p>
-                  <p className="mt-1"><strong>CNAME</strong> — Best for subdomains (go.example.com, links.example.com)</p>
-                  <p className="mt-0.5"><strong>A Record</strong> — Best for root/apex domains (example.com, mysite.art)</p>
-                  <p className="mt-0.5"><strong>TXT</strong> — Alternative verification if CNAME/A isn't possible</p>
-                  <p className="mt-1.5 text-blue-500">Go to your registrar (Cloudflare, GoDaddy, Namecheap) → DNS settings → Add the record. Propagation takes 5 min – 48 hours.</p>
+              {creating && (
+                <div className="flex items-center justify-center gap-2 text-sm text-gray-500">
+                  <Loader2 className="w-4 h-4 animate-spin" /> Setting up domain...
                 </div>
+              )}
+              {error && <p className="text-xs text-red-500 font-medium text-center">{error}</p>}
+
+              <button onClick={() => setStep(1)} className="w-full text-center text-sm text-gray-400 hover:text-gray-600 transition-colors">
+                <ArrowLeft className="w-3.5 h-3.5 inline mr-1" /> Back
+              </button>
+            </div>
+          )}
+
+          {/* ═══ STEP 3: DNS Setup ═══ */}
+          {step === 3 && (
+            <div className="space-y-4">
+              <div className="text-center">
+                <h3 className="text-lg font-bold text-gray-900">Configure DNS Records</h3>
+                <p className="text-sm text-gray-500 mt-0.5">Add these records at your domain registrar</p>
               </div>
+
+              {/* Warnings */}
+              {setupInfo?.recommendations.warnings.map((w, i) => (
+                <div key={i} className={`flex items-start gap-2.5 p-3 rounded-xl text-xs ${
+                  w.includes("break") || w.includes("stop working")
+                    ? "bg-red-50 border border-red-200 text-red-700"
+                    : w.includes("not be affected")
+                    ? "bg-emerald-50 border border-emerald-200 text-emerald-700"
+                    : "bg-amber-50 border border-amber-200 text-amber-700"
+                }`}>
+                  <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+                  <p className="leading-relaxed">{w}</p>
+                </div>
+              ))}
+
+              {/* Subdomain suggestions */}
+              {setupInfo?.recommendations.suggestedSubdomains && setupInfo.recommendations.suggestedSubdomains.length > 0 && (
+                <div className="p-3 rounded-xl bg-blue-50 border border-blue-200">
+                  <p className="text-xs font-semibold text-blue-800 mb-2">Recommended: Use a subdomain instead</p>
+                  <div className="flex flex-wrap gap-2">
+                    {setupInfo.recommendations.suggestedSubdomains.map((sub) => (
+                      <button key={sub} onClick={() => switchToSubdomain(sub)} disabled={creating}
+                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-white border border-blue-200 text-xs font-semibold text-blue-700 hover:bg-blue-100 hover:border-blue-300 transition-all disabled:opacity-50">
+                        <Link2 className="w-3 h-3" /> {sub}
+                      </button>
+                    ))}
+                  </div>
+                  {creating && <p className="text-[10px] text-blue-600 mt-2 flex items-center gap-1"><Loader2 className="w-3 h-3 animate-spin" /> Switching...</p>}
+                </div>
+              )}
+
+              {/* DNS Records Table */}
+              {setupInfo?.recommendations.records.map((rec, i) => (
+                <div key={i} className="bg-gray-50 rounded-xl border border-gray-200 overflow-hidden">
+                  <div className="flex items-center gap-2 px-4 py-2 bg-gray-100 border-b border-gray-200">
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                      rec.type === "A" ? "bg-emerald-100 text-emerald-700" :
+                      rec.type === "CNAME" ? "bg-blue-100 text-blue-700" :
+                      "bg-purple-100 text-purple-700"
+                    }`}>{rec.type}</span>
+                    <span className="text-[10px] font-medium text-gray-500">{rec.priority || "Required"}</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-px bg-gray-200">
+                    <div className="bg-white p-3">
+                      <p className="text-[10px] font-semibold text-gray-400 uppercase mb-1">Name / Host</p>
+                      <p className="text-[13px] font-mono text-gray-900 flex items-center">{rec.name} <CopyBtn value={rec.name} /></p>
+                    </div>
+                    <div className="bg-white p-3">
+                      <p className="text-[10px] font-semibold text-gray-400 uppercase mb-1">Value / Points To</p>
+                      <p className="text-[13px] font-mono text-gray-900 flex items-center break-all">{rec.value} <CopyBtn value={rec.value} /></p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+
+              {/* Cloudflare Auto-Connect */}
+              <div className="border border-gray-200 rounded-xl overflow-hidden">
+                <button onClick={() => setShowCloudflare(!showCloudflare)}
+                  className="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition-colors">
+                  <div className="flex items-center gap-2">
+                    <Zap className="w-4 h-4 text-orange-500" />
+                    <span className="text-[13px] font-semibold text-gray-900">Using Cloudflare?</span>
+                  </div>
+                  <ArrowRight className={`w-3.5 h-3.5 text-gray-400 transition-transform ${showCloudflare ? "rotate-90" : ""}`} />
+                </button>
+                {showCloudflare && (
+                  <div className="px-4 pb-4 pt-1 space-y-2 border-t border-gray-100">
+                    <p className="text-xs text-gray-500">Quickly configure DNS by opening your Cloudflare dashboard directly to the DNS settings page for this domain.</p>
+                    <a href={setupInfo?.recommendations.cloudflareUrl || "#"} target="_blank" rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[#F48120] hover:bg-[#E0740F] text-white text-xs font-semibold transition-colors">
+                      <ExternalLink className="w-3.5 h-3.5" /> Open Cloudflare DNS Settings
+                    </a>
+                    <p className="text-[10px] text-gray-400">After adding the records in Cloudflare, come back and click "I've Added the Records"</p>
+                  </div>
+                )}
+              </div>
+
+              {error && <p className="text-xs text-red-500 font-medium">{error}</p>}
 
               {/* Navigation */}
-              <div className="flex justify-between pt-2">
-                <button
-                  onClick={() => setStep(1)}
-                  className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm text-gray-600 hover:bg-gray-100 transition-all"
-                >
-                  <ArrowLeft className="w-4 h-4" /> Back
-                </button>
-                <button
-                  onClick={() => setStep(3)}
-                  className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-[#0A0A0A] text-white text-sm font-semibold hover:bg-[#1A1A1A] active:scale-[0.98] transition-all"
-                >
-                  I've Added the Record <ArrowRight className="w-4 h-4" />
+              <div className="flex justify-between pt-1">
+                {!domain && <button onClick={() => setStep(2)} className="text-sm text-gray-400 hover:text-gray-600 transition-colors">
+                  <ArrowLeft className="w-3.5 h-3.5 inline mr-1" /> Back
+                </button>}
+                {domain && <div />}
+                <button onClick={() => setStep(4)}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#0A0A0A] text-white text-sm font-semibold hover:bg-[#1F1F1F] transition-all active:scale-[0.98]">
+                  I've Added the Records <ArrowRight className="w-4 h-4" />
                 </button>
               </div>
             </div>
           )}
 
-          {/* Step 3: Verify Domain */}
-          {step === 3 && (
+          {/* ═══ STEP 4: Verify ═══ */}
+          {step === 4 && (
             <div className="space-y-4">
-              <div className="text-center mb-2">
-                <h3 className="text-xl font-bold text-gray-900">Verify Your Domain</h3>
-                <p className="text-sm text-gray-500 mt-1">
-                  Let's check if your DNS records are configured correctly for <span className="font-semibold text-gray-900">{domain.domain}</span>
+              <div className="text-center">
+                <h3 className="text-lg font-bold text-gray-900">Verify DNS Configuration</h3>
+                <p className="text-sm text-gray-500 mt-0.5">
+                  Checking <span className="font-mono font-semibold text-gray-700">{currentDomain?.domain}</span>
                 </p>
               </div>
 
-              {/* Check DNS button */}
+              {/* Check button */}
               <div className="flex justify-center">
-                <button
-                  onClick={checkDns}
-                  disabled={loading}
-                  className="flex items-center gap-2 px-6 py-3 rounded-xl bg-gray-100 border border-gray-200 text-sm font-semibold text-gray-700 hover:bg-gray-200 disabled:opacity-50 transition-all"
-                >
-                  {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wifi className="w-4 h-4" />}
-                  {loading ? "Checking..." : "Check DNS Status"}
+                <button onClick={checkDns} disabled={checking}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gray-100 border border-gray-200 text-sm font-semibold text-gray-700 hover:bg-gray-200 disabled:opacity-50 transition-all">
+                  {checking ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wifi className="w-4 h-4" />}
+                  {checking ? "Checking..." : "Check DNS Status"}
                 </button>
               </div>
 
-              {/* DNS Results */}
+              {/* Results */}
               {dnsResult && (
-                <div className="bg-gray-50 rounded-xl border border-gray-200 p-4 space-y-3">
-                  <div className="grid grid-cols-3 gap-2">
-                    <div className={`flex items-start gap-2 p-3 rounded-lg border ${dnsResult.cnameOk ? "bg-green-50 border-green-200" : "bg-gray-50 border-gray-200"}`}>
-                      {dnsResult.cnameOk
-                        ? <CheckCircle2 className="w-4 h-4 text-green-500 shrink-0 mt-0.5" />
-                        : <WifiOff className="w-4 h-4 text-gray-400 shrink-0 mt-0.5" />}
-                      <div className="text-xs">
-                        <p className="font-semibold text-gray-900">CNAME</p>
-                        <p className="text-gray-500 mt-0.5">
-                          {dnsResult.cnameOk ? `→ ${dnsResult.cnameTarget}` :
-                           dnsResult.cnameTarget ? `${dnsResult.cnameTarget}` : "Not found"}
-                        </p>
-                      </div>
-                    </div>
-                    <div className={`flex items-start gap-2 p-3 rounded-lg border ${dnsResult.aRecordOk ? "bg-green-50 border-green-200" : "bg-gray-50 border-gray-200"}`}>
-                      {dnsResult.aRecordOk
-                        ? <CheckCircle2 className="w-4 h-4 text-green-500 shrink-0 mt-0.5" />
-                        : <WifiOff className="w-4 h-4 text-gray-400 shrink-0 mt-0.5" />}
-                      <div className="text-xs">
-                        <p className="font-semibold text-gray-900">A Record</p>
-                        <p className="text-gray-500 mt-0.5">
-                          {dnsResult.aRecordOk ? `→ ${dnsResult.aRecordIp}` :
-                           dnsResult.aRecordIp ? `${dnsResult.aRecordIp}` : "Not found"}
-                        </p>
-                      </div>
-                    </div>
-                    <div className={`flex items-start gap-2 p-3 rounded-lg border ${dnsResult.txtOk ? "bg-green-50 border-green-200" : "bg-gray-50 border-gray-200"}`}>
-                      {dnsResult.txtOk
-                        ? <CheckCircle2 className="w-4 h-4 text-green-500 shrink-0 mt-0.5" />
-                        : <WifiOff className="w-4 h-4 text-gray-400 shrink-0 mt-0.5" />}
-                      <div className="text-xs">
-                        <p className="font-semibold text-gray-900">TXT</p>
-                        <p className="text-gray-500 mt-0.5">
-                          {dnsResult.txtOk ? "Verified" :
-                           dnsResult.txtFound ? "Mismatch" : "Not found"}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
+                <div className="space-y-2">
+                  <DnsStatusRow label="CNAME Record" ok={dnsResult.cnameOk}
+                    detail={dnsResult.cnameOk ? `Pointing to ${dnsResult.cnameTarget}` : dnsResult.cnameTarget ? `Found: ${dnsResult.cnameTarget}` : "Not found"} />
+                  <DnsStatusRow label="A Record" ok={dnsResult.aRecordOk}
+                    detail={dnsResult.aRecordOk ? `Resolves to ${dnsResult.aRecordIp}` : dnsResult.aRecordIp ? `Found: ${dnsResult.aRecordIp}` : "Not found"} />
+                  <DnsStatusRow label="TXT Verification" ok={dnsResult.txtOk}
+                    detail={dnsResult.txtOk ? "Token verified" : dnsResult.txtFound ? "Token mismatch" : "Not found"} />
 
                   {dnsResult.ready ? (
-                    <div className="flex items-center gap-1.5 text-xs font-semibold text-green-600">
-                      <CheckCircle2 className="w-3.5 h-3.5" />
-                      DNS configured correctly! Click "Verify Now" to complete setup.
+                    <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-600 bg-emerald-50 rounded-lg p-2">
+                      <CheckCircle2 className="w-3.5 h-3.5" /> DNS configured correctly! Click "Verify Now" to complete.
                     </div>
                   ) : (
-                    <div className="text-xs text-amber-600">
-                      DNS not propagated yet. This can take 5 minutes to 48 hours. Try again later.
+                    <div className="text-xs text-amber-600 bg-amber-50 rounded-lg p-2">
+                      DNS records not propagated yet. This can take 5 minutes to 48 hours. Click "Check DNS Status" to retry.
                     </div>
                   )}
                 </div>
               )}
 
-              {error && (
-                <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-xs text-red-600">{error}</div>
-              )}
+              {error && <p className="text-xs text-red-500 font-medium">{error}</p>}
 
               {/* Action buttons */}
               <div className="flex flex-wrap gap-2 justify-center">
                 {dnsResult?.ready && (
-                  <button
-                    onClick={() => verifyDomain(false)}
-                    disabled={verifying}
-                    className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-green-600 text-white text-sm font-semibold hover:bg-green-700 disabled:opacity-50 transition-all"
-                  >
+                  <button onClick={() => verifyDomain(false)} disabled={verifying}
+                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 disabled:opacity-50 transition-all active:scale-[0.97]">
                     {verifying ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShieldCheck className="w-4 h-4" />}
                     Verify Now
                   </button>
                 )}
                 {mode === "admin" && (
-                  <button
-                    onClick={() => verifyDomain(true)}
-                    disabled={verifying}
-                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gray-900 text-white text-sm font-medium hover:bg-gray-800 disabled:opacity-50 transition-all"
-                  >
-                    <ShieldCheck className="w-4 h-4" />
-                    Force Verify (Admin)
+                  <button onClick={() => verifyDomain(true)} disabled={verifying}
+                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gray-900 text-white text-sm font-medium hover:bg-gray-800 disabled:opacity-50 transition-all">
+                    <ShieldCheck className="w-4 h-4" /> Force Verify
                   </button>
                 )}
               </div>
 
-              {/* Navigation */}
-              <div className="flex justify-between pt-2">
-                <button
-                  onClick={() => setStep(2)}
-                  className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm text-gray-600 hover:bg-gray-100 transition-all"
-                >
-                  <ArrowLeft className="w-4 h-4" /> Back to DNS
+              <div className="flex justify-between pt-1">
+                <button onClick={() => setStep(3)} className="text-sm text-gray-400 hover:text-gray-600 transition-colors">
+                  <ArrowLeft className="w-3.5 h-3.5 inline mr-1" /> Back to DNS
                 </button>
-                <button
-                  onClick={onClose}
-                  className="px-4 py-2 rounded-xl text-sm text-gray-400 hover:text-gray-600 transition-all"
-                >
+                <button onClick={onClose} className="text-sm text-gray-400 hover:text-gray-600 transition-colors">
                   I'll verify later
                 </button>
               </div>
             </div>
           )}
 
-          {/* Step 4: All Set */}
-          {step === 4 && (
-            <div className="text-center space-y-4">
-              <div className="w-16 h-16 rounded-full bg-green-50 flex items-center justify-center mx-auto">
-                <PartyPopper className="w-8 h-8 text-green-500" />
+          {/* ═══ STEP 5: Done ═══ */}
+          {step === 5 && (
+            <div className="text-center space-y-5 py-4">
+              <div className="w-16 h-16 rounded-full bg-emerald-50 flex items-center justify-center mx-auto">
+                <PartyPopper className="w-8 h-8 text-emerald-500" />
               </div>
               <div>
-                <h3 className="text-xl font-bold text-gray-900">All Set!</h3>
-                <p className="text-gray-500 mt-1">
-                  <span className="font-semibold text-gray-900">{domain.domain}</span> is verified and ready to use.
+                <h3 className="text-xl font-bold text-gray-900">Domain Connected!</h3>
+                <p className="text-sm text-gray-500 mt-1">
+                  <span className="font-mono font-semibold text-gray-900 bg-gray-100 px-2 py-0.5 rounded-lg">{currentDomain?.domain || domain?.domain}</span>
+                  {" "}is verified and ready
                 </p>
               </div>
 
-              <div className="bg-gray-50 rounded-xl border border-gray-200 p-4 text-left space-y-2">
-                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">What's Next?</p>
+              <div className="bg-gray-50 rounded-xl border border-gray-200 p-4 text-left space-y-3">
+                <p className="text-xs font-semibold text-gray-500 uppercase">What's Next?</p>
                 <div className="flex items-start gap-3">
-                  <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center shrink-0 mt-0.5">
-                    <Link2 className="w-3 h-3 text-blue-600" />
+                  <div className="w-7 h-7 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
+                    <Link2 className="w-3.5 h-3.5 text-blue-600" />
                   </div>
                   <div>
-                    <p className="text-sm font-semibold text-gray-900">Create short links</p>
-                    <p className="text-xs text-gray-500">Go to Links and create a new short link. Select <span className="font-semibold">{domain.domain}</span> as the domain.</p>
+                    <p className="text-sm font-semibold text-gray-900">Create your first short link</p>
+                    <p className="text-xs text-gray-500">Go to Links, create a new link, and select this domain in Advanced Settings.</p>
                   </div>
                 </div>
-                <div className="mt-3 p-2.5 rounded-lg bg-white border border-gray-200 font-mono text-sm text-center text-gray-700">
-                  https://{domain.domain}/<span className="text-blue-600">your-slug</span>
+                <div className="p-2.5 rounded-lg bg-white border border-gray-200 font-mono text-sm text-center text-gray-700">
+                  https://{currentDomain?.domain || domain?.domain}/<span className="text-blue-600">your-slug</span>
                 </div>
               </div>
 
-              <button
-                onClick={onClose}
-                className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-[#0A0A0A] text-white text-sm font-semibold hover:bg-[#1A1A1A] active:scale-[0.98] transition-all"
-              >
+              <button onClick={onClose}
+                className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-[#0A0A0A] text-white text-sm font-semibold hover:bg-[#1F1F1F] transition-all active:scale-[0.98]">
                 Done
               </button>
             </div>
           )}
         </div>
+      </div>
+    </div>
+  );
+}
+
+function DnsStatusRow({ label, ok, detail }: { label: string; ok: boolean; detail: string }) {
+  return (
+    <div className={`flex items-center gap-3 p-3 rounded-xl border ${ok ? "bg-emerald-50 border-emerald-200" : "bg-gray-50 border-gray-200"}`}>
+      {ok ? <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" /> : <WifiOff className="w-4 h-4 text-gray-400 shrink-0" />}
+      <div className="text-xs min-w-0">
+        <p className="font-semibold text-gray-900">{label}</p>
+        <p className="text-gray-500 truncate">{detail}</p>
       </div>
     </div>
   );

@@ -12,6 +12,7 @@ export const domainsTable = pgTable("domains", {
   verified: boolean("verified").notNull().default(false),
   isParentDomain: boolean("is_parent_domain").notNull().default(false),
   supportsSubdomains: boolean("supports_subdomains").notNull().default(false),
+  purpose: text("purpose").default("links_only"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 }, (table) => [
