@@ -103,6 +103,8 @@ export const CreateLinkBody = zod.object({
   title: zod.string().nullish(),
   expiresAt: zod.date().nullish(),
   folderId: zod.string().nullish(),
+  /** Required: a verified custom domain must be supplied. */
+  domainId: zod.string().min(1),
   clickLimit: zod.number().nullish(),
   fallbackUrl: zod.string().nullish(),
   password: zod.string().nullish(),
@@ -124,6 +126,7 @@ export const GetLinkResponse = zod.object({
   enabled: zod.boolean(),
   expiresAt: zod.date().nullish(),
   folderId: zod.string().nullish(),
+  domainId: zod.string().nullish(),
   clickLimit: zod.number().nullish(),
   fallbackUrl: zod.string().nullish(),
   hasPassword: zod.boolean(),
@@ -145,6 +148,8 @@ export const UpdateLinkBody = zod.object({
   enabled: zod.boolean().nullish(),
   expiresAt: zod.date().nullish(),
   folderId: zod.string().nullish(),
+  /** Must be a verified custom domain. Cannot be set to null. */
+  domainId: zod.string().min(1).optional(),
   clickLimit: zod.number().nullish(),
   fallbackUrl: zod.string().nullish(),
   password: zod
@@ -162,6 +167,7 @@ export const UpdateLinkResponse = zod.object({
   enabled: zod.boolean(),
   expiresAt: zod.date().nullish(),
   folderId: zod.string().nullish(),
+  domainId: zod.string().nullish(),
   clickLimit: zod.number().nullish(),
   fallbackUrl: zod.string().nullish(),
   hasPassword: zod.boolean(),

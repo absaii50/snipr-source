@@ -58,6 +58,7 @@ export interface Link {
   enabled: boolean;
   expiresAt?: string | null;
   folderId?: string | null;
+  domainId?: string | null;
   clickLimit?: number | null;
   fallbackUrl?: string | null;
   hasPassword: boolean;
@@ -72,6 +73,8 @@ export interface CreateLinkRequest {
   title?: string | null;
   expiresAt?: string | null;
   folderId?: string | null;
+  /** Required: a verified custom domain must be supplied. */
+  domainId: string;
   clickLimit?: number | null;
   fallbackUrl?: string | null;
   password?: string | null;
@@ -84,6 +87,8 @@ export interface UpdateLinkRequest {
   enabled?: boolean | null;
   expiresAt?: string | null;
   folderId?: string | null;
+  /** Must be a verified custom domain. Cannot be set to null. */
+  domainId?: string;
   clickLimit?: number | null;
   fallbackUrl?: string | null;
   /** Set to empty string to remove password */

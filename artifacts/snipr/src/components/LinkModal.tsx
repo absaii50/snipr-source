@@ -23,7 +23,8 @@ import {
   useSetLinkTags,
   useSuggestSlugs,
   useGetDomains,
-  type Link
+  type Link,
+  type Domain
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
@@ -68,7 +69,7 @@ export function LinkModal({ isOpen, onClose, link, initialSlug }: LinkModalProps
   const { data: folders } = useGetFolders();
   const { data: tags } = useGetTags();
   const { data: allDomains } = useGetDomains();
-  const verifiedDomains = allDomains?.filter((d: any) => d.verified) ?? [];
+  const verifiedDomains: Domain[] = allDomains?.filter((d) => d.verified) ?? [];
   const { data: linkTags } = useGetLinkTags(link?.id || "", {
     query: {
       queryKey: getGetLinkTagsQueryKey(link?.id || ""),
@@ -111,7 +112,7 @@ export function LinkModal({ isOpen, onClose, link, initialSlug }: LinkModalProps
           clickLimit: link.clickLimit || null,
           fallbackUrl: link.fallbackUrl || "",
           folderId: link.folderId || "",
-          domainId: (link as any).domainId || "",
+          domainId: link.domainId || "",
           tagIds: linkTags?.map(t => t.id) || [],
         });
       } else {
@@ -145,7 +146,7 @@ export function LinkModal({ isOpen, onClose, link, initialSlug }: LinkModalProps
       clickLimit: values.clickLimit,
       fallbackUrl: values.fallbackUrl || null,
       folderId: values.folderId || null,
-      domainId: values.domainId || null,
+      domainId: values.domainId,
     };
 
     try {
@@ -183,7 +184,7 @@ export function LinkModal({ isOpen, onClose, link, initialSlug }: LinkModalProps
   const isPending = createMutation.isPending || updateMutation.isPending || setTagsMutation.isPending;
   const watchUrl = form.watch("destinationUrl");
   const watchDomainId = form.watch("domainId");
-  const selectedDomain = verifiedDomains.find((d: any) => d.id === watchDomainId);
+  const selectedDomain = verifiedDomains.find((d) => d.id === watchDomainId);
   const slugPrefix = selectedDomain ? `${selectedDomain.domain}/` : "domain/";
 
   return (
@@ -243,7 +244,7 @@ export function LinkModal({ isOpen, onClose, link, initialSlug }: LinkModalProps
                       <SelectValue placeholder="Select a custom domain" />
                     </SelectTrigger>
                     <SelectContent>
-                      {verifiedDomains.map((d: any) => (
+                      {verifiedDomains.map((d) => (
                         <SelectItem key={d.id} value={d.id}>{d.domain}</SelectItem>
                       ))}
                     </SelectContent>
