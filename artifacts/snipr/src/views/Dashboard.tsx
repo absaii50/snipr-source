@@ -8,6 +8,7 @@ import {
   getGetAiInsightsQueryKey,
   useGetWorkspaceAnalytics,
   useGetWorkspaceTimeseries,
+  useGetDomains,
 } from "@workspace/api-client-react";
 import {
   LinkIcon, Activity, Sparkles, Loader2, ArrowRight,
@@ -63,6 +64,12 @@ export default function Dashboard() {
   const [origin, setOrigin] = useState("");
   useEffect(() => { setMounted(true); setOrigin(window.location.origin); }, []);
   const { data: links, isLoading } = useGetLinks();
+  const { data: allDomains } = useGetDomains();
+  const domainMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    allDomains?.forEach((d: any) => { if (d.id) map[d.id] = d.domain; });
+    return map;
+  }, [allDomains]);
   const { data: insights } = useGetAiInsights({ limit: 10 });
   const summaryMutation = useGenerateWeeklySummary();
 
@@ -277,7 +284,7 @@ export default function Dashboard() {
                   const clicks = clickCounts[link.id] ?? 0;
                   const maxClicks = Math.max(...topLinks.map((l) => clickCounts[l.id] ?? 0), 1);
                   return (
-                    <LinkRow key={link.id} link={link} clicks={clicks} maxClicks={maxClicks} rank={i + 1} origin={origin} />
+                    <LinkRow key={link.id} link={link} clicks={clicks} maxClicks={maxClicks} rank={i + 1} origin={origin} domainMap={domainMap} />
                   );
                 })
               )}
@@ -382,17 +389,20 @@ function KpiCard({ label, value, icon, gradient, delta, sublabel }: {
 }
 
 /* ── Link Row ──────────────────────────────────────────────── */
-function LinkRow({ link, clicks, maxClicks, rank, origin }: {
+function LinkRow({ link, clicks, maxClicks, rank, origin, domainMap }: {
   link: any;
   clicks: number;
   maxClicks: number;
   rank: number;
   origin: string;
+  domainMap: Record<string, string>;
 }) {
   const [copied, setCopied] = useState(false);
+  const domainName = link.domainId ? domainMap[link.domainId] : null;
+  const shortUrl = domainName ? `https://${domainName}/${link.slug}` : `${origin}/r/${link.slug}`;
 
   function copyLink() {
-    navigator.clipboard.writeText(`${origin}/r/${link.slug}`);
+    navigator.clipboard.writeText(shortUrl);
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
   }
@@ -402,7 +412,7 @@ function LinkRow({ link, clicks, maxClicks, rank, origin }: {
       <span className="text-[11px] font-bold text-[#E5E7EB] w-4 shrink-0 tabular-nums text-center">{rank}</span>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-1">
-          <p className="text-[13px] font-semibold text-[#0A0A0A] truncate">/{link.slug}</p>
+          <p className="text-[13px] font-semibold text-[#0A0A0A] truncate">{domainName ? `${domainName}/` : "/"}{link.slug}</p>
           <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${link.enabled ? "bg-emerald-50 text-emerald-600" : "bg-gray-100 text-gray-500"}`}>
             {link.enabled ? "LIVE" : "OFF"}
           </span>
@@ -416,7 +426,7 @@ function LinkRow({ link, clicks, maxClicks, rank, origin }: {
         <button onClick={copyLink} className="opacity-0 group-hover:opacity-100 p-1 rounded-md hover:bg-[#F3F4F6] transition-all" title="Copy link">
           {copied ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5 text-[#9CA3AF]" />}
         </button>
-        <a href={`${origin}/r/${link.slug}`} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="opacity-0 group-hover:opacity-100 p-1 rounded-md hover:bg-[#F3F4F6] transition-all">
+        <a href={shortUrl} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="opacity-0 group-hover:opacity-100 p-1 rounded-md hover:bg-[#F3F4F6] transition-all">
           <ExternalLink className="w-3.5 h-3.5 text-[#9CA3AF]" />
         </a>
       </div>

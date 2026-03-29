@@ -215,16 +215,15 @@ export function LinkModal({ isOpen, onClose, link, initialSlug }: LinkModalProps
               <div className="space-y-2">
                 <Label className="text-foreground font-semibold">Domain</Label>
                 <Select
-                  value={form.watch("domainId") || "default"}
-                  onValueChange={(val) => form.setValue("domainId", val === "default" ? null : val)}
+                  value={form.watch("domainId") || ""}
+                  onValueChange={(val) => form.setValue("domainId", val || null)}
                 >
                   <SelectTrigger className="rounded-xl h-12 bg-background border-border shadow-sm">
                     <SelectValue placeholder="Select domain" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="default">Default (snipr.sh/r/slug)</SelectItem>
                     {verifiedDomains.map((d: any) => (
-                      <SelectItem key={d.id} value={d.id}>{d.domain}/slug</SelectItem>
+                      <SelectItem key={d.id} value={d.id}>{d.domain}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>

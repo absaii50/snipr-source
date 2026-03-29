@@ -1,7 +1,7 @@
 "use client";
 import { useState, useMemo, useCallback, useEffect } from "react";
 import { ProtectedLayout } from "@/components/layout/ProtectedLayout";
-import { useGetLinks, useDeleteLink, useUpdateLink, useGetFolders, useGetTags, getGetLinksQueryKey } from "@workspace/api-client-react";
+import { useGetLinks, useDeleteLink, useUpdateLink, useGetFolders, useGetTags, useGetDomains, getGetLinksQueryKey } from "@workspace/api-client-react";
 import { LinkModal } from "@/components/LinkModal";
 import { QrModal } from "@/components/QrModal";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
@@ -97,6 +97,13 @@ export default function Links() {
     staleTime: 60_000,
   });
 
+  const { data: allDomains } = useGetDomains();
+  const domainMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    allDomains?.forEach((d: any) => { if (d.id) map[d.id] = d.domain; });
+    return map;
+  }, [allDomains]);
+
   const deleteMutation = useDeleteLink();
   const updateMutation = useUpdateLink();
   const queryClient = useQueryClient();
@@ -187,8 +194,13 @@ export default function Links() {
     }
   };
 
+  const getShortUrl = (link: Link) => {
+    const domainName = (link as any).domainId ? domainMap[(link as any).domainId] : null;
+    return domainName ? `https://${domainName}/${link.slug}` : `${baseUrl}/r/${link.slug}`;
+  };
+
   const handleCopy = (link: Link) => {
-    const url = `${baseUrl}/r/${link.slug}`;
+    const url = getShortUrl(link);
     navigator.clipboard.writeText(url).then(() => {
       setCopiedId(link.id);
       toast({ title: "Copied!", description: url });
@@ -467,7 +479,7 @@ export default function Links() {
               {/* Rows */}
               <div className="divide-y divide-[#F5F5F8]">
                 {filteredLinks.map((link) => {
-                  const shortUrl = `${baseUrl}/r/${link.slug}`;
+                  const shortUrl = getShortUrl(link);
                   const clicks = clickCounts[link.id] ?? 0;
                   const isCopied = copiedId === link.id;
                   const isToggling = togglingId === link.id;
