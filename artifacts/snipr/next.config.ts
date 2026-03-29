@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  allowedDevOrigins: ["*.replit.dev", "*.picard.replit.dev", "*.repl.co"],
+  allowedDevOrigins: ["*.replit.dev", "*.picard.replit.dev", "*.riker.replit.dev", "*.repl.co"],
   poweredByHeader: false,
   compress: true,
   images: {
