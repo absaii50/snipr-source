@@ -78738,6 +78738,25 @@ router3.post("/links/:id/duplicate", requireAuth, async (req, res) => {
     res.status(404).json({ error: "Not found" });
     return;
   }
+  if (!link.domainId) {
+    res.status(400).json({
+      error: "Validation error",
+      message: "Cannot duplicate this link because it has no custom domain assigned."
+    });
+    return;
+  }
+  const [domainCheck] = await db.select({ id: domainsTable.id }).from(domainsTable).where(and(
+    eq(domainsTable.id, link.domainId),
+    eq(domainsTable.workspaceId, workspaceId),
+    eq(domainsTable.verified, true)
+  ));
+  if (!domainCheck) {
+    res.status(400).json({
+      error: "Validation error",
+      message: "The domain associated with this link is no longer valid or verified."
+    });
+    return;
+  }
   const newSlug = nanoid3(7);
   const [duped] = await db.insert(linksTable).values({
     workspaceId,
@@ -78748,7 +78767,8 @@ router3.post("/links/:id/duplicate", requireAuth, async (req, res) => {
     passwordHash: link.passwordHash,
     clickLimit: link.clickLimit,
     fallbackUrl: link.fallbackUrl,
-    folderId: link.folderId
+    folderId: link.folderId,
+    domainId: link.domainId
   }).returning();
   res.status(201).json(serializeLink(duped));
 });

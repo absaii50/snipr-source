@@ -632,6 +632,33 @@ router.post("/links/:id/duplicate", requireAuth, async (req, res): Promise<void>
     return;
   }
 
+  // Require a verified custom domain — cannot duplicate a domain-less link
+  if (!link.domainId) {
+    res.status(400).json({
+      error: "Validation error",
+      message: "Cannot duplicate this link because it has no custom domain assigned.",
+    });
+    return;
+  }
+
+  // Verify domain still belongs to this workspace and is verified
+  const [domainCheck] = await db
+    .select({ id: domainsTable.id })
+    .from(domainsTable)
+    .where(and(
+      eq(domainsTable.id, link.domainId),
+      eq(domainsTable.workspaceId, workspaceId),
+      eq(domainsTable.verified, true)
+    ));
+
+  if (!domainCheck) {
+    res.status(400).json({
+      error: "Validation error",
+      message: "The domain associated with this link is no longer valid or verified.",
+    });
+    return;
+  }
+
   const newSlug = nanoid(7);
 
   const [duped] = await db
@@ -646,6 +673,7 @@ router.post("/links/:id/duplicate", requireAuth, async (req, res): Promise<void>
       clickLimit: link.clickLimit,
       fallbackUrl: link.fallbackUrl,
       folderId: link.folderId,
+      domainId: link.domainId,
     })
     .returning();
 
