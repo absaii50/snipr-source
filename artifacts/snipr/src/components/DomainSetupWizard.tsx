@@ -24,6 +24,8 @@ interface SetupInfo {
 interface DnsResult {
   cnameOk: boolean;
   cnameTarget: string | null;
+  aRecordOk: boolean;
+  aRecordIp: string | null;
   txtOk: boolean;
   txtFound: string | null;
   ready: boolean;
@@ -70,7 +72,7 @@ function StepIndicator({ current, total }: { current: number; total: number }) {
 
 export default function DomainSetupWizard({ open, onClose, domain, mode, onVerified }: DomainSetupWizardProps) {
   const [step, setStep] = useState(domain.verified ? 4 : 1);
-  const [dnsTab, setDnsTab] = useState<"cname" | "txt">("cname");
+  const [dnsTab, setDnsTab] = useState<"cname" | "a" | "txt">("cname");
   const [setupInfo, setSetupInfo] = useState<SetupInfo | null>(null);
   const [dnsResult, setDnsResult] = useState<DnsResult | null>(null);
   const [loading, setLoading] = useState(false);
@@ -193,16 +195,20 @@ export default function DomainSetupWizard({ open, onClose, domain, mode, onVerif
               </div>
 
               {/* Tab switcher */}
-              <div className="flex gap-2 justify-center">
-                {(["cname", "txt"] as const).map((t) => (
+              <div className="flex gap-2 justify-center flex-wrap">
+                {([
+                  { key: "cname" as const, label: "CNAME (Subdomains)" },
+                  { key: "a" as const, label: "A Record (Root Domain)" },
+                  { key: "txt" as const, label: "TXT Verification" },
+                ]).map((t) => (
                   <button
-                    key={t}
-                    onClick={() => setDnsTab(t)}
-                    className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all ${
-                      dnsTab === t ? "bg-[#0A0A0A] text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                    key={t.key}
+                    onClick={() => setDnsTab(t.key)}
+                    className={`px-3 py-2 rounded-xl text-xs font-semibold transition-all ${
+                      dnsTab === t.key ? "bg-[#0A0A0A] text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
                     }`}
                   >
-                    {t === "cname" ? "CNAME Record (Recommended)" : "TXT Verification"}
+                    {t.label}
                   </button>
                 ))}
               </div>
@@ -231,9 +237,21 @@ export default function DomainSetupWizard({ open, onClose, domain, mode, onVerif
                           </span>
                         </td>
                       </tr>
+                    ) : dnsTab === "a" ? (
+                      <tr>
+                        <td className="px-4 py-3 font-bold text-emerald-600 font-mono">A</td>
+                        <td className="px-4 py-3 font-mono text-gray-900 flex items-center">
+                          @ <CopyBtn value="@" />
+                        </td>
+                        <td className="px-4 py-3 font-mono text-gray-900">
+                          <span className="flex items-center">
+                            104.218.51.234 <CopyBtn value="104.218.51.234" />
+                          </span>
+                        </td>
+                      </tr>
                     ) : (
                       <tr>
-                        <td className="px-4 py-3 font-bold text-blue-600 font-mono">TXT</td>
+                        <td className="px-4 py-3 font-bold text-purple-600 font-mono">TXT</td>
                         <td className="px-4 py-3 font-mono text-gray-900">
                           <span className="flex items-center text-[11px]">
                             {setupInfo?.txtHost || `_snipr-verify.${domain.domain}`}
@@ -256,8 +274,11 @@ export default function DomainSetupWizard({ open, onClose, domain, mode, onVerif
               <div className="flex items-start gap-2.5 p-3 rounded-xl bg-blue-50 border border-blue-100 text-xs text-blue-700">
                 <Globe className="w-4 h-4 shrink-0 mt-0.5" />
                 <div>
-                  <p className="font-semibold">Where to add DNS records?</p>
-                  <p className="mt-0.5">Go to your domain registrar (Cloudflare, GoDaddy, Namecheap, etc.), find the DNS settings page, and add the record shown above. It usually takes 5 minutes to 48 hours for DNS changes to propagate.</p>
+                  <p className="font-semibold">Which method should I use?</p>
+                  <p className="mt-1"><strong>CNAME</strong> — Best for subdomains (go.example.com, links.example.com)</p>
+                  <p className="mt-0.5"><strong>A Record</strong> — Best for root/apex domains (example.com, mysite.art)</p>
+                  <p className="mt-0.5"><strong>TXT</strong> — Alternative verification if CNAME/A isn't possible</p>
+                  <p className="mt-1.5 text-blue-500">Go to your registrar (Cloudflare, GoDaddy, Namecheap) → DNS settings → Add the record. Propagation takes 5 min – 48 hours.</p>
                 </div>
               </div>
 
@@ -304,16 +325,28 @@ export default function DomainSetupWizard({ open, onClose, domain, mode, onVerif
               {/* DNS Results */}
               {dnsResult && (
                 <div className="bg-gray-50 rounded-xl border border-gray-200 p-4 space-y-3">
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-3 gap-2">
                     <div className={`flex items-start gap-2 p-3 rounded-lg border ${dnsResult.cnameOk ? "bg-green-50 border-green-200" : "bg-gray-50 border-gray-200"}`}>
                       {dnsResult.cnameOk
                         ? <CheckCircle2 className="w-4 h-4 text-green-500 shrink-0 mt-0.5" />
                         : <WifiOff className="w-4 h-4 text-gray-400 shrink-0 mt-0.5" />}
                       <div className="text-xs">
-                        <p className="font-semibold text-gray-900">CNAME Record</p>
+                        <p className="font-semibold text-gray-900">CNAME</p>
                         <p className="text-gray-500 mt-0.5">
-                          {dnsResult.cnameOk ? `Pointing to ${dnsResult.cnameTarget}` :
-                           dnsResult.cnameTarget ? `Found: ${dnsResult.cnameTarget}` : "Not found"}
+                          {dnsResult.cnameOk ? `→ ${dnsResult.cnameTarget}` :
+                           dnsResult.cnameTarget ? `${dnsResult.cnameTarget}` : "Not found"}
+                        </p>
+                      </div>
+                    </div>
+                    <div className={`flex items-start gap-2 p-3 rounded-lg border ${dnsResult.aRecordOk ? "bg-green-50 border-green-200" : "bg-gray-50 border-gray-200"}`}>
+                      {dnsResult.aRecordOk
+                        ? <CheckCircle2 className="w-4 h-4 text-green-500 shrink-0 mt-0.5" />
+                        : <WifiOff className="w-4 h-4 text-gray-400 shrink-0 mt-0.5" />}
+                      <div className="text-xs">
+                        <p className="font-semibold text-gray-900">A Record</p>
+                        <p className="text-gray-500 mt-0.5">
+                          {dnsResult.aRecordOk ? `→ ${dnsResult.aRecordIp}` :
+                           dnsResult.aRecordIp ? `${dnsResult.aRecordIp}` : "Not found"}
                         </p>
                       </div>
                     </div>
@@ -322,10 +355,10 @@ export default function DomainSetupWizard({ open, onClose, domain, mode, onVerif
                         ? <CheckCircle2 className="w-4 h-4 text-green-500 shrink-0 mt-0.5" />
                         : <WifiOff className="w-4 h-4 text-gray-400 shrink-0 mt-0.5" />}
                       <div className="text-xs">
-                        <p className="font-semibold text-gray-900">TXT Record</p>
+                        <p className="font-semibold text-gray-900">TXT</p>
                         <p className="text-gray-500 mt-0.5">
-                          {dnsResult.txtOk ? "Token verified" :
-                           dnsResult.txtFound ? "Found but token mismatch" : "Not found"}
+                          {dnsResult.txtOk ? "Verified" :
+                           dnsResult.txtFound ? "Mismatch" : "Not found"}
                         </p>
                       </div>
                     </div>

@@ -78963,19 +78963,30 @@ var import_express5 = __toESM(require_express2(), 1);
 // src/lib/dns-utils.ts
 import { createHash as createHash2 } from "crypto";
 import dns from "dns/promises";
+var SERVER_IP = process.env.SERVER_IP || "104.218.51.234";
 function getDomainVerifyToken(domainId) {
   return "sniprverify-" + createHash2("sha256").update(domainId + "snipr-dns-verify-2025").digest("hex").slice(0, 16);
 }
 async function checkDomainDns(domainName, token) {
   let cnameOk = false;
   let txtOk = false;
+  let aRecordOk = false;
   let cnameTarget = null;
   let txtFound = null;
+  let aRecordIp = null;
   try {
     const cnames = await dns.resolveCname(domainName);
     cnameTarget = cnames[0] ?? null;
     cnameOk = cnames.some((c) => c.toLowerCase().includes("snipr.sh") || c.toLowerCase().includes("replit"));
   } catch {
+  }
+  if (!cnameOk) {
+    try {
+      const addresses = await dns.resolve4(domainName);
+      aRecordIp = addresses[0] ?? null;
+      aRecordOk = addresses.includes(SERVER_IP);
+    } catch {
+    }
   }
   try {
     const txts = await dns.resolveTxt(`_snipr-verify.${domainName}`);
@@ -78983,7 +78994,15 @@ async function checkDomainDns(domainName, token) {
     txtOk = txts.flat().includes(token);
   } catch {
   }
-  return { cnameOk, cnameTarget, txtOk, txtFound, ready: cnameOk || txtOk };
+  return {
+    cnameOk,
+    cnameTarget,
+    aRecordOk,
+    aRecordIp,
+    txtOk,
+    txtFound,
+    ready: cnameOk || aRecordOk || txtOk
+  };
 }
 
 // src/routes/domains.ts
