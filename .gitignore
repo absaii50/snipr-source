@@ -1,10 +1,11 @@
 # See https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files for more about ignoring files.
 
-# compiled output
-dist
+# compiled output (allow production builds)
+# dist  ← kept for production deploy
 tmp
 out-tsc
 *.tsbuildinfo
+*.map
 .expo
 .expo-shared
 
@@ -56,9 +57,14 @@ Thumbs.db
 # Claude Code
 .claude/
 
-# Next.js build
-.next/
+# Next.js build (allow production build)
+# .next/  ← kept for production deploy
+.next/cache/
 
 # OS files
 .DS_Store
 Thumbs.db
+.next/cache/
+*.pack
+*.pack.gz
+*.pack.gz.old

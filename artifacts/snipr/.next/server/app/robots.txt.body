@@ -1,0 +1,27 @@
+User-Agent: *
+Allow: /
+Allow: /pricing
+Allow: /contact
+Allow: /privacy
+Allow: /terms
+Allow: /cookies
+Allow: /security
+Allow: /login
+Allow: /signup
+Disallow: /dashboard
+Disallow: /links
+Disallow: /analytics
+Disallow: /domains
+Disallow: /pixels
+Disallow: /organize
+Disallow: /conversions
+Disallow: /revenue
+Disallow: /ai
+Disallow: /team
+Disallow: /integrations
+Disallow: /billing
+Disallow: /live
+Disallow: /admin
+
+Host: https://snipr.sh
+Sitemap: https://snipr.sh/sitemap.xml
