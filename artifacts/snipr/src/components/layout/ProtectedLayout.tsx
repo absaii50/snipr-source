@@ -67,8 +67,8 @@ export function ProtectedLayout({ children }: { children: ReactNode }) {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#F8F9FB]">
-        <Loader2 className="w-6 h-6 animate-spin text-[#728DA7]" />
+      <div className="min-h-screen flex items-center justify-center bg-[#EBECF3]">
+        <Loader2 className="w-6 h-6 animate-spin text-[#4F46E5]" />
       </div>
     );
   }
@@ -81,9 +81,9 @@ export function ProtectedLayout({ children }: { children: ReactNode }) {
   }
 
   return (
-    <div className="flex min-h-screen bg-[#F8F9FB] text-[#0A0A0A]">
+    <div className="flex min-h-screen bg-[#EBECF3] text-[#111827]">
       <ProtectedSidebar />
-      <main className="flex-1 flex flex-col min-h-screen overflow-y-auto bg-[#F8F9FB]">
+      <main className="flex-1 flex flex-col min-h-screen overflow-y-auto bg-[#EBECF3]">
         {children}
       </main>
     </div>
