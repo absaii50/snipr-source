@@ -69,5 +69,4 @@ channel = "stable-25_05"
 [userenv]
 
 [userenv.shared]
-PORT = "8080"
 NODE_ENV = "development"
