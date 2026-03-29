@@ -167,7 +167,7 @@ function DataTable({ columns, data, isLoading, renderRow, totalConversions, tota
             </tr>
           ))}
         </tbody>
-        <tfoot className="bg-[#2E2E35] font-bold border-t-2 border-border">
+        <tfoot className="bg-[#FAFAFA] font-bold border-t-2 border-border">
           <tr>
             <td className="px-6 py-5 text-foreground">Total Summary</td>
             <td className="px-6 py-5 text-right">{totalConversions?.toLocaleString()}</td>

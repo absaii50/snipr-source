@@ -4,10 +4,7 @@ import { ProtectedLayout } from "@/components/layout/ProtectedLayout";
 import { useGetDomains, useCreateDomain, useDeleteDomain, getGetDomainsQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card } from "@/components/ui/card";
-import { Globe, Plus, Trash2, CheckCircle2, AlertCircle, Loader2, Settings2 } from "lucide-react";
+import { Globe, Plus, Trash2, CheckCircle2, AlertCircle, Loader2, Settings2, ExternalLink, X } from "lucide-react";
 import { format } from "date-fns";
 import DomainSetupWizard from "@/components/DomainSetupWizard";
 
@@ -15,10 +12,10 @@ export default function Domains() {
   const { data: domains, isLoading } = useGetDomains();
   const createMutation = useCreateDomain();
   const deleteMutation = useDeleteDomain();
-  
+
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  
+
   const [isAdding, setIsAdding] = useState(false);
   const [newDomain, setNewDomain] = useState("");
   const [wizardDomain, setWizardDomain] = useState<{ id: string; domain: string; verified: boolean } | null>(null);
@@ -32,7 +29,7 @@ export default function Domains() {
         queryClient.invalidateQueries({ queryKey: getGetDomainsQueryKey() });
         setNewDomain("");
         setIsAdding(false);
-        setWizardDomain(created);
+        setWizardDomain({ id: created.id, domain: created.domain, verified: created.verified });
       },
       onError: (err: any) => {
         toast({ title: "Failed to add domain", description: err.message, variant: "destructive" });
@@ -42,7 +39,7 @@ export default function Domains() {
 
   const handleDelete = (id: string) => {
     if (!confirm("Remove this custom domain? This might break existing links using it.")) return;
-    
+
     deleteMutation.mutate({ id }, {
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: getGetDomainsQueryKey() });
@@ -52,122 +49,183 @@ export default function Domains() {
     });
   };
 
+  const verified = domains?.filter((d) => d.verified) ?? [];
+  const pending = domains?.filter((d) => !d.verified) ?? [];
+
   return (
     <ProtectedLayout>
-      <div className="p-8 max-w-5xl mx-auto w-full">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+      <div className="px-6 lg:px-8 py-6 max-w-[900px] mx-auto w-full">
+
+        {/* Header */}
+        <div className="flex items-start justify-between gap-4 mb-6">
           <div>
-            <h1 className="text-3xl font-display font-extrabold tracking-tight">Custom Domains</h1>
-            <p className="text-muted-foreground mt-1 text-lg">Use your own branding for short links.</p>
+            <h1 className="text-[22px] font-bold tracking-tight text-[#0A0A0A]">Custom Domains</h1>
+            <p className="text-[13px] text-[#9CA3AF] mt-1">Use your own branding for short links</p>
           </div>
           {!isAdding && (
-            <Button onClick={() => setIsAdding(true)} className="rounded-xl h-11 px-6 shadow-lg shadow-primary/20 hover:-translate-y-0.5 transition-all">
-              <Plus className="w-5 h-5 mr-2" /> Add Domain
-            </Button>
+            <button
+              onClick={() => setIsAdding(true)}
+              className="inline-flex items-center gap-2 bg-[#0A0A0A] hover:bg-[#1F1F1F] active:scale-[0.97] text-white text-[13px] font-semibold px-4 py-2.5 rounded-xl transition-all shadow-sm shrink-0"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              Add Domain
+            </button>
           )}
         </div>
 
+        {/* Add Domain Form */}
         {isAdding && (
-          <Card className="mb-8 p-6 rounded-2xl border-primary/20 shadow-lg shadow-primary/5 animate-in slide-in-from-top-4 fade-in duration-300">
-            <form onSubmit={handleAdd} className="flex flex-col gap-4">
-              <div>
-                <label htmlFor="domain" className="block text-sm font-semibold mb-2">Domain Name</label>
-                <Input 
-                  id="domain"
-                  autoFocus
-                  placeholder="go.yourcompany.com" 
-                  value={newDomain}
-                  onChange={(e) => setNewDomain(e.target.value)}
-                  className="max-w-md h-12 rounded-xl text-base bg-background shadow-sm"
-                  disabled={createMutation.isPending}
-                />
-              </div>
-              <div className="flex gap-3">
-                <Button type="submit" disabled={createMutation.isPending || !newDomain.trim()} className="rounded-xl h-11 px-6">
-                  {createMutation.isPending ? "Adding..." : "Add Domain"}
-                </Button>
-                <Button type="button" variant="ghost" onClick={() => setIsAdding(false)} disabled={createMutation.isPending} className="rounded-xl h-11">
-                  Cancel
-                </Button>
-              </div>
+          <div className="bg-white border border-[#ECEDF0] rounded-2xl p-5 mb-5 animate-in slide-in-from-top-2 fade-in duration-200">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-[14px] font-semibold text-[#0A0A0A]">Add a custom domain</h3>
+              <button onClick={() => setIsAdding(false)} className="p-1 rounded-lg hover:bg-[#F3F4F6] transition-colors">
+                <X className="w-4 h-4 text-[#9CA3AF]" />
+              </button>
+            </div>
+            <form onSubmit={handleAdd} className="flex gap-3">
+              <input
+                autoFocus
+                placeholder="go.yourcompany.com"
+                value={newDomain}
+                onChange={(e) => setNewDomain(e.target.value)}
+                className="flex-1 px-4 py-2.5 rounded-xl border border-[#E5E7EB] bg-[#FAFAFA] text-[14px] text-[#0A0A0A] placeholder:text-[#C0C0C8] outline-none focus:border-[#0A0A0A] focus:ring-2 focus:ring-[#0A0A0A]/5 transition-all"
+                disabled={createMutation.isPending}
+              />
+              <button
+                type="submit"
+                disabled={createMutation.isPending || !newDomain.trim()}
+                className="inline-flex items-center gap-2 bg-[#0A0A0A] hover:bg-[#1F1F1F] text-white text-[13px] font-semibold px-5 py-2.5 rounded-xl transition-all disabled:opacity-40 shrink-0"
+              >
+                {createMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                {createMutation.isPending ? "Adding..." : "Add"}
+              </button>
             </form>
-          </Card>
+            <p className="text-[11px] text-[#9CA3AF] mt-2">Enter your domain without protocol (e.g., go.example.com)</p>
+          </div>
         )}
 
-        <div className="space-y-4">
-          {isLoading ? (
-            <div className="py-20 flex justify-center"><Loader2 className="w-8 h-8 animate-spin text-primary/50" /></div>
-          ) : !domains || domains.length === 0 ? (
-            <div className="py-24 flex flex-col items-center justify-center text-center bg-card rounded-3xl border border-border shadow-sm">
-              <div className="w-20 h-20 bg-primary/5 text-primary rounded-full flex items-center justify-center mb-6">
-                <Globe className="w-10 h-10" />
-              </div>
-              <h3 className="text-xl font-bold font-display mb-2">No custom domains</h3>
-              <p className="text-muted-foreground max-w-md mb-6">Add your first custom domain to build brand trust and increase click-through rates.</p>
-              <Button onClick={() => setIsAdding(true)} variant="outline" className="rounded-xl h-11 px-6">
-                Add Your First Domain
-              </Button>
-            </div>
-          ) : (
-            domains.map((domain) => (
-              <Card key={domain.id} className="p-6 rounded-2xl border-border shadow-sm hover:shadow-md transition-shadow group">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                  <div className="flex items-start gap-4">
-                    <div className={`p-3 rounded-xl shrink-0 mt-1 md:mt-0 ${domain.verified ? 'bg-green-500/10 text-green-600' : 'bg-amber-500/10 text-amber-600'}`}>
-                      <Globe className="w-6 h-6" />
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-3 mb-1">
-                        <h3 className="text-xl font-bold font-display">{domain.domain}</h3>
-                        {domain.verified ? (
-                          <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-green-500/10 text-green-600">
-                            <CheckCircle2 className="w-3.5 h-3.5" /> Verified
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600">
-                            <AlertCircle className="w-3.5 h-3.5" /> Unverified
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-sm text-muted-foreground">Added on {format(new Date(domain.createdAt), "MMMM d, yyyy")}</p>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center gap-3 self-end md:self-auto">
-                    <Button 
-                      variant="ghost" 
-                      className="text-destructive hover:text-destructive hover:bg-destructive/10 rounded-xl"
-                      onClick={() => handleDelete(domain.id)}
-                      disabled={deleteMutation.isPending}
-                    >
-                      <Trash2 className="w-4 h-4 mr-2" /> Remove
-                    </Button>
-                  </div>
-                </div>
+        {/* Loading */}
+        {isLoading && (
+          <div className="py-24 flex justify-center">
+            <Loader2 className="w-6 h-6 animate-spin text-[#D1D5DB]" />
+          </div>
+        )}
 
-                {!domain.verified && (
-                  <div className="mt-6 p-4 bg-[#2E2E35] rounded-xl border border-border/60 flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-3">
-                      <AlertCircle className="w-5 h-5 text-amber-500 shrink-0" />
-                      <div>
-                        <p className="font-semibold text-foreground text-sm">DNS setup required</p>
-                        <p className="text-muted-foreground text-xs">Configure your DNS records to verify this domain.</p>
+        {/* Empty State */}
+        {!isLoading && (!domains || domains.length === 0) && (
+          <div className="py-20 flex flex-col items-center justify-center text-center bg-white rounded-2xl border border-[#ECEDF0]">
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-50 flex items-center justify-center mb-5">
+              <Globe className="w-7 h-7 text-blue-400" />
+            </div>
+            <h3 className="text-lg font-bold text-[#0A0A0A] mb-1">No custom domains</h3>
+            <p className="text-[13px] text-[#9CA3AF] max-w-sm mb-5">Add your own domain to build brand trust and increase click-through rates on your short links.</p>
+            <button
+              onClick={() => setIsAdding(true)}
+              className="inline-flex items-center gap-2 bg-[#0A0A0A] hover:bg-[#1F1F1F] text-white text-[13px] font-semibold px-5 py-2.5 rounded-xl transition-all"
+            >
+              <Plus className="w-4 h-4" />
+              Add your first domain
+            </button>
+          </div>
+        )}
+
+        {/* Domain List */}
+        {!isLoading && domains && domains.length > 0 && (
+          <div className="space-y-3">
+            {/* Pending domains first */}
+            {pending.length > 0 && (
+              <div className="space-y-3">
+                {pending.map((domain) => (
+                  <div key={domain.id} className="bg-white border border-amber-200 rounded-2xl overflow-hidden">
+                    <div className="p-5">
+                      <div className="flex items-center justify-between gap-4">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center shrink-0">
+                            <Globe className="w-5 h-5 text-amber-500" />
+                          </div>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                              <h3 className="text-[15px] font-bold text-[#0A0A0A] truncate">{domain.domain}</h3>
+                              <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-600">
+                                <AlertCircle className="w-3 h-3" />
+                                PENDING
+                              </span>
+                            </div>
+                            <p className="text-[12px] text-[#9CA3AF]">Added {format(new Date(domain.createdAt), "MMM d, yyyy")}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <button
+                            onClick={() => setWizardDomain({ id: domain.id, domain: domain.domain, verified: domain.verified })}
+                            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#0A0A0A] hover:bg-[#1F1F1F] text-white text-[12px] font-semibold transition-all active:scale-[0.97]"
+                          >
+                            <Settings2 className="w-3.5 h-3.5" />
+                            Complete Setup
+                          </button>
+                          <button
+                            onClick={() => handleDelete(domain.id)}
+                            disabled={deleteMutation.isPending}
+                            className="p-2 rounded-xl hover:bg-red-50 text-[#D1D5DB] hover:text-red-500 transition-all"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
                       </div>
                     </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="rounded-xl shrink-0"
-                      onClick={() => setWizardDomain(domain)}
-                    >
-                      <Settings2 className="w-3.5 h-3.5 mr-1.5" /> Complete Setup
-                    </Button>
+                    <div className="px-5 py-3 bg-amber-50/50 border-t border-amber-100 flex items-center gap-2">
+                      <AlertCircle className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                      <p className="text-[11px] text-amber-700">DNS configuration required. Click "Complete Setup" to see instructions.</p>
+                    </div>
                   </div>
-                )}
-              </Card>
-            ))
-          )}
-        </div>
+                ))}
+              </div>
+            )}
+
+            {/* Verified domains */}
+            {verified.length > 0 && (
+              <div className="space-y-3">
+                {verified.map((domain) => (
+                  <div key={domain.id} className="bg-white border border-[#ECEDF0] rounded-2xl p-5 hover:shadow-sm transition-all">
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center shrink-0">
+                          <Globe className="w-5 h-5 text-emerald-500" />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <h3 className="text-[15px] font-bold text-[#0A0A0A] truncate">{domain.domain}</h3>
+                            <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600">
+                              <CheckCircle2 className="w-3 h-3" />
+                              VERIFIED
+                            </span>
+                          </div>
+                          <p className="text-[12px] text-[#9CA3AF]">Added {format(new Date(domain.createdAt), "MMM d, yyyy")}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <a
+                          href={`https://${domain.domain}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="p-2 rounded-xl hover:bg-[#F3F4F6] text-[#D1D5DB] hover:text-[#6B7280] transition-all"
+                        >
+                          <ExternalLink className="w-4 h-4" />
+                        </a>
+                        <button
+                          onClick={() => handleDelete(domain.id)}
+                          disabled={deleteMutation.isPending}
+                          className="p-2 rounded-xl hover:bg-red-50 text-[#D1D5DB] hover:text-red-500 transition-all"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {wizardDomain && (

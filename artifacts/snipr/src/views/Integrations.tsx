@@ -234,7 +234,7 @@ export default function Integrations() {
 
           {/* Header */}
           <div className="mb-10">
-            <p className="text-[11px] font-semibold text-[#5A5C60] uppercase tracking-[0.14em] mb-2">Integrations</p>
+            <p className="text-[11px] font-semibold text-[#9CA3AF] uppercase tracking-[0.14em] mb-2">Integrations</p>
             <h1 className="font-display text-[34px] font-bold text-[#0A0A0A] tracking-[-0.025em] leading-[1.1] mb-3">
               Connect your tools
             </h1>
@@ -287,10 +287,10 @@ export default function Integrations() {
                           <div className="flex-1 min-w-0">
                             <span className="text-[13px] font-semibold text-[#0A0A0A]">{int.name}</span>
                             {int.config.webhookUrl && (
-                              <span className="block text-[11px] text-[#5A5C60] truncate max-w-xs mt-0.5">{int.config.webhookUrl}</span>
+                              <span className="block text-[11px] text-[#9CA3AF] truncate max-w-xs mt-0.5">{int.config.webhookUrl}</span>
                             )}
                             {int.config.measurementId && (
-                              <span className="block text-[11px] text-[#5A5C60] mt-0.5">{int.config.measurementId}</span>
+                              <span className="block text-[11px] text-[#9CA3AF] mt-0.5">{int.config.measurementId}</span>
                             )}
                           </div>
 
@@ -310,12 +310,12 @@ export default function Integrations() {
 
                           {/* Actions */}
                           <Button size="icon" variant="ghost" className="h-7 w-7 rounded-lg" onClick={() => openEdit(int)} title="Edit">
-                            <Pencil className="w-3.5 h-3.5 text-[#5A5C60]" />
+                            <Pencil className="w-3.5 h-3.5 text-[#9CA3AF]" />
                           </Button>
                           <Button
                             size="sm"
                             variant="ghost"
-                            className="h-7 rounded-lg text-[12px] text-[#5A5C60] px-2.5"
+                            className="h-7 rounded-lg text-[12px] text-[#9CA3AF] px-2.5"
                             onClick={() => { setTestResult(null); testMutation.mutate(int.id); }}
                             disabled={testMutation.isPending}
                           >
@@ -342,10 +342,10 @@ export default function Integrations() {
 
           {/* Empty state */}
           {!isLoading && integrations.length === 0 && (
-            <div className="mt-8 bg-[#2E2E35] border border-[#4A4A52] rounded-2xl p-10 text-center">
-              <Plug className="w-8 h-8 text-[#4A4A52] mx-auto mb-3" />
+            <div className="mt-8 bg-[#FAFAFA] border border-[#E5E7EB] rounded-2xl p-10 text-center">
+              <Plug className="w-8 h-8 text-[#E5E7EB] mx-auto mb-3" />
               <h3 className="font-display font-bold text-[#EFEFF0] text-lg mb-1">No integrations yet</h3>
-              <p className="text-[14px] text-[#5A5C60]">Connect a tool above to start receiving click events in real time.</p>
+              <p className="text-[14px] text-[#9CA3AF]">Connect a tool above to start receiving click events in real time.</p>
             </div>
           )}
         </div>
@@ -387,12 +387,12 @@ export default function Integrations() {
                     placeholder={field.placeholder}
                     className="h-9 text-sm font-mono"
                   />
-                  {field.hint && <p className="text-[11px] text-[#5A5C60] mt-1.5">{field.hint}</p>}
+                  {field.hint && <p className="text-[11px] text-[#9CA3AF] mt-1.5">{field.hint}</p>}
                 </div>
               ))}
 
               {/* Docs link */}
-              <p className="text-[12px] text-[#5A5C60]">
+              <p className="text-[12px] text-[#9CA3AF]">
                 Need help?{" "}
                 <a href={INTEGRATION_META[configuring.type].docsUrl} target="_blank" rel="noopener noreferrer" className="text-[#728DA7] underline underline-offset-2">
                   View setup guide

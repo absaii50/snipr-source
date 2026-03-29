@@ -107,7 +107,7 @@ export default function LinkAnalytics() {
               <h1 className="text-3xl font-display font-bold tracking-tight text-foreground truncate">
                 /{link.slug}
               </h1>
-              <div className={`px-2.5 py-1 text-xs font-semibold rounded-full shrink-0 ${link.enabled ? 'bg-green-500/10 text-green-600' : 'bg-[#4A4A52]/30 text-[#5A5C60]'}`}>
+              <div className={`px-2.5 py-1 text-xs font-semibold rounded-full shrink-0 ${link.enabled ? 'bg-green-500/10 text-green-600' : 'bg-[#E5E7EB]/30 text-[#9CA3AF]'}`}>
                 {link.enabled ? 'Active' : 'Disabled'}
               </div>
             </div>
@@ -298,7 +298,7 @@ export default function LinkAnalytics() {
                              <QrCode className="w-3.5 h-3.5" /> QR
                            </span>
                         ) : (
-                           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[#4A4A52] text-[#5A5C60] text-xs font-semibold">
+                           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[#E5E7EB] text-[#9CA3AF] text-xs font-semibold">
                              <Globe className="w-3.5 h-3.5" /> Link
                            </span>
                         )}
@@ -378,7 +378,7 @@ function TopList({ title, data, isLoading, compact = false }: TopListProps) {
 
   return (
     <div className="bg-card rounded-2xl border border-border overflow-hidden shadow-sm flex flex-col h-full">
-      <div className="px-5 py-4 border-b border-border/50 bg-[#2E2E35]">
+      <div className="px-5 py-4 border-b border-border/50 bg-[#FAFAFA]">
         <h3 className="font-semibold font-display text-base">{title}</h3>
       </div>
       <div className="p-5 flex-1">

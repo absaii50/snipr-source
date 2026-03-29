@@ -147,7 +147,7 @@ export default function Team() {
                           <Mail className="w-3.5 h-3.5" /> Invited
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-[#4A4A52] text-[#C3C3C1]">
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-[#E5E7EB] text-[#C3C3C1]">
                           Removed
                         </span>
                       )}

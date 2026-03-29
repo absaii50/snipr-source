@@ -15,11 +15,11 @@ import { Zap, Plus, Trash2, Edit2, Loader2, Code } from "lucide-react";
 import type { Pixel } from "@workspace/api-client-react";
 
 const PLATFORM_COLORS: Record<string, string> = {
-  meta: "text-blue-400 bg-blue-500/10 border-[#4A4A52]",
-  google_ads: "text-red-400 bg-red-500/10 border-[#4A4A52]",
-  linkedin: "text-sky-400 bg-sky-500/10 border-[#4A4A52]",
-  tiktok: "text-pink-400 bg-pink-500/10 border-[#4A4A52]",
-  custom: "text-violet-400 bg-violet-500/10 border-[#4A4A52]",
+  meta: "text-blue-400 bg-blue-500/10 border-[#E5E7EB]",
+  google_ads: "text-red-400 bg-red-500/10 border-[#E5E7EB]",
+  linkedin: "text-sky-400 bg-sky-500/10 border-[#E5E7EB]",
+  tiktok: "text-pink-400 bg-pink-500/10 border-[#E5E7EB]",
+  custom: "text-violet-400 bg-violet-500/10 border-[#E5E7EB]",
 };
 
 const PLATFORM_LABELS: Record<string, string> = {

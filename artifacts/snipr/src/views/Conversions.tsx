@@ -72,7 +72,7 @@ export default function Conversions() {
 
         {/* Table */}
         <div className="bg-card rounded-2xl border border-border overflow-hidden shadow-sm">
-          <div className="px-6 py-5 border-b border-border bg-[#2E2E35] flex items-center justify-between">
+          <div className="px-6 py-5 border-b border-[#ECEDF0] bg-[#FAFAFA] flex items-center justify-between">
             <h3 className="font-semibold font-display text-lg">Recent Conversions</h3>
           </div>
           
@@ -100,7 +100,7 @@ export default function Conversions() {
                         <TerminalSquare className="w-12 h-12 text-muted-foreground/50 mb-4" />
                         <h4 className="text-lg font-bold mb-2">No conversions tracked yet</h4>
                         <p className="text-muted-foreground mb-6">Start sending conversion events to your API endpoint to see data here.</p>
-                        <div className="w-full bg-[#080708] text-[#EFEFF0] p-4 rounded-xl text-left overflow-x-auto text-xs font-mono border border-[#4A4A52]">
+                        <div className="w-full bg-[#1a1a2e] text-[#EFEFF0] p-4 rounded-xl text-left overflow-x-auto text-xs font-mono border border-[#2a2a3e]">
                           <code>
                             <span className="text-pink-400">curl</span> -X POST /api/conversions \<br/>
                             {'  '}-H <span className="text-green-400">"Content-Type: application/json"</span> \<br/>
