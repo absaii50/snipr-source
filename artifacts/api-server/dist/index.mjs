@@ -79015,39 +79015,151 @@ import { createHash as createHash2 } from "crypto";
 import dns from "dns/promises";
 var SERVER_IP = process.env.SERVER_IP || "163.245.216.153";
 var CNAME_TARGET = process.env.CNAME_TARGET || "snipr.sh";
+var RESOLVERS = [
+  { name: "Google", ip: "8.8.8.8", flag: "\u{1F1FA}\u{1F1F8}" },
+  { name: "Cloudflare", ip: "1.1.1.1", flag: "\u{1F7E0}" },
+  { name: "OpenDNS", ip: "208.67.222.222", flag: "\u{1F535}" },
+  { name: "Quad9", ip: "9.9.9.9", flag: "\u{1F7E3}" }
+];
 function getDomainVerifyToken(domainId) {
   return "sniprverify-" + createHash2("sha256").update(domainId + "snipr-dns-verify-2025").digest("hex").slice(0, 16);
 }
-async function checkDomainDns(domainName, token) {
-  let cnameOk = false;
-  let txtOk = false;
-  let aRecordOk = false;
-  let cnameTarget = null;
-  let txtFound = null;
-  let aRecordIp = null;
+var RESOLVER_TIMEOUT_MS = 4e3;
+async function resolveWithServer(serverIp, domainName, rrtype) {
+  const resolver = new dns.Resolver({ timeout: RESOLVER_TIMEOUT_MS });
+  resolver.setServers([serverIp]);
+  const query = async () => {
+    if (rrtype === "CNAME") {
+      const cnames = await resolver.resolveCname(domainName);
+      return { records: cnames.map((c) => [c]), ttl: null };
+    }
+    if (rrtype === "A") {
+      const addresses = await resolver.resolve4(domainName, { ttl: true });
+      return { records: addresses.map((a) => [a.address]), ttl: addresses[0]?.ttl ?? null };
+    }
+    if (rrtype === "TXT") {
+      const txts = await resolver.resolveTxt(domainName);
+      return { records: txts, ttl: null };
+    }
+    return { records: [], ttl: null };
+  };
+  const timeout = new Promise(
+    (resolve) => setTimeout(() => resolve({ records: [], ttl: null }), RESOLVER_TIMEOUT_MS + 500)
+  );
   try {
-    const cnames = await dns.resolveCname(domainName);
-    cnameTarget = cnames[0] ?? null;
-    cnameOk = cnames.some((c) => {
-      const lc = c.toLowerCase().replace(/\.$/, "");
-      return lc === CNAME_TARGET.toLowerCase() || lc.endsWith(".replit.app") || lc.endsWith(".replit.dev");
-    });
+    return await Promise.race([query(), timeout]);
   } catch {
+    return { records: [], ttl: null };
   }
-  if (!cnameOk) {
-    try {
-      const addresses = await dns.resolve4(domainName);
-      aRecordIp = addresses[0] ?? null;
-      aRecordOk = addresses.includes(SERVER_IP);
-    } catch {
+}
+function classifyError(found, expected, rrtype) {
+  if (found === null) return "NXDOMAIN";
+  if (rrtype === "CNAME" || rrtype === "A") {
+    const lc = found.toLowerCase().replace(/\.$/, "");
+    const expectedLc = expected.toLowerCase();
+    if (lc !== expectedLc && !lc.endsWith(".replit.app") && !lc.endsWith(".replit.dev")) {
+      return "WRONG_TARGET";
     }
   }
-  try {
-    const txts = await dns.resolveTxt(`_snipr-verify.${domainName}`);
-    txtFound = txts.flat()[0] ?? null;
-    txtOk = txts.flat().includes(token);
-  } catch {
+  return null;
+}
+function isCnameOk(cname) {
+  const lc = cname.toLowerCase().replace(/\.$/, "");
+  return lc === CNAME_TARGET.toLowerCase() || lc.endsWith(".replit.app") || lc.endsWith(".replit.dev");
+}
+function buildDiagnosis(resolvers, checkType) {
+  const allNotFound = resolvers.every((r) => r.error === "NXDOMAIN");
+  const someOk = resolvers.some((r) => r.ok);
+  const allOk = resolvers.every((r) => r.ok);
+  const wrongTarget = resolvers.filter((r) => r.error === "WRONG_TARGET");
+  if (allOk) return { diagnosis: null, suggestions: [] };
+  if (allNotFound) {
+    return {
+      diagnosis: "No DNS record found yet on any resolver.",
+      suggestions: [
+        checkType === "cname" ? "Make sure you added a CNAME record \u2014 not an A record \u2014 for the exact hostname shown." : "Make sure you added an A record pointing to the correct IP address.",
+        "Double-check the Name/Host field matches exactly (copy-paste from above).",
+        "DNS changes can take 5\u201330 minutes. Wait a moment and re-check.",
+        "Some registrars have a 'Save' or 'Publish' step \u2014 make sure you confirmed the change."
+      ]
+    };
   }
+  if (wrongTarget.length > 0) {
+    const found = wrongTarget[0].found;
+    return {
+      diagnosis: `Record found but pointing to wrong target: ${found}`,
+      suggestions: [
+        `Update the ${checkType === "cname" ? "CNAME value" : "A record IP"} to exactly: ${checkType === "cname" ? CNAME_TARGET : SERVER_IP}`,
+        "Delete the existing record first, then re-add it with the correct value.",
+        "Make sure no other conflicting records exist (e.g. old A records)."
+      ]
+    };
+  }
+  if (someOk && !allOk) {
+    const okCount = resolvers.filter((r) => r.ok).length;
+    return {
+      diagnosis: `Propagating \u2014 ${okCount}/${resolvers.length} resolvers see the record so far.`,
+      suggestions: [
+        "DNS is spreading across the internet \u2014 this is normal and usually completes within 30 minutes.",
+        "You can click Verify & Activate once all resolvers show green."
+      ]
+    };
+  }
+  return { diagnosis: "DNS records found but not yet valid.", suggestions: [] };
+}
+async function checkDomainDns(domainName, token) {
+  const parts = domainName.split(".");
+  const isRootDomain = parts.length <= 2;
+  const checkType = isRootDomain ? "a-record" : "cname";
+  const txtName = `_snipr-verify.${domainName}`;
+  const [resolverResults, rawTxtResults] = await Promise.all([
+    // Primary record check (CNAME or A) across all resolvers
+    Promise.all(
+      RESOLVERS.map(async (r) => {
+        if (checkType === "cname") {
+          const { records } = await resolveWithServer(r.ip, domainName, "CNAME");
+          const found = records[0]?.[0]?.replace(/\.$/, "") ?? null;
+          const ok = found ? isCnameOk(found) : false;
+          const error40 = ok ? null : classifyError(found, CNAME_TARGET, "CNAME");
+          return { ...r, ok, found, error: error40, ttl: null };
+        } else {
+          const { records, ttl } = await resolveWithServer(r.ip, domainName, "A");
+          const found = records[0]?.[0] ?? null;
+          const ok = found === SERVER_IP;
+          const error40 = ok ? null : classifyError(found, SERVER_IP, "A");
+          return { ...r, ok, found, error: error40, ttl };
+        }
+      })
+    ),
+    // TXT verification across first 2 resolvers
+    Promise.all(
+      RESOLVERS.slice(0, 2).map(async (r) => {
+        const { records } = await resolveWithServer(r.ip, txtName, "TXT");
+        const flat = records.flat();
+        const found = flat[0] ?? null;
+        const ok = flat.includes(token);
+        return { name: r.name, ip: r.ip, flag: r.flag, ok, found };
+      })
+    )
+  ]);
+  let txtOk = false;
+  let txtFound = null;
+  const txtResolverResults = rawTxtResults.map((r) => {
+    if (r.ok) {
+      txtOk = true;
+      txtFound = r.found;
+    }
+    if (!txtFound && r.found) txtFound = r.found;
+    return r;
+  });
+  const cnameOk = checkType === "cname" && resolverResults.some((r) => r.ok);
+  const aRecordOk = checkType === "a-record" && resolverResults.some((r) => r.ok);
+  const cnameTarget = checkType === "cname" ? resolverResults.find((r) => r.found)?.found ?? null : null;
+  const aRecordIp = checkType === "a-record" ? resolverResults.find((r) => r.found)?.found ?? null : null;
+  const ready = cnameOk || aRecordOk || txtOk;
+  const okCount = resolverResults.filter((r) => r.ok).length;
+  const propagation = Math.round(okCount / RESOLVERS.length * 100);
+  const { diagnosis, suggestions } = buildDiagnosis(resolverResults, checkType);
   return {
     cnameOk,
     cnameTarget,
@@ -79055,7 +79167,15 @@ async function checkDomainDns(domainName, token) {
     aRecordIp,
     txtOk,
     txtFound,
-    ready: cnameOk || aRecordOk || txtOk
+    ready,
+    checkType,
+    expectedTarget: checkType === "cname" ? CNAME_TARGET : SERVER_IP,
+    propagation,
+    resolvers: resolverResults,
+    txtResolvers: txtResolverResults,
+    diagnosis,
+    suggestions,
+    checkedAt: (/* @__PURE__ */ new Date()).toISOString()
   };
 }
 
