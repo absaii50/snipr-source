@@ -12,7 +12,8 @@ import {
 import {
   LinkIcon, Activity, Sparkles, Loader2, ArrowRight,
   Plus, BarChart3, Zap, TrendingUp, MousePointerClick,
-  ExternalLink, Users, RefreshCw, ArrowUpRight, ArrowDownRight, Sun,
+  ExternalLink, RefreshCw, ArrowUpRight, ArrowDownRight,
+  Globe, Copy, CheckCircle2, Rocket,
 } from "lucide-react";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import Link from "next/link";
@@ -87,7 +88,7 @@ export default function Dashboard() {
     if (!timeseriesResult.data) return [];
     return timeseriesResult.data.map((pt) => ({
       ...pt,
-      day: format(parseISO(pt.time), "MMM d"),
+      day: format(parseISO(pt.time), "EEE"),
     }));
   }, [timeseriesResult.data]);
 
@@ -118,362 +119,306 @@ export default function Dashboard() {
     }
   };
 
+  const showOnboarding = !isLoading && totalLinks === 0;
+
   return (
     <ProtectedLayout>
-      <div className="px-7 py-7 max-w-[1200px] mx-auto w-full space-y-6">
+      <div className="px-6 lg:px-8 py-6 max-w-[1140px] mx-auto w-full space-y-5">
 
-        {/* ── Page header ───────────────────────────────────────────── */}
-        <div className="flex items-center justify-between gap-4">
+        {/* ── Header ───────────────────────────────────────────── */}
+        <div className="flex items-start justify-between gap-4">
           <div>
-            <p className="text-[11px] font-semibold tracking-[0.2em] uppercase text-[#728DA7] mb-1" suppressHydrationWarning>
+            <h1 className="text-[24px] font-bold tracking-tight text-[#0A0A0A] leading-tight" suppressHydrationWarning>
               {mounted ? getGreeting() : "Welcome"}, {firstName || "there"}
-            </p>
-            <h1 className="text-[22px] font-bold tracking-tight text-[#0A0A0A] leading-snug">
-              Dashboard
             </h1>
-            <p className="text-[13px] text-[#9090A0] mt-0.5" suppressHydrationWarning>
-              {mounted ? format(new Date(), "EEEE, MMMM d") : ""} · Here's how your links are performing.
+            <p className="text-[13px] text-[#9CA3AF] mt-1" suppressHydrationWarning>
+              {mounted ? format(new Date(), "EEEE, MMMM d") : ""} &middot; Here&apos;s your overview
             </p>
           </div>
           <Link href="/links">
-            <button className="inline-flex items-center gap-2 bg-[#0A0A0A] hover:bg-[#1A1A2E] active:scale-[0.97] text-white text-[13px] font-semibold px-4 py-2.5 rounded-xl transition-all shadow-sm shrink-0">
+            <button className="inline-flex items-center gap-2 bg-[#0A0A0A] hover:bg-[#1F1F1F] active:scale-[0.97] text-white text-[13px] font-semibold px-4 py-2.5 rounded-xl transition-all shadow-sm shrink-0">
               <Plus className="w-3.5 h-3.5" />
               New Link
             </button>
           </Link>
         </div>
 
-        {/* ── Quick Stats strip ─────────────────────────────────────── */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
-          <KpiCard
-            label="Today's Clicks"
-            value={todayClicks}
-            icon={<Sun className="w-4 h-4" />}
-            accent="#E07B30"
-            bgAccent="#FEF3E8"
-            sublabel="Since midnight"
-          />
-          <KpiCard
-            label="7-Day Clicks"
-            value={stats?.totalClicks ?? null}
-            icon={<MousePointerClick className="w-4 h-4" />}
-            accent="#2563EB"
-            bgAccent="#EFF6FF"
-            delta={clickDelta}
-          />
-          <KpiCard
-            label="Total Links"
-            value={isLoading ? null : totalLinks}
-            icon={<LinkIcon className="w-4 h-4" />}
-            accent="#728DA7"
-            bgAccent="#EEF3F7"
-            sublabel={isLoading ? null : `${activeLinks} active`}
-          />
-          <KpiCard
-            label="Active Links"
-            value={isLoading ? null : activeLinks}
-            icon={<Activity className="w-4 h-4" />}
-            accent="#2E9A72"
-            bgAccent="#E8F7F1"
-            sublabel={isLoading || totalLinks === 0 ? null : `${Math.round((activeLinks / totalLinks) * 100)}% of total`}
-          />
+        {/* ── KPI Cards ────────────────────────────────────────── */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <KpiCard label="Today" value={todayClicks} icon={<MousePointerClick className="w-4 h-4" />} gradient="from-amber-500 to-orange-500" sublabel="clicks today" />
+          <KpiCard label="This Week" value={stats?.totalClicks ?? null} icon={<TrendingUp className="w-4 h-4" />} gradient="from-blue-500 to-indigo-500" delta={clickDelta} />
+          <KpiCard label="Total Links" value={isLoading ? null : totalLinks} icon={<LinkIcon className="w-4 h-4" />} gradient="from-[#728DA7] to-[#5A7A94]" sublabel={isLoading ? undefined : `${activeLinks} active`} />
+          <KpiCard label="Active" value={isLoading ? null : activeLinks} icon={<Activity className="w-4 h-4" />} gradient="from-emerald-500 to-green-600" sublabel={isLoading || totalLinks === 0 ? undefined : `${Math.round((activeLinks / totalLinks) * 100)}% live`} />
         </div>
 
-        {/* ── Click trend chart ──────────────────────────────────────── */}
-        {timeseries.length > 0 && (
-          <div className="bg-white border border-[#EBEBF0] rounded-2xl overflow-hidden shadow-[0_1px_4px_rgba(0,0,0,0.04)]">
-            <div className="px-5 pt-5 pb-3 flex items-center justify-between">
-              <div>
-                <h3 className="font-semibold text-[14px] text-[#0A0A0A] flex items-center gap-2">
-                  <TrendingUp className="w-4 h-4 text-[#728DA7]" />
-                  Clicks — Last 7 Days
-                </h3>
-                {clickDelta !== null && (
-                  <p className={`mt-0.5 text-[12px] font-semibold flex items-center gap-1 ${clickDelta >= 0 ? "text-[#2E9A72]" : "text-[#E05050]"}`}>
-                    {clickDelta >= 0 ? <ArrowUpRight className="w-3.5 h-3.5" /> : <ArrowDownRight className="w-3.5 h-3.5" />}
-                    {Math.abs(clickDelta)}% vs last week
-                  </p>
-                )}
+        {/* ── Onboarding (if no links) ─────────────────────────── */}
+        {showOnboarding && (
+          <div className="bg-gradient-to-br from-[#0A0A0A] to-[#1a1a2e] rounded-2xl p-6 lg:p-8 text-white relative overflow-hidden">
+            <div className="absolute inset-0 opacity-[0.04]" style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, white 1px, transparent 0)', backgroundSize: '20px 20px' }} />
+            <div className="relative z-10 flex flex-col lg:flex-row items-start lg:items-center gap-6">
+              <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center shrink-0">
+                <Rocket className="w-6 h-6" />
               </div>
-              <div className="flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-[#728DA7]" />
-                <span className="text-[11px] text-[#9090A0] font-medium">Clicks</span>
+              <div className="flex-1">
+                <h3 className="text-lg font-bold mb-1">Welcome to Snipr!</h3>
+                <p className="text-white/60 text-sm leading-relaxed max-w-lg">
+                  Create your first short link to start tracking clicks, analyzing traffic, and optimizing your marketing.
+                </p>
               </div>
-            </div>
-            <div className="px-1 pb-3 h-[180px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={timeseries} margin={{ top: 4, right: 12, bottom: 0, left: -24 }}>
-                  <defs>
-                    <linearGradient id="dashClicksGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#728DA7" stopOpacity={0.16} />
-                      <stop offset="95%" stopColor="#728DA7" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="#F0F0F6" />
-                  <XAxis
-                    dataKey="day"
-                    axisLine={false}
-                    tickLine={false}
-                    tick={{ fill: "#B0B0BA", fontSize: 11 }}
-                    dy={8}
-                  />
-                  <YAxis
-                    axisLine={false}
-                    tickLine={false}
-                    tick={{ fill: "#B0B0BA", fontSize: 11 }}
-                    allowDecimals={false}
-                  />
-                  <Tooltip
-                    contentStyle={{ borderRadius: "12px", border: "1px solid #EBEBF0", boxShadow: "0 4px 16px rgba(0,0,0,0.08)", background: "#FFFFFF" }}
-                    labelStyle={{ color: "#0A0A0A", fontWeight: 600, fontSize: 12, marginBottom: 4 }}
-                    itemStyle={{ color: "#728DA7", fontSize: 12 }}
-                    cursor={{ stroke: "#E4E4EC", strokeWidth: 1, strokeDasharray: "4 4" }}
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="clicks"
-                    name="Clicks"
-                    stroke="#728DA7"
-                    strokeWidth={2}
-                    fill="url(#dashClicksGrad)"
-                    dot={false}
-                    activeDot={{ r: 5, fill: "#728DA7", strokeWidth: 0 }}
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
+              <Link href="/links">
+                <button className="inline-flex items-center gap-2 bg-white text-[#0A0A0A] text-sm font-semibold px-5 py-2.5 rounded-xl hover:bg-white/90 active:scale-[0.97] transition-all shrink-0">
+                  <Plus className="w-4 h-4" />
+                  Create your first link
+                </button>
+              </Link>
             </div>
           </div>
         )}
 
-        {/* ── Quick Actions ──────────────────────────────────────────── */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          {[
-            { icon: <Plus className="w-4 h-4" />, label: "Create Link", desc: "Shorten a new URL instantly", href: "/links", accent: "#0A0A0A", bg: "#F0F0F5" },
-            { icon: <BarChart3 className="w-4 h-4" />, label: "Analytics", desc: "See traffic & engagement", href: "/analytics", accent: "#2E9A72", bg: "#E8F7F1" },
-            { icon: <Sparkles className="w-4 h-4" />, label: "AI Insights", desc: "Smart performance analysis", href: "/ai", accent: "#7C5CC4", bg: "#F3EEFF" },
-          ].map((action) => (
-            <Link key={action.href} href={action.href}>
-              <div className="group flex items-center gap-3 bg-white hover:bg-[#FAFAFD] border border-[#EBEBF0] hover:border-[#D8D8E8] hover:shadow-[0_2px_8px_rgba(0,0,0,0.06)] rounded-2xl p-4 cursor-pointer transition-all">
-                <div
-                  className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
-                  style={{ background: action.bg, color: action.accent }}
-                >
-                  {action.icon}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-[13px] font-semibold text-[#0A0A0A]">{action.label}</p>
-                  <p className="text-[11px] text-[#9090A0]">{action.desc}</p>
-                </div>
-                <ArrowRight className="w-3.5 h-3.5 text-[#CCCCDA] group-hover:text-[#728DA7] group-hover:translate-x-0.5 shrink-0 transition-all" />
+        {/* ── Chart + Quick Actions row ────────────────────────── */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          {/* Chart - takes 2 cols */}
+          <div className="lg:col-span-2 bg-white border border-[#ECEDF0] rounded-2xl overflow-hidden">
+            <div className="px-5 pt-5 pb-2 flex items-center justify-between">
+              <div>
+                <h3 className="font-semibold text-[14px] text-[#0A0A0A]">Click Activity</h3>
+                <p className="text-[11px] text-[#9CA3AF] mt-0.5">Last 7 days performance</p>
               </div>
-            </Link>
-          ))}
+              {clickDelta !== null && (
+                <span className={`inline-flex items-center gap-1 text-[12px] font-semibold px-2.5 py-1 rounded-lg ${clickDelta >= 0 ? "bg-emerald-50 text-emerald-600" : "bg-red-50 text-red-500"}`}>
+                  {clickDelta >= 0 ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
+                  {Math.abs(clickDelta)}%
+                </span>
+              )}
+            </div>
+            <div className="px-1 pb-3 h-[200px]">
+              {timeseries.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={timeseries} margin={{ top: 8, right: 16, bottom: 0, left: -20 }}>
+                    <defs>
+                      <linearGradient id="dashGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#0A0A0A" stopOpacity={0.08} />
+                        <stop offset="100%" stopColor="#0A0A0A" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="#F3F4F6" />
+                    <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fill: "#9CA3AF", fontSize: 11 }} dy={8} />
+                    <YAxis axisLine={false} tickLine={false} tick={{ fill: "#9CA3AF", fontSize: 11 }} allowDecimals={false} />
+                    <Tooltip
+                      contentStyle={{ borderRadius: "12px", border: "1px solid #E5E7EB", boxShadow: "0 4px 20px rgba(0,0,0,0.08)", background: "#fff", padding: "8px 12px" }}
+                      labelStyle={{ color: "#0A0A0A", fontWeight: 600, fontSize: 12, marginBottom: 2 }}
+                      itemStyle={{ color: "#6B7280", fontSize: 12 }}
+                      cursor={{ stroke: "#D1D5DB", strokeWidth: 1 }}
+                    />
+                    <Area type="monotone" dataKey="clicks" name="Clicks" stroke="#0A0A0A" strokeWidth={2} fill="url(#dashGrad)" dot={false} activeDot={{ r: 4, fill: "#0A0A0A", strokeWidth: 2, stroke: "#fff" }} />
+                  </AreaChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="h-full flex items-center justify-center text-[#D1D5DB]">
+                  <div className="text-center">
+                    <BarChart3 className="w-8 h-8 mx-auto mb-2 opacity-40" />
+                    <p className="text-xs text-[#9CA3AF]">Chart data will appear after your first click</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Quick Actions - takes 1 col */}
+          <div className="space-y-3">
+            {[
+              { icon: Plus, label: "Create Link", desc: "Shorten a URL", href: "/links", iconBg: "bg-[#0A0A0A]", iconColor: "text-white" },
+              { icon: BarChart3, label: "Analytics", desc: "View traffic", href: "/analytics", iconBg: "bg-emerald-50", iconColor: "text-emerald-600" },
+              { icon: Globe, label: "Domains", desc: "Custom domains", href: "/domains", iconBg: "bg-blue-50", iconColor: "text-blue-600" },
+              { icon: Sparkles, label: "AI Insights", desc: "Smart analysis", href: "/ai", iconBg: "bg-purple-50", iconColor: "text-purple-600" },
+            ].map((a) => (
+              <Link key={a.href} href={a.href}>
+                <div className="group flex items-center gap-3 bg-white hover:bg-[#FAFAFA] border border-[#ECEDF0] hover:border-[#D1D5DB] rounded-xl p-3.5 cursor-pointer transition-all hover:shadow-sm">
+                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${a.iconBg} ${a.iconColor}`}>
+                    <a.icon className="w-4 h-4" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[13px] font-semibold text-[#0A0A0A]">{a.label}</p>
+                    <p className="text-[11px] text-[#9CA3AF]">{a.desc}</p>
+                  </div>
+                  <ArrowRight className="w-3.5 h-3.5 text-[#D1D5DB] group-hover:text-[#6B7280] group-hover:translate-x-0.5 transition-all shrink-0" />
+                </div>
+              </Link>
+            ))}
+          </div>
         </div>
 
-        {/* ── Main grid ─────────────────────────────────────────────── */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        {/* ── Bottom grid ──────────────────────────────────────── */}
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
 
-          {/* Top Links */}
-          <div className="bg-white rounded-2xl border border-[#EBEBF0] overflow-hidden flex flex-col shadow-[0_1px_4px_rgba(0,0,0,0.04)]">
-            <div className="px-5 py-4 flex items-center justify-between border-b border-[#F2F2F6]">
-              <h3 className="font-semibold text-[13.5px] text-[#0A0A0A] flex items-center gap-2">
-                <div className="w-6 h-6 rounded-lg bg-[#EEF3F7] flex items-center justify-center">
-                  <LinkIcon className="w-3.5 h-3.5 text-[#728DA7]" />
-                </div>
-                Top Links
-              </h3>
-              <Link href="/links" className="text-[12px] text-[#728DA7] hover:text-[#4A7A94] font-semibold flex items-center gap-1 group transition-colors">
-                View all
-                <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
+          {/* Top Links - 3 cols */}
+          <div className="lg:col-span-3 bg-white rounded-2xl border border-[#ECEDF0] overflow-hidden">
+            <div className="px-5 py-4 flex items-center justify-between border-b border-[#F3F4F6]">
+              <h3 className="font-semibold text-[14px] text-[#0A0A0A]">Top Performing Links</h3>
+              <Link href="/links" className="text-[12px] text-[#6B7280] hover:text-[#0A0A0A] font-medium flex items-center gap-1 transition-colors">
+                View all <ArrowRight className="w-3 h-3" />
               </Link>
             </div>
-
-            <div className="flex-1 divide-y divide-[#F5F5F8]">
+            <div className="divide-y divide-[#F9FAFB]">
               {isLoading ? (
-                <div className="h-48 flex items-center justify-center">
-                  <Loader2 className="w-5 h-5 animate-spin text-[#728DA7]/30" />
+                <div className="h-[260px] flex items-center justify-center">
+                  <Loader2 className="w-5 h-5 animate-spin text-[#D1D5DB]" />
                 </div>
-              ) : !links || links.length === 0 ? (
-                <div className="h-48 flex flex-col items-center justify-center gap-3 text-center px-6">
-                  <div className="w-12 h-12 rounded-2xl bg-[#F2F2F6] flex items-center justify-center">
-                    <LinkIcon className="w-5 h-5 text-[#CCCCDA]" />
+              ) : topLinks.length === 0 ? (
+                <div className="h-[260px] flex flex-col items-center justify-center text-center px-6">
+                  <div className="w-12 h-12 rounded-2xl bg-[#F3F4F6] flex items-center justify-center mb-3">
+                    <LinkIcon className="w-5 h-5 text-[#D1D5DB]" />
                   </div>
-                  <div>
-                    <p className="text-[13px] font-semibold text-[#0A0A0A]">No links yet</p>
-                    <p className="text-[12px] text-[#9090A0] mt-0.5">Create your first short link to get started.</p>
-                  </div>
-                  <Link href="/links">
-                    <button className="mt-1 text-[12px] font-semibold text-[#728DA7] hover:text-[#4A7A94] transition-colors">
-                      Create a link →
-                    </button>
-                  </Link>
+                  <p className="text-sm font-medium text-[#374151]">No links yet</p>
+                  <p className="text-xs text-[#9CA3AF] mt-1">Create your first link to see it here</p>
                 </div>
               ) : (
                 topLinks.map((link, i) => {
                   const clicks = clickCounts[link.id] ?? 0;
                   const maxClicks = Math.max(...topLinks.map((l) => clickCounts[l.id] ?? 0), 1);
                   return (
-                    <div key={link.id} className="flex items-center gap-3 px-5 py-3.5 hover:bg-[#FAFAFA] transition-colors group">
-                      <span className="text-[11px] font-bold text-[#DDDDE8] w-4 shrink-0 tabular-nums">
-                        {i + 1}
-                      </span>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <p className="text-[13px] font-semibold text-[#2D6A8A] truncate">/{link.slug}</p>
-                          {link.title && (
-                            <span className="text-[10px] text-[#B0B0BA] font-medium truncate hidden sm:block">{link.title}</span>
-                          )}
-                        </div>
-                        <div className="h-1.5 bg-[#F2F2F6] rounded-full overflow-hidden">
-                          <div
-                            className="h-full bg-[#728DA7] rounded-full transition-all duration-700"
-                            style={{ width: `${Math.max((clicks / maxClicks) * 100, 3)}%` }}
-                          />
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        <div className="text-right">
-                          <span className="text-[13px] font-bold text-[#0A0A0A] tabular-nums">{clicks.toLocaleString()}</span>
-                          <p className="text-[10px] text-[#B0B0BA]">clicks</p>
-                        </div>
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${link.enabled ? "bg-[#E8F7F1] text-[#2E9A72]" : "bg-[#F2F2F6] text-[#9090A0]"}`}>
-                          {link.enabled ? "Live" : "Off"}
-                        </span>
-                        <a
-                          href={`${origin}/r/${link.slug}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          onClick={(e) => e.stopPropagation()}
-                          className="opacity-0 group-hover:opacity-100 text-[#CCCCDA] hover:text-[#728DA7] transition-all"
-                        >
-                          <ExternalLink className="w-3.5 h-3.5" />
-                        </a>
-                      </div>
-                    </div>
+                    <LinkRow key={link.id} link={link} clicks={clicks} maxClicks={maxClicks} rank={i + 1} origin={origin} />
                   );
                 })
               )}
             </div>
           </div>
 
-          {/* AI Insights */}
-          <div className="bg-white rounded-2xl border border-[#EBEBF0] overflow-hidden flex flex-col shadow-[0_1px_4px_rgba(0,0,0,0.04)]">
-            <div className="px-5 py-4 flex items-center justify-between border-b border-[#F2F2F6]">
-              <h3 className="font-semibold text-[13.5px] text-[#0A0A0A] flex items-center gap-2">
-                <div className="w-6 h-6 rounded-lg bg-[#F0EBF9] flex items-center justify-center">
-                  <Sparkles className="w-3.5 h-3.5 text-[#7C5CC4]" />
-                </div>
+          {/* AI Insights - 2 cols */}
+          <div className="lg:col-span-2 bg-white rounded-2xl border border-[#ECEDF0] overflow-hidden flex flex-col">
+            <div className="px-5 py-4 flex items-center justify-between border-b border-[#F3F4F6]">
+              <h3 className="font-semibold text-[14px] text-[#0A0A0A] flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-purple-500" />
                 AI Insights
               </h3>
               <button
                 onClick={handleGenerateSummary}
                 disabled={summaryMutation.isPending}
-                className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-[#728DA7] hover:text-[#4A7A94] disabled:opacity-40 transition-colors group"
+                className="inline-flex items-center gap-1.5 text-[12px] font-medium text-[#6B7280] hover:text-[#0A0A0A] disabled:opacity-40 transition-colors"
               >
                 {summaryMutation.isPending
                   ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  : <RefreshCw className="w-3.5 h-3.5 group-hover:rotate-180 transition-transform duration-500" />}
-                Generate
+                  : <RefreshCw className="w-3.5 h-3.5" />}
+                {summaryMutation.isPending ? "Analyzing..." : "Generate"}
               </button>
             </div>
-
-            <div className="p-5 flex-1 flex flex-col">
+            <div className="p-5 flex-1 flex flex-col min-h-[240px]">
               {summaryMutation.isPending ? (
-                <div className="flex-1 flex flex-col items-center justify-center gap-3 py-8">
-                  <div className="relative">
-                    <div className="w-10 h-10 rounded-2xl bg-[#F0EBF9] flex items-center justify-center">
-                      <Sparkles className="w-5 h-5 text-[#7C5CC4]" />
-                    </div>
-                    <span className="absolute -top-1 -right-1 w-3 h-3 bg-[#7C5CC4] rounded-full animate-ping opacity-75" />
+                <div className="flex-1 flex flex-col items-center justify-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-purple-50 flex items-center justify-center relative">
+                    <Sparkles className="w-5 h-5 text-purple-500" />
+                    <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-purple-500 rounded-full animate-ping" />
                   </div>
-                  <div className="text-center">
-                    <p className="text-[13px] font-semibold text-[#0A0A0A]">Analysing your data…</p>
-                    <p className="text-[12px] text-[#9090A0] mt-0.5">This takes a few seconds.</p>
-                  </div>
+                  <p className="text-xs text-[#9CA3AF]">Analyzing your data...</p>
                 </div>
               ) : latestSummary ? (
                 <>
-                  <div className="flex-1 text-[13px] text-[#3A3A3E] leading-[1.7] whitespace-pre-wrap overflow-auto max-h-64 custom-scrollbar">
+                  <div className="flex-1 text-[13px] text-[#4B5563] leading-[1.7] overflow-auto max-h-52 custom-scrollbar">
                     {latestSummary.content}
                   </div>
-                  <Link href="/ai" className="mt-4 inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-[#728DA7] hover:text-[#4A7A94] transition-colors group">
-                    View full AI Insights
-                    <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+                  <Link href="/ai" className="mt-4 inline-flex items-center gap-1.5 text-[12px] font-semibold text-purple-600 hover:text-purple-700 transition-colors">
+                    View all insights <ArrowRight className="w-3 h-3" />
                   </Link>
                 </>
               ) : (
-                <div className="flex-1 flex flex-col items-center justify-center text-center gap-4 py-8">
-                  <div className="w-14 h-14 rounded-2xl bg-[#F5F0FE] flex items-center justify-center">
-                    <Sparkles className="w-6 h-6 text-[#7C5CC4]/50" />
+                <div className="flex-1 flex flex-col items-center justify-center text-center gap-3">
+                  <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-purple-50 to-indigo-50 flex items-center justify-center">
+                    <Sparkles className="w-6 h-6 text-purple-400" />
                   </div>
                   <div>
-                    <p className="text-[13px] font-semibold text-[#0A0A0A] mb-1">No insights yet</p>
-                    <p className="text-[12px] text-[#9090A0] max-w-[220px] mx-auto leading-relaxed">
-                      Generate a weekly summary to uncover performance trends.
-                    </p>
+                    <p className="text-sm font-medium text-[#374151]">No insights yet</p>
+                    <p className="text-xs text-[#9CA3AF] mt-1 max-w-[200px] mx-auto">Generate a summary to see AI-powered performance analysis</p>
                   </div>
                   <button
                     onClick={handleGenerateSummary}
-                    disabled={summaryMutation.isPending}
-                    className="inline-flex items-center gap-2 text-[12.5px] font-semibold bg-[#7C5CC4] hover:bg-[#6B4BB3] text-white px-4 py-2 rounded-xl transition-colors disabled:opacity-40 active:scale-[0.97]"
+                    className="inline-flex items-center gap-1.5 text-xs font-semibold bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg transition-colors active:scale-[0.97]"
                   >
-                    <Zap className="w-3.5 h-3.5" />
-                    Generate now
+                    <Zap className="w-3 h-3" /> Generate now
                   </button>
                 </div>
               )}
             </div>
           </div>
-
         </div>
       </div>
     </ProtectedLayout>
   );
 }
 
-function KpiCard({
-  label, value, icon, accent, bgAccent, delta, sublabel,
-}: {
+/* ── KPI Card ──────────────────────────────────────────────── */
+function KpiCard({ label, value, icon, gradient, delta, sublabel }: {
   label: string;
   value: number | null;
   icon: React.ReactNode;
-  accent: string;
-  bgAccent: string;
+  gradient: string;
   delta?: number | null;
-  sublabel?: string | null;
+  sublabel?: string;
 }) {
   return (
-    <div className="bg-white border border-[#EBEBF0] rounded-2xl p-5 cursor-default hover:shadow-[0_2px_10px_rgba(0,0,0,0.07)] transition-shadow shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
-      <div className="flex items-start justify-between mb-4">
-        <p className="text-[11px] font-semibold text-[#A0A0AE] tracking-wide">{label}</p>
-        <div
-          className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
-          style={{ background: bgAccent, color: accent }}
-        >
+    <div className="bg-white border border-[#ECEDF0] rounded-2xl p-4 hover:shadow-md transition-all group cursor-default">
+      <div className="flex items-center justify-between mb-3">
+        <span className="text-[11px] font-semibold text-[#9CA3AF] uppercase tracking-wide">{label}</span>
+        <div className={`w-7 h-7 rounded-lg bg-gradient-to-br ${gradient} flex items-center justify-center text-white group-hover:scale-110 transition-transform`}>
           {icon}
         </div>
       </div>
-      <div className="text-[28px] font-bold text-[#0A0A0A] leading-none tracking-tight tabular-nums">
-        {value === null ? (
-          <div className="flex gap-1.5 pt-1">
-            <span className="w-14 h-6 rounded-lg bg-[#F2F2F6] animate-pulse inline-block" />
-          </div>
-        ) : (
-          value.toLocaleString()
-        )}
-      </div>
-      <div className="mt-2 flex items-center gap-2 h-5">
+      {value === null ? (
+        <div className="h-8 w-16 rounded-lg bg-[#F3F4F6] animate-pulse" />
+      ) : (
+        <p className="text-[26px] font-bold text-[#0A0A0A] leading-none tracking-tight tabular-nums">{value.toLocaleString()}</p>
+      )}
+      <div className="mt-1.5 h-4">
         {delta !== null && delta !== undefined ? (
-          <span className={`text-[11px] font-semibold flex items-center gap-0.5 ${delta >= 0 ? "text-[#2E9A72]" : "text-[#E05050]"}`}>
+          <span className={`inline-flex items-center gap-0.5 text-[11px] font-semibold ${delta >= 0 ? "text-emerald-600" : "text-red-500"}`}>
             {delta >= 0 ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
-            {Math.abs(delta)}%
-            <span className="text-[#B0B0BA] font-normal ml-0.5">vs last week</span>
+            {Math.abs(delta)}% <span className="text-[#D1D5DB] font-normal">vs last week</span>
           </span>
         ) : sublabel ? (
-          <span className="text-[11px] font-medium" style={{ color: accent }}>{sublabel}</span>
-        ) : (
-          <span className="text-[11px] text-[#B0B0BA]">last 7 days</span>
-        )}
+          <span className="text-[11px] text-[#9CA3AF]">{sublabel}</span>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+/* ── Link Row ──────────────────────────────────────────────── */
+function LinkRow({ link, clicks, maxClicks, rank, origin }: {
+  link: any;
+  clicks: number;
+  maxClicks: number;
+  rank: number;
+  origin: string;
+}) {
+  const [copied, setCopied] = useState(false);
+
+  function copyLink() {
+    navigator.clipboard.writeText(`${origin}/r/${link.slug}`);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  }
+
+  return (
+    <div className="flex items-center gap-3 px-5 py-3 hover:bg-[#FAFAFA] transition-colors group">
+      <span className="text-[11px] font-bold text-[#E5E7EB] w-4 shrink-0 tabular-nums text-center">{rank}</span>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 mb-1">
+          <p className="text-[13px] font-semibold text-[#0A0A0A] truncate">/{link.slug}</p>
+          <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${link.enabled ? "bg-emerald-50 text-emerald-600" : "bg-gray-100 text-gray-500"}`}>
+            {link.enabled ? "LIVE" : "OFF"}
+          </span>
+        </div>
+        <div className="h-1 bg-[#F3F4F6] rounded-full overflow-hidden">
+          <div className="h-full bg-[#0A0A0A] rounded-full transition-all duration-700" style={{ width: `${Math.max((clicks / maxClicks) * 100, 4)}%` }} />
+        </div>
+      </div>
+      <div className="flex items-center gap-2 shrink-0">
+        <span className="text-[13px] font-bold text-[#0A0A0A] tabular-nums">{clicks.toLocaleString()}</span>
+        <button onClick={copyLink} className="opacity-0 group-hover:opacity-100 p-1 rounded-md hover:bg-[#F3F4F6] transition-all" title="Copy link">
+          {copied ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5 text-[#9CA3AF]" />}
+        </button>
+        <a href={`${origin}/r/${link.slug}`} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="opacity-0 group-hover:opacity-100 p-1 rounded-md hover:bg-[#F3F4F6] transition-all">
+          <ExternalLink className="w-3.5 h-3.5 text-[#9CA3AF]" />
+        </a>
       </div>
     </div>
   );
