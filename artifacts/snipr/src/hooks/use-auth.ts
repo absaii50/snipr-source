@@ -20,8 +20,9 @@ export function useAuth() {
 
   const loginMutation = useLogin({
     mutation: {
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: getGetMeQueryKey() });
+      onSuccess: (data: any) => {
+        // Set user data immediately so ProtectedLayout doesn't see the old 401 error
+        queryClient.setQueryData(getGetMeQueryKey(), data);
         toast({ title: "Welcome back!", description: "You have successfully logged in." });
         router.push("/dashboard");
       },
@@ -37,8 +38,8 @@ export function useAuth() {
 
   const registerMutation = useRegister({
     mutation: {
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: getGetMeQueryKey() });
+      onSuccess: (data: any) => {
+        queryClient.setQueryData(getGetMeQueryKey(), data);
         toast({ title: "Account created!", description: "Check your email to verify your account." });
         router.push("/dashboard");
       },
