@@ -436,6 +436,12 @@ router.post("/admin/domains", requireAdmin, async (req, res): Promise<void> => {
   // Normalize domain
   const normalized = domain.trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/.*$/, "");
 
+  // Block snipr.sh - it's the main app domain, not for redirects
+  if (normalized === "snipr.sh" || normalized === "www.snipr.sh" || normalized.endsWith(".snipr.sh")) {
+    res.status(422).json({ error: "snipr.sh is the main app domain and cannot be added for redirects." });
+    return;
+  }
+
   // Check duplicate
   const [existing] = await db
     .select()

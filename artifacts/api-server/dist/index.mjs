@@ -79020,6 +79020,10 @@ router5.post("/domains", requireAuth, async (req, res) => {
     return;
   }
   const normalized = domain2.trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/.*$/, "");
+  if (normalized === "snipr.sh" || normalized === "www.snipr.sh" || normalized.endsWith(".snipr.sh")) {
+    res.status(422).json({ error: "Validation error", message: "snipr.sh is the main app domain and cannot be used for short link redirects." });
+    return;
+  }
   const [existing] = await db.select().from(domainsTable).where(eq(domainsTable.domain, normalized));
   if (existing) {
     res.status(409).json({ error: "Conflict", message: "This domain is already registered." });
@@ -87606,6 +87610,10 @@ router14.post("/admin/domains", requireAdmin, async (req, res) => {
     return;
   }
   const normalized = domain2.trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/.*$/, "");
+  if (normalized === "snipr.sh" || normalized === "www.snipr.sh" || normalized.endsWith(".snipr.sh")) {
+    res.status(422).json({ error: "snipr.sh is the main app domain and cannot be added for redirects." });
+    return;
+  }
   const [existing] = await db.select().from(domainsTable).where(eq(domainsTable.domain, normalized));
   if (existing) {
     res.status(409).json({ error: "This domain is already registered" });

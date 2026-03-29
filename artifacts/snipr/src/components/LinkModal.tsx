@@ -13,8 +13,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useRouter } from "next/navigation";
 import { 
-  useCreateLink, 
-  useUpdateLink, 
+  useCreateLink,
+  useUpdateLink,
   getGetLinksQueryKey,
   useGetFolders,
   useGetTags,
@@ -22,6 +22,7 @@ import {
   getGetLinkTagsQueryKey,
   useSetLinkTags,
   useSuggestSlugs,
+  useGetDomains,
   type Link
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -42,6 +43,7 @@ const formSchema = z.object({
   }, z.number().nullable().optional()),
   fallbackUrl: z.union([z.literal(""), z.string().url()]).optional().nullable(),
   folderId: z.string().optional().nullable(),
+  domainId: z.string().optional().nullable(),
   tagIds: z.array(z.string()).default([]),
 });
 
@@ -65,6 +67,8 @@ export function LinkModal({ isOpen, onClose, link, initialSlug }: LinkModalProps
 
   const { data: folders } = useGetFolders();
   const { data: tags } = useGetTags();
+  const { data: allDomains } = useGetDomains();
+  const verifiedDomains = allDomains?.filter((d: any) => d.verified) ?? [];
   const { data: linkTags } = useGetLinkTags(link?.id || "", {
     query: {
       queryKey: getGetLinkTagsQueryKey(link?.id || ""),
@@ -138,6 +142,7 @@ export function LinkModal({ isOpen, onClose, link, initialSlug }: LinkModalProps
       clickLimit: values.clickLimit,
       fallbackUrl: values.fallbackUrl || null,
       folderId: values.folderId || null,
+      domainId: values.domainId || null,
     };
 
     try {
@@ -301,6 +306,28 @@ export function LinkModal({ isOpen, onClose, link, initialSlug }: LinkModalProps
 
               {showAdvanced && (
                 <div className="mt-5 p-5 rounded-xl border border-primary/20 bg-primary/5 space-y-5 animate-in slide-in-from-top-2 fade-in duration-200">
+                  {/* Domain Selector */}
+                  {verifiedDomains.length > 0 && (
+                    <div className="space-y-2">
+                      <Label className="text-foreground font-semibold text-sm">Domain</Label>
+                      <Select
+                        value={form.watch("domainId") || "default"}
+                        onValueChange={(val) => form.setValue("domainId", val === "default" ? null : val)}
+                      >
+                        <SelectTrigger className="rounded-xl h-11 bg-background">
+                          <SelectValue placeholder="Select domain" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="default">Default (snipr.sh)</SelectItem>
+                          {verifiedDomains.map((d: any) => (
+                            <SelectItem key={d.id} value={d.id}>{d.domain}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-muted-foreground">Choose which domain this short link will use</p>
+                    </div>
+                  )}
+
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                     <div className="space-y-2">
                       <Label htmlFor="folderId" className="text-foreground font-semibold text-sm">Folder</Label>

@@ -27,6 +27,12 @@ router.post("/domains", requireAuth, async (req, res): Promise<void> => {
 
   const normalized = domain.trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/.*$/, "");
 
+  // Block snipr.sh - it's the main app domain, not for redirects
+  if (normalized === "snipr.sh" || normalized === "www.snipr.sh" || normalized.endsWith(".snipr.sh")) {
+    res.status(422).json({ error: "Validation error", message: "snipr.sh is the main app domain and cannot be used for short link redirects." });
+    return;
+  }
+
   const [existing] = await db
     .select()
     .from(domainsTable)
