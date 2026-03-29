@@ -12,7 +12,7 @@ version = "1.0.0"
 [[services]]
 name = "web"
 paths = [ "/" ]
-localPort = 22647
+localPort = 3000
 
 [services.development]
 run = "pnpm --filter @workspace/snipr run dev"
@@ -22,4 +22,4 @@ build = [ "pnpm", "--filter", "@workspace/snipr", "run", "build" ]
 run = [ "pnpm", "--filter", "@workspace/snipr", "run", "start" ]
 
 [services.env]
-PORT = "22647"
+PORT = "3000"
