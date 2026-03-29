@@ -129,28 +129,33 @@ router.post("/links", requireAuth, async (req, res): Promise<void> => {
 
   const folderId = typeof body.folderId === "string" && body.folderId ? body.folderId : null;
 
-  // SUBDOMAIN SUPPORT: Handle optional domainId for custom domain routing
-  let domainId: string | null = null;
-  if (typeof body.domainId === "string" && body.domainId) {
-    // Validate that domain belongs to this workspace and is verified
-    const [domain] = await db
-      .select({ id: domainsTable.id })
-      .from(domainsTable)
-      .where(and(
-        eq(domainsTable.id, body.domainId),
-        eq(domainsTable.workspaceId, workspaceId),
-        eq(domainsTable.verified, true)
-      ));
-
-    if (!domain) {
-      res.status(400).json({
-        error: "Validation error",
-        message: "Invalid or unverified domain. Domain must belong to your workspace and be verified.",
-      });
-      return;
-    }
-    domainId = domain.id;
+  // Require a verified custom domain for every link
+  if (!body.domainId || typeof body.domainId !== "string") {
+    res.status(400).json({
+      error: "Validation error",
+      message: "A verified custom domain is required. snipr.sh cannot be used as a URL shortener.",
+    });
+    return;
   }
+
+  const [domainRecord] = await db
+    .select({ id: domainsTable.id })
+    .from(domainsTable)
+    .where(and(
+      eq(domainsTable.id, body.domainId),
+      eq(domainsTable.workspaceId, workspaceId),
+      eq(domainsTable.verified, true)
+    ));
+
+  if (!domainRecord) {
+    res.status(400).json({
+      error: "Validation error",
+      message: "Invalid or unverified domain. Domain must belong to your workspace and be verified.",
+    });
+    return;
+  }
+
+  const domainId = domainRecord.id;
 
   let link;
   try {
@@ -498,10 +503,14 @@ router.put("/links/:id", requireAuth, async (req, res): Promise<void> => {
     updateData.folderId = typeof body.folderId === "string" && body.folderId ? body.folderId : null;
   }
 
-  // SUBDOMAIN SUPPORT: Allow changing domain
+  // Require a verified custom domain — cannot clear domainId
   if ("domainId" in body) {
     if (body.domainId === null || body.domainId === "") {
-      updateData.domainId = null;
+      res.status(400).json({
+        error: "Validation error",
+        message: "A verified custom domain is required. You cannot remove the domain from a link.",
+      });
+      return;
     } else if (typeof body.domainId === "string") {
       // Validate that new domain belongs to this workspace and is verified
       const [newDomain] = await db

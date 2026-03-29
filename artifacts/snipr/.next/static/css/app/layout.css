@@ -1539,6 +1539,9 @@
   .max-w-7xl {
     max-width: var(--container-7xl);
   }
+  .max-w-\[45\%\] {
+    max-width: 45%;
+  }
   .max-w-\[80\%\] {
     max-width: 80%;
   }
@@ -3481,6 +3484,9 @@
   }
   .pl-10 {
     padding-left: calc(var(--spacing) * 10);
+  }
+  .pl-\[calc\(var\(--slug-prefix-width\,3rem\)\+4px\)\] {
+    padding-left: calc(var(--slug-prefix-width,3rem) + 4px);
   }
   .text-center {
     text-align: center;
@@ -5867,6 +5873,13 @@
     &:hover {
       @media (hover: hover) {
         color: var(--color-amber-700);
+      }
+    }
+  }
+  .hover\:text-amber-900 {
+    &:hover {
+      @media (hover: hover) {
+        color: var(--color-amber-900);
       }
     }
   }

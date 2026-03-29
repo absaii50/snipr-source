@@ -43,7 +43,7 @@ const formSchema = z.object({
   }, z.number().nullable().optional()),
   fallbackUrl: z.union([z.literal(""), z.string().url()]).optional().nullable(),
   folderId: z.string().optional().nullable(),
-  domainId: z.string().optional().nullable(),
+  domainId: z.string().min(1, { message: "Please select a custom domain" }),
   tagIds: z.array(z.string()).default([]),
 });
 
@@ -91,6 +91,7 @@ export function LinkModal({ isOpen, onClose, link, initialSlug }: LinkModalProps
       clickLimit: null,
       fallbackUrl: "",
       folderId: "",
+      domainId: "",
       tagIds: [],
     }
   });
@@ -110,6 +111,7 @@ export function LinkModal({ isOpen, onClose, link, initialSlug }: LinkModalProps
           clickLimit: link.clickLimit || null,
           fallbackUrl: link.fallbackUrl || "",
           folderId: link.folderId || "",
+          domainId: (link as any).domainId || "",
           tagIds: linkTags?.map(t => t.id) || [],
         });
       } else {
@@ -123,6 +125,7 @@ export function LinkModal({ isOpen, onClose, link, initialSlug }: LinkModalProps
           clickLimit: null,
           fallbackUrl: "",
           folderId: "",
+          domainId: "",
           tagIds: [],
         });
       }
@@ -179,6 +182,9 @@ export function LinkModal({ isOpen, onClose, link, initialSlug }: LinkModalProps
 
   const isPending = createMutation.isPending || updateMutation.isPending || setTagsMutation.isPending;
   const watchUrl = form.watch("destinationUrl");
+  const watchDomainId = form.watch("domainId");
+  const selectedDomain = verifiedDomains.find((d: any) => d.id === watchDomainId);
+  const slugPrefix = selectedDomain ? `${selectedDomain.domain}/` : "domain/";
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -210,37 +216,57 @@ export function LinkModal({ isOpen, onClose, link, initialSlug }: LinkModalProps
               )}
             </div>
 
-            {/* Domain Selector - shown prominently when verified domains exist */}
-            {verifiedDomains.length > 0 && (
-              <div className="space-y-2">
-                <Label className="text-foreground font-semibold">Domain</Label>
-                <Select
-                  value={form.watch("domainId") || ""}
-                  onValueChange={(val) => form.setValue("domainId", val || null)}
-                >
-                  <SelectTrigger className="rounded-xl h-12 bg-background border-border shadow-sm">
-                    <SelectValue placeholder="Select domain" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {verifiedDomains.map((d: any) => (
-                      <SelectItem key={d.id} value={d.id}>{d.domain}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
+            {/* Domain Selector — always required */}
+            <div className="space-y-2">
+              <Label className="text-foreground font-semibold">Custom Domain *</Label>
+              {verifiedDomains.length === 0 ? (
+                <div className="flex items-center gap-3 p-4 rounded-xl border border-amber-200 bg-amber-50 text-amber-800">
+                  <ShieldAlert className="w-5 h-5 shrink-0 text-amber-500" />
+                  <p className="text-sm">
+                    You need a verified custom domain before creating links.{" "}
+                    <button
+                      type="button"
+                      className="underline font-semibold hover:text-amber-900 transition-colors"
+                      onClick={() => { onClose(); router.push("/domains"); }}
+                    >
+                      Add a domain →
+                    </button>
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <Select
+                    value={watchDomainId || ""}
+                    onValueChange={(val) => form.setValue("domainId", val, { shouldValidate: true })}
+                  >
+                    <SelectTrigger className="rounded-xl h-12 bg-background border-border shadow-sm">
+                      <SelectValue placeholder="Select a custom domain" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {verifiedDomains.map((d: any) => (
+                        <SelectItem key={d.id} value={d.id}>{d.domain}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {form.formState.errors.domainId && (
+                    <p className="text-sm text-destructive font-medium">{form.formState.errors.domainId.message}</p>
+                  )}
+                </>
+              )}
+            </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5 items-end">
               <div className="space-y-2">
                 <Label htmlFor="slug" className="text-foreground font-semibold">Custom Slug</Label>
                 <div className="flex gap-2 relative">
                   <div className="relative flex-1">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/60 font-medium">/r/</span>
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/60 font-medium text-xs truncate max-w-[45%]">{slugPrefix}</span>
                     <Input
                       id="slug"
                       placeholder="my-campaign"
                       {...form.register("slug")}
-                      className="bg-background border-border shadow-sm focus:ring-primary/30 transition-all rounded-xl h-12 pl-9"
+                      className="bg-background border-border shadow-sm focus:ring-primary/30 transition-all rounded-xl h-12 pl-[calc(var(--slug-prefix-width,3rem)+4px)]"
+                      style={{ paddingLeft: `${slugPrefix.length * 7 + 12}px` }}
                     />
                   </div>
                   
@@ -427,7 +453,7 @@ export function LinkModal({ isOpen, onClose, link, initialSlug }: LinkModalProps
           <Button type="button" variant="ghost" onClick={onClose} disabled={isPending} className="rounded-xl h-12 px-6">
             Cancel
           </Button>
-          <Button form="link-form" type="submit" disabled={isPending} className="rounded-xl h-12 px-8 shadow-xl shadow-primary/25 font-bold text-base hover:-translate-y-0.5 transition-all">
+          <Button form="link-form" type="submit" disabled={isPending || verifiedDomains.length === 0} className="rounded-xl h-12 px-8 shadow-xl shadow-primary/25 font-bold text-base hover:-translate-y-0.5 transition-all">
             {isPending ? "Saving..." : isEdit ? "Save Changes" : "Create Link"}
           </Button>
         </DialogFooter>

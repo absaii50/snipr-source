@@ -78394,22 +78394,26 @@ router3.post("/links", requireAuth, async (req, res) => {
     }
   }
   const folderId = typeof body.folderId === "string" && body.folderId ? body.folderId : null;
-  let domainId = null;
-  if (typeof body.domainId === "string" && body.domainId) {
-    const [domain2] = await db.select({ id: domainsTable.id }).from(domainsTable).where(and(
-      eq(domainsTable.id, body.domainId),
-      eq(domainsTable.workspaceId, workspaceId),
-      eq(domainsTable.verified, true)
-    ));
-    if (!domain2) {
-      res.status(400).json({
-        error: "Validation error",
-        message: "Invalid or unverified domain. Domain must belong to your workspace and be verified."
-      });
-      return;
-    }
-    domainId = domain2.id;
+  if (!body.domainId || typeof body.domainId !== "string") {
+    res.status(400).json({
+      error: "Validation error",
+      message: "A verified custom domain is required. snipr.sh cannot be used as a URL shortener."
+    });
+    return;
   }
+  const [domainRecord] = await db.select({ id: domainsTable.id }).from(domainsTable).where(and(
+    eq(domainsTable.id, body.domainId),
+    eq(domainsTable.workspaceId, workspaceId),
+    eq(domainsTable.verified, true)
+  ));
+  if (!domainRecord) {
+    res.status(400).json({
+      error: "Validation error",
+      message: "Invalid or unverified domain. Domain must belong to your workspace and be verified."
+    });
+    return;
+  }
+  const domainId = domainRecord.id;
   let link;
   try {
     const result = await db.insert(linksTable).values({
@@ -78653,7 +78657,11 @@ router3.put("/links/:id", requireAuth, async (req, res) => {
   }
   if ("domainId" in body) {
     if (body.domainId === null || body.domainId === "") {
-      updateData.domainId = null;
+      res.status(400).json({
+        error: "Validation error",
+        message: "A verified custom domain is required. You cannot remove the domain from a link."
+      });
+      return;
     } else if (typeof body.domainId === "string") {
       const [newDomain] = await db.select({ id: domainsTable.id }).from(domainsTable).where(and(
         eq(domainsTable.id, body.domainId),
