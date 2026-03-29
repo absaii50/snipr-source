@@ -89220,11 +89220,15 @@ app.use((0, import_compression.default)());
 var allowedOrigins = [
   process.env.FRONTEND_URL || "http://localhost:3000",
   "https://snipr.sh"
-  // Production domain - update as needed
 ];
+var replitDevPattern = /^https:\/\/[a-zA-Z0-9-]+(\.picard|\.riker)?\.replit\.dev(:\d+)?$/;
 app.use((0, import_cors.default)({
   origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) {
+    if (!origin) {
+      callback(null, true);
+    } else if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else if (replitDevPattern.test(origin)) {
       callback(null, true);
     } else {
       callback(new Error("Not allowed by CORS policy"));

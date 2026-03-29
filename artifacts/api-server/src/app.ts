@@ -48,12 +48,21 @@ app.use(compression());
 // CORS: Whitelist only allowed origins to prevent cross-site attacks
 const allowedOrigins = [
   process.env.FRONTEND_URL || "http://localhost:3000",
-  "https://snipr.sh", // Production domain - update as needed
+  "https://snipr.sh",
 ];
+
+// Replit dev domain patterns (*.replit.dev, *.riker.replit.dev, *.picard.replit.dev)
+const replitDevPattern = /^https:\/\/[a-zA-Z0-9-]+(\.picard|\.riker)?\.replit\.dev(:\d+)?$/;
 
 app.use(cors({
   origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) {
+    if (!origin) {
+      // Same-origin or server-to-server requests — allow
+      callback(null, true);
+    } else if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else if (replitDevPattern.test(origin)) {
+      // Allow all Replit dev preview domains
       callback(null, true);
     } else {
       callback(new Error("Not allowed by CORS policy"));
