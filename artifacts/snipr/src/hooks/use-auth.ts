@@ -39,7 +39,7 @@ export function useAuth() {
     mutation: {
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: getGetMeQueryKey() });
-        toast({ title: "Account created!", description: "Welcome to Snipr." });
+        toast({ title: "Account created!", description: "Check your email to verify your account." });
         router.push("/dashboard");
       },
       onError: (err: any) => {

@@ -2,6 +2,7 @@ import { Router, type IRouter, type Request, type Response, type NextFunction } 
 import bcrypt from "bcryptjs";
 import { getDomainVerifyToken, checkDomainDns } from "../lib/dns-utils";
 import { invalidateConfigCache } from "../lib/config";
+import crypto from "crypto";
 import {
   db,
   usersTable,
@@ -11,8 +12,10 @@ import {
   domainsTable,
   conversionsTable,
   platformSettingsTable,
+  emailLogsTable,
 } from "@workspace/db";
 import { count, desc, eq, sql, ilike, isNull, isNotNull, and, inArray } from "drizzle-orm";
+import { sendVerificationEmail } from "../lib/email";
 
 const router: IRouter = Router();
 
@@ -494,6 +497,125 @@ router.get("/admin/workspaces-list", requireAdmin, async (req, res): Promise<voi
 router.delete("/admin/domains/:id", requireAdmin, async (req, res): Promise<void> => {
   await db.delete(domainsTable).where(eq(domainsTable.id, req.params.id));
   res.json({ ok: true });
+});
+
+/* ── Email Management ─────────────────────────────────────────────── */
+router.get("/admin/email-stats", requireAdmin, async (req, res): Promise<void> => {
+  const [[totalEmails], [todayEmails], [failedEmails], [totalUsers], [verifiedUsers]] = await Promise.all([
+    db.select({ count: count() }).from(emailLogsTable),
+    db.select({ count: count() }).from(emailLogsTable).where(sql`${emailLogsTable.createdAt} >= NOW() - INTERVAL '1 day'`),
+    db.select({ count: count() }).from(emailLogsTable).where(eq(emailLogsTable.status, "failed")),
+    db.select({ count: count() }).from(usersTable),
+    db.select({ count: count() }).from(usersTable).where(eq(usersTable.emailVerified, true)),
+  ]);
+
+  res.json({
+    totalEmails: totalEmails.count,
+    todayEmails: todayEmails.count,
+    failedEmails: failedEmails.count,
+    totalUsers: totalUsers.count,
+    verifiedUsers: verifiedUsers.count,
+    verificationRate: totalUsers.count > 0 ? Math.round((verifiedUsers.count / totalUsers.count) * 100) : 0,
+  });
+});
+
+router.get("/admin/email-logs", requireAdmin, async (req, res): Promise<void> => {
+  const page = parseInt(req.query.page as string) || 1;
+  const limit = Math.min(parseInt(req.query.limit as string) || 50, 100);
+  const offset = (page - 1) * limit;
+  const typeFilter = req.query.type as string;
+  const search = req.query.search as string;
+
+  let query = db
+    .select({
+      id: emailLogsTable.id,
+      to: emailLogsTable.to,
+      subject: emailLogsTable.subject,
+      type: emailLogsTable.type,
+      status: emailLogsTable.status,
+      resendId: emailLogsTable.resendId,
+      error: emailLogsTable.error,
+      createdAt: emailLogsTable.createdAt,
+      userId: emailLogsTable.userId,
+    })
+    .from(emailLogsTable)
+    .orderBy(desc(emailLogsTable.createdAt))
+    .limit(limit)
+    .offset(offset);
+
+  const conditions = [];
+  if (typeFilter && typeFilter !== "all") {
+    conditions.push(eq(emailLogsTable.type, typeFilter));
+  }
+  if (search) {
+    conditions.push(ilike(emailLogsTable.to, `%${search}%`));
+  }
+  if (conditions.length > 0) {
+    query = query.where(and(...conditions)) as any;
+  }
+
+  const logs = await query;
+  const [[{ total }]] = await Promise.all([
+    db.select({ total: count() }).from(emailLogsTable),
+  ]);
+
+  res.json({ logs, total, page, limit });
+});
+
+router.post("/admin/force-verify/:userId", requireAdmin, async (req, res): Promise<void> => {
+  const { userId } = req.params;
+
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.id, userId));
+  if (!user) {
+    res.status(404).json({ error: "User not found" });
+    return;
+  }
+
+  await db
+    .update(usersTable)
+    .set({ emailVerified: true, emailVerificationToken: null })
+    .where(eq(usersTable.id, userId));
+
+  // Log admin action
+  await db.insert(emailLogsTable).values({
+    userId,
+    to: user.email,
+    subject: "Admin force-verified email",
+    type: "admin_force_verify",
+    status: "sent",
+  });
+
+  res.json({ ok: true });
+});
+
+router.post("/admin/resend-verification/:userId", requireAdmin, async (req, res): Promise<void> => {
+  const { userId } = req.params;
+
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.id, userId));
+  if (!user) {
+    res.status(404).json({ error: "User not found" });
+    return;
+  }
+
+  if (user.emailVerified) {
+    res.json({ ok: true, message: "Email already verified" });
+    return;
+  }
+
+  const newToken = crypto.randomUUID();
+  await db
+    .update(usersTable)
+    .set({ emailVerificationToken: newToken })
+    .where(eq(usersTable.id, userId));
+
+  await sendVerificationEmail({
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    emailVerificationToken: newToken,
+  });
+
+  res.json({ ok: true, message: "Verification email sent" });
 });
 
 /* ── Analytics ─────────────────────────────────────────────────────── */

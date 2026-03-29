@@ -16,3 +16,4 @@ export * from "./platform_settings";
 export * from "./conversations";
 export * from "./messages";
 export * from "./session";
+export * from "./email_logs";

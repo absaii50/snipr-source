@@ -1,0 +1,122 @@
+import { Resend } from "resend";
+import { db, emailLogsTable } from "@workspace/db";
+import { logger } from "./logger";
+import { getVerificationEmailHtml, getWelcomeEmailHtml } from "./email-templates";
+
+const RESEND_API_KEY = process.env.RESEND_API_KEY;
+const FRONTEND_URL = process.env.FRONTEND_URL || "https://snipr.sh";
+const FROM_EMAIL = "Snipr <no-reply@snipr.sh>";
+
+let resend: Resend | null = null;
+
+if (RESEND_API_KEY && RESEND_API_KEY !== "dev_key") {
+  resend = new Resend(RESEND_API_KEY);
+  logger.info("Email service initialized with Resend");
+} else {
+  logger.warn("RESEND_API_KEY not set - emails will be logged but not sent");
+}
+
+interface SendEmailOpts {
+  to: string;
+  subject: string;
+  html: string;
+  userId?: string;
+  type: string;
+}
+
+async function sendEmail(opts: SendEmailOpts): Promise<{ id?: string; error?: string }> {
+  const { to, subject, html, userId, type } = opts;
+
+  if (!resend) {
+    logger.info({ to, subject, type }, "Email skipped (no API key) - would have sent");
+    await db.insert(emailLogsTable).values({
+      userId: userId ?? null,
+      to,
+      subject,
+      type,
+      status: "skipped",
+      error: "RESEND_API_KEY not configured",
+    });
+    return { error: "Email service not configured" };
+  }
+
+  try {
+    const { data, error } = await resend.emails.send({
+      from: FROM_EMAIL,
+      to,
+      subject,
+      html,
+    });
+
+    if (error) {
+      logger.error({ error, to, type }, "Failed to send email");
+      await db.insert(emailLogsTable).values({
+        userId: userId ?? null,
+        to,
+        subject,
+        type,
+        status: "failed",
+        error: error.message,
+      });
+      return { error: error.message };
+    }
+
+    await db.insert(emailLogsTable).values({
+      userId: userId ?? null,
+      to,
+      subject,
+      type,
+      resendId: data?.id ?? null,
+      status: "sent",
+    });
+
+    logger.info({ to, type, resendId: data?.id }, "Email sent successfully");
+    return { id: data?.id };
+  } catch (err: any) {
+    logger.error({ err, to, type }, "Email send exception");
+    await db.insert(emailLogsTable).values({
+      userId: userId ?? null,
+      to,
+      subject,
+      type,
+      status: "failed",
+      error: err.message,
+    });
+    return { error: err.message };
+  }
+}
+
+export async function sendVerificationEmail(user: {
+  id: string;
+  name: string;
+  email: string;
+  emailVerificationToken: string;
+}): Promise<void> {
+  const verifyUrl = `${FRONTEND_URL}/verify-email?token=${user.emailVerificationToken}`;
+  const html = getVerificationEmailHtml(user.name, verifyUrl);
+
+  await sendEmail({
+    to: user.email,
+    subject: "Verify your email address - Snipr",
+    html,
+    userId: user.id,
+    type: "verification",
+  });
+}
+
+export async function sendWelcomeEmail(user: {
+  id: string;
+  name: string;
+  email: string;
+}): Promise<void> {
+  const dashboardUrl = `${FRONTEND_URL}/dashboard`;
+  const html = getWelcomeEmailHtml(user.name, dashboardUrl);
+
+  await sendEmail({
+    to: user.email,
+    subject: "Welcome to Snipr! 🎉",
+    html,
+    userId: user.id,
+    type: "welcome",
+  });
+}
