@@ -62,6 +62,7 @@ export interface Link {
   clickLimit?: number | null;
   fallbackUrl?: string | null;
   hasPassword: boolean;
+  isCloaked: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -78,6 +79,7 @@ export interface CreateLinkRequest {
   clickLimit?: number | null;
   fallbackUrl?: string | null;
   password?: string | null;
+  isCloaked?: boolean | null;
 }
 
 export interface UpdateLinkRequest {
@@ -93,6 +95,7 @@ export interface UpdateLinkRequest {
   fallbackUrl?: string | null;
   /** Set to empty string to remove password */
   password?: string | null;
+  isCloaked?: boolean | null;
 }
 
 export interface QrResponse {

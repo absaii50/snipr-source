@@ -128,6 +128,7 @@ router.post("/links", requireAuth, async (req, res): Promise<void> => {
   }
 
   const folderId = typeof body.folderId === "string" && body.folderId ? body.folderId : null;
+  const isCloakedVal = typeof body.isCloaked === "boolean" ? body.isCloaked : false;
 
   // Require a verified custom domain for every link
   if (!body.domainId || typeof body.domainId !== "string") {
@@ -172,6 +173,7 @@ router.post("/links", requireAuth, async (req, res): Promise<void> => {
         fallbackUrl,
         folderId,
         domainId,
+        isCloaked: isCloakedVal,
       })
       .returning();
 
@@ -502,6 +504,9 @@ router.put("/links/:id", requireAuth, async (req, res): Promise<void> => {
   if ("folderId" in body) {
     updateData.folderId = typeof body.folderId === "string" && body.folderId ? body.folderId : null;
   }
+  if ("isCloaked" in body) {
+    updateData.isCloaked = typeof body.isCloaked === "boolean" ? body.isCloaked : false;
+  }
 
   // Require a verified custom domain — cannot clear domainId
   if ("domainId" in body) {
@@ -674,6 +679,7 @@ router.post("/links/:id/duplicate", requireAuth, async (req, res): Promise<void>
       fallbackUrl: link.fallbackUrl,
       folderId: link.folderId,
       domainId: link.domainId,
+      isCloaked: link.isCloaked,
     })
     .returning();
 

@@ -51984,9 +51984,12 @@ var CreateLinkBody = objectType({
   title: stringType().nullish(),
   expiresAt: dateType().nullish(),
   folderId: stringType().nullish(),
+  /** Required: a verified custom domain must be supplied. */
+  domainId: stringType().min(1),
   clickLimit: numberType().nullish(),
   fallbackUrl: stringType().nullish(),
-  password: stringType().nullish()
+  password: stringType().nullish(),
+  isCloaked: booleanType().nullish()
 });
 var GetLinkParams = objectType({
   id: coerce.string()
@@ -52000,9 +52003,11 @@ var GetLinkResponse = objectType({
   enabled: booleanType(),
   expiresAt: dateType().nullish(),
   folderId: stringType().nullish(),
+  domainId: stringType().nullish(),
   clickLimit: numberType().nullish(),
   fallbackUrl: stringType().nullish(),
   hasPassword: booleanType(),
+  isCloaked: booleanType(),
   createdAt: dateType(),
   updatedAt: dateType()
 });
@@ -52016,9 +52021,12 @@ var UpdateLinkBody = objectType({
   enabled: booleanType().nullish(),
   expiresAt: dateType().nullish(),
   folderId: stringType().nullish(),
+  /** Must be a verified custom domain. Cannot be set to null. */
+  domainId: stringType().min(1).optional(),
   clickLimit: numberType().nullish(),
   fallbackUrl: stringType().nullish(),
-  password: stringType().nullish().describe("Set to empty string to remove password")
+  password: stringType().nullish().describe("Set to empty string to remove password"),
+  isCloaked: booleanType().nullish()
 });
 var UpdateLinkResponse = objectType({
   id: stringType(),
@@ -52029,9 +52037,11 @@ var UpdateLinkResponse = objectType({
   enabled: booleanType(),
   expiresAt: dateType().nullish(),
   folderId: stringType().nullish(),
+  domainId: stringType().nullish(),
   clickLimit: numberType().nullish(),
   fallbackUrl: stringType().nullish(),
   hasPassword: booleanType(),
+  isCloaked: booleanType(),
   createdAt: dateType(),
   updatedAt: dateType()
 });
@@ -72839,6 +72849,7 @@ var linksTable = pgTable("links", {
   passwordHash: text("password_hash"),
   clickLimit: integer("click_limit"),
   fallbackUrl: text("fallback_url"),
+  isCloaked: boolean("is_cloaked").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => /* @__PURE__ */ new Date())
 }, (table) => [
@@ -78394,6 +78405,7 @@ router3.post("/links", requireAuth, async (req, res) => {
     }
   }
   const folderId = typeof body.folderId === "string" && body.folderId ? body.folderId : null;
+  const isCloakedVal = typeof body.isCloaked === "boolean" ? body.isCloaked : false;
   if (!body.domainId || typeof body.domainId !== "string") {
     res.status(400).json({
       error: "Validation error",
@@ -78426,7 +78438,8 @@ router3.post("/links", requireAuth, async (req, res) => {
       clickLimit,
       fallbackUrl,
       folderId,
-      domainId
+      domainId,
+      isCloaked: isCloakedVal
     }).returning();
     link = result[0];
   } catch (error40) {
@@ -78655,6 +78668,9 @@ router3.put("/links/:id", requireAuth, async (req, res) => {
   if ("folderId" in body) {
     updateData.folderId = typeof body.folderId === "string" && body.folderId ? body.folderId : null;
   }
+  if ("isCloaked" in body) {
+    updateData.isCloaked = typeof body.isCloaked === "boolean" ? body.isCloaked : false;
+  }
   if ("domainId" in body) {
     if (body.domainId === null || body.domainId === "") {
       res.status(400).json({
@@ -78768,7 +78784,8 @@ router3.post("/links/:id/duplicate", requireAuth, async (req, res) => {
     clickLimit: link.clickLimit,
     fallbackUrl: link.fallbackUrl,
     folderId: link.folderId,
-    domainId: link.domainId
+    domainId: link.domainId,
+    isCloaked: link.isCloaked
   }).returning();
   res.status(201).json(serializeLink(duped));
 });
@@ -88948,6 +88965,24 @@ button:hover{background:#4f46e5}
 </body>
 </html>`);
 }
+function serveCloakedPage(res, destination) {
+  res.status(200).send(`<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Loading...</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:100%;height:100%;overflow:hidden}
+iframe{display:block;width:100%;height:100%;border:none}
+</style>
+</head>
+<body>
+<iframe src="${destination}" sandbox="allow-forms allow-pointer-lock allow-popups allow-same-origin allow-scripts" allow="fullscreen; payment" referrerpolicy="no-referrer"></iframe>
+</body>
+</html>`);
+}
 function serveGonePage(res, message, fallbackUrl) {
   if (fallbackUrl) {
     res.redirect(302, fallbackUrl);
@@ -89092,6 +89127,10 @@ router18.use(async (req, res, next) => {
   setImmediate(() => {
     trackClick(req, link, false);
   });
+  if (link.isCloaked) {
+    serveCloakedPage(res, link.destinationUrl);
+    return;
+  }
   res.redirect(301, link.destinationUrl);
 });
 router18.get("/r/:slug", async (req, res) => {
@@ -89187,6 +89226,10 @@ router18.get("/r/:slug", async (req, res) => {
   const pixels = await db.select().from(pixelsTable).where(eq(pixelsTable.workspaceId, link.workspaceId));
   if (pixels.length > 0) {
     res.send(buildPixelPage(pixels, destination));
+    return;
+  }
+  if (link.isCloaked) {
+    serveCloakedPage(res, destination);
     return;
   }
   res.redirect(301, destination);

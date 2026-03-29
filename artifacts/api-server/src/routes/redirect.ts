@@ -75,6 +75,25 @@ button:hover{background:#4f46e5}
 </html>`);
 }
 
+function serveCloakedPage(res: any, destination: string): void {
+  res.status(200).send(`<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Loading...</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:100%;height:100%;overflow:hidden}
+iframe{display:block;width:100%;height:100%;border:none}
+</style>
+</head>
+<body>
+<iframe src="${destination}" sandbox="allow-forms allow-pointer-lock allow-popups allow-same-origin allow-scripts" allow="fullscreen; payment" referrerpolicy="no-referrer"></iframe>
+</body>
+</html>`);
+}
+
 function serveGonePage(res: any, message: string, fallbackUrl?: string | null): void {
   if (fallbackUrl) {
     res.redirect(302, fallbackUrl);
@@ -257,6 +276,12 @@ router.use(async (req, res, next): Promise<void> => {
   }
 
   setImmediate(() => { trackClick(req as any, link, false); });
+
+  if (link.isCloaked) {
+    serveCloakedPage(res, link.destinationUrl);
+    return;
+  }
+
   res.redirect(301, link.destinationUrl);
 });
 
@@ -380,6 +405,11 @@ router.get("/r/:slug", async (req, res): Promise<void> => {
 
   if (pixels.length > 0) {
     res.send(buildPixelPage(pixels, destination));
+    return;
+  }
+
+  if (link.isCloaked) {
+    serveCloakedPage(res, destination);
     return;
   }
 

@@ -20,6 +20,7 @@ export const linksTable = pgTable("links", {
   passwordHash: text("password_hash"),
   clickLimit: integer("click_limit"),
   fallbackUrl: text("fallback_url"),
+  isCloaked: boolean("is_cloaked").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 }, (table) => [

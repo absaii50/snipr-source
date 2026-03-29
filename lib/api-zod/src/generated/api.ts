@@ -108,6 +108,7 @@ export const CreateLinkBody = zod.object({
   clickLimit: zod.number().nullish(),
   fallbackUrl: zod.string().nullish(),
   password: zod.string().nullish(),
+  isCloaked: zod.boolean().nullish(),
 });
 
 /**
@@ -130,6 +131,7 @@ export const GetLinkResponse = zod.object({
   clickLimit: zod.number().nullish(),
   fallbackUrl: zod.string().nullish(),
   hasPassword: zod.boolean(),
+  isCloaked: zod.boolean(),
   createdAt: zod.date(),
   updatedAt: zod.date(),
 });
@@ -156,6 +158,7 @@ export const UpdateLinkBody = zod.object({
     .string()
     .nullish()
     .describe("Set to empty string to remove password"),
+  isCloaked: zod.boolean().nullish(),
 });
 
 export const UpdateLinkResponse = zod.object({
@@ -171,6 +174,7 @@ export const UpdateLinkResponse = zod.object({
   clickLimit: zod.number().nullish(),
   fallbackUrl: zod.string().nullish(),
   hasPassword: zod.boolean(),
+  isCloaked: zod.boolean(),
   createdAt: zod.date(),
   updatedAt: zod.date(),
 });

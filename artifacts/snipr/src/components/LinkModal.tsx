@@ -28,7 +28,7 @@ import {
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
-import { Settings2, ChevronDown, ChevronUp, Link as LinkIcon, ShieldAlert, Sparkles, Loader2 } from "lucide-react";
+import { Settings2, ChevronDown, ChevronUp, Link as LinkIcon, ShieldAlert, Sparkles, Loader2, EyeOff } from "lucide-react";
 
 const formSchema = z.object({
   destinationUrl: z.string().url({ message: "Must be a valid URL" }),
@@ -46,6 +46,7 @@ const formSchema = z.object({
   folderId: z.string().optional().nullable(),
   domainId: z.string().min(1, { message: "Please select a custom domain" }),
   tagIds: z.array(z.string()).default([]),
+  isCloaked: z.boolean().default(false),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -94,6 +95,7 @@ export function LinkModal({ isOpen, onClose, link, initialSlug }: LinkModalProps
       folderId: "",
       domainId: "",
       tagIds: [],
+      isCloaked: false,
     }
   });
 
@@ -114,6 +116,7 @@ export function LinkModal({ isOpen, onClose, link, initialSlug }: LinkModalProps
           folderId: link.folderId || "",
           domainId: link.domainId || "",
           tagIds: linkTags?.map(t => t.id) || [],
+          isCloaked: link.isCloaked ?? false,
         });
       } else {
         form.reset({
@@ -128,6 +131,7 @@ export function LinkModal({ isOpen, onClose, link, initialSlug }: LinkModalProps
           folderId: "",
           domainId: "",
           tagIds: [],
+          isCloaked: false,
         });
       }
     }
@@ -147,6 +151,7 @@ export function LinkModal({ isOpen, onClose, link, initialSlug }: LinkModalProps
       fallbackUrl: values.fallbackUrl || null,
       folderId: values.folderId || null,
       domainId: values.domainId,
+      isCloaked: values.isCloaked,
     };
 
     try {
@@ -405,6 +410,19 @@ export function LinkModal({ isOpen, onClose, link, initialSlug }: LinkModalProps
                       placeholder={isEdit && link?.hasPassword ? "•••••••• (Leave blank to keep)" : "Enter a password..."}
                       {...form.register("password")}
                       className="bg-background border-border rounded-xl h-11"
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between p-4 border border-border rounded-xl bg-background">
+                    <div className="space-y-0.5">
+                      <Label className="text-foreground font-semibold text-sm flex items-center gap-2">
+                        <EyeOff className="w-4 h-4 text-violet-500" /> Cloak URL
+                      </Label>
+                      <p className="text-xs text-muted-foreground">Hide the destination URL — visitors see your short link in the address bar.</p>
+                    </div>
+                    <Switch
+                      checked={form.watch("isCloaked")}
+                      onCheckedChange={(checked) => form.setValue("isCloaked", checked)}
                     />
                   </div>
 
