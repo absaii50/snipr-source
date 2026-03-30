@@ -1,10 +1,7 @@
 {
-  "/dashboard/page": "app/dashboard/page.js",
-  "/analytics/page": "app/analytics/page.js",
   "/domains/page": "app/domains/page.js",
   "/pixels/page": "app/pixels/page.js",
   "/organize/page": "app/organize/page.js",
-  "/login/page": "app/login/page.js",
   "/conversions/page": "app/conversions/page.js",
   "/revenue/page": "app/revenue/page.js"
 }
