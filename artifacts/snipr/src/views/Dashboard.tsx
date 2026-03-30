@@ -598,16 +598,20 @@ export default function Dashboard() {
           >
             {!isLoading && zeroClickLinks.length > 0 && (
               <div className="space-y-1.5">
-                {zeroClickLinks.map((link: Link) => (
-                  <div key={link.id} className="flex items-center gap-2.5">
-                    <div className="w-1.5 h-1.5 rounded-full bg-[#FCA5A5] shrink-0" />
-                    <p className="text-[11px] font-medium text-[#475569] truncate flex-1 min-w-0">{link.slug}</p>
-                    <button onClick={() => navigator.clipboard.writeText(`${origin}/r/${link.slug}`)}
-                      className="text-[9px] font-bold text-[#4F46E5] hover:text-[#4338CA] transition-colors shrink-0">
-                      Copy
-                    </button>
-                  </div>
-                ))}
+                {zeroClickLinks.map((link: Link) => {
+                  const domain = link.domainId ? domainMap[link.domainId] : null;
+                  const shortUrl = domain ? `https://${domain}/${link.slug}` : `${origin}/r/${link.slug}`;
+                  return (
+                    <div key={link.id} className="flex items-center gap-2.5">
+                      <div className="w-1.5 h-1.5 rounded-full bg-[#FCA5A5] shrink-0" />
+                      <p className="text-[11px] font-medium text-[#475569] truncate flex-1 min-w-0">{link.slug}</p>
+                      <button onClick={() => navigator.clipboard.writeText(shortUrl)}
+                        className="text-[9px] font-bold text-[#4F46E5] hover:text-[#4338CA] transition-colors shrink-0">
+                        Copy
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </ActionPanel>

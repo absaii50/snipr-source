@@ -56,7 +56,7 @@ export default function DeviceDonutChart({ data }: Props) {
             <Pie
               data={top5}
               cx="50%" cy="50%"
-              innerRadius={55} outerRadius={75}
+              innerRadius={55} outerRadius={80}
               dataKey="count"
               nameKey="label"
               stroke="none"
