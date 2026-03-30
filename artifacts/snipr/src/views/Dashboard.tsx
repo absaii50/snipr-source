@@ -190,7 +190,7 @@ export default function Dashboard() {
         <div className="flex items-start justify-between gap-4">
           <div>
             <h1 className="text-[24px] font-extrabold text-[#0F172A] tracking-tight leading-none">
-              Dashboard
+              Link Intelligence
             </h1>
             <p className="text-[13px] text-[#64748B] mt-1" suppressHydrationWarning>
               {mounted
