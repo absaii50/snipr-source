@@ -87142,6 +87142,14 @@ Write a weekly summary covering:
 router12.get("/ai/insights", requireAuth, async (req, res) => {
   const workspaceId = req.session.workspaceId;
   const limit2 = Math.min(Number(req.query.limit ?? 10), 50);
+  const oneHourAgo = new Date(Date.now() - 60 * 60 * 1e3);
+  await db.delete(aiInsightsTable).where(
+    and(
+      eq(aiInsightsTable.workspaceId, workspaceId),
+      eq(aiInsightsTable.type, "qa_response"),
+      lt(aiInsightsTable.createdAt, oneHourAgo)
+    )
+  );
   const insights = await db.select().from(aiInsightsTable).where(eq(aiInsightsTable.workspaceId, workspaceId)).orderBy(desc(aiInsightsTable.createdAt)).limit(limit2);
   res.json(insights);
 });

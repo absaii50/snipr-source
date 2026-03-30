@@ -193,6 +193,17 @@ router.get("/ai/insights", requireAuth, async (req, res): Promise<void> => {
   const workspaceId = req.session.workspaceId!;
   const limit = Math.min(Number(req.query.limit ?? 10), 50);
 
+  const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+  await db
+    .delete(aiInsightsTable)
+    .where(
+      and(
+        eq(aiInsightsTable.workspaceId, workspaceId),
+        eq(aiInsightsTable.type, "qa_response"),
+        lt(aiInsightsTable.createdAt, oneHourAgo)
+      )
+    );
+
   const insights = await db
     .select()
     .from(aiInsightsTable)
