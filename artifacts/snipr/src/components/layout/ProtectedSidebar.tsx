@@ -20,6 +20,7 @@ import {
   CreditCard,
   Menu,
   X,
+  Settings,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -56,6 +57,7 @@ const NAV_SECTIONS = [
       { label: "Integrations", href: "/integrations", icon: Plug },
       { label: "Team",         href: "/team",         icon: Users },
       { label: "Billing",      href: "/billing",      icon: CreditCard },
+      { label: "Settings",     href: "/settings",     icon: Settings },
     ],
   },
 ];

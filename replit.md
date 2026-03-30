@@ -77,6 +77,7 @@ artifacts-monorepo/
 - `/revenue` — Revenue analytics by link, campaign, and event type with date range filtering
 - `/ai` — AI Insights: 3-tab interface: Ask AI (Q&A on real analytics + Quick Question chips), Weekly Summary (AI-generated performance digest), Slug Ideas (AI slug generator with fallback). All AI responses render formatted markdown (bold text, line breaks) via `renderFormattedText()` helper.
 - `/team` — Team members management with role assignment and permissions reference
+- `/settings` — User account settings: edit profile (name/email), change password, delete account with confirmation
 
 ## Backend Routes
 
@@ -84,6 +85,9 @@ artifacts-monorepo/
 - `POST /api/auth/register` — Create account + default workspace
 - `POST /api/auth/login` — Cookie-based session auth
 - `POST /api/auth/logout` — Destroy session
+- `PATCH /api/auth/profile` — Update name/email (re-verifies email if changed)
+- `POST /api/auth/change-password` — Change password (requires current password)
+- `DELETE /api/auth/account` — Delete account (requires password confirmation)
 - `GET /api/auth/me` — Get current user + workspace
 
 ### Links

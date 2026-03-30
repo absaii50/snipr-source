@@ -78242,6 +78242,93 @@ router2.post("/auth/resend-verification", requireAuth, async (req, res) => {
   });
   res.json({ ok: true, message: "Verification email sent" });
 });
+router2.patch("/auth/profile", requireAuth, async (req, res) => {
+  const { name, email: email3 } = req.body;
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.id, req.session.userId));
+  if (!user) {
+    res.status(404).json({ error: "User not found" });
+    return;
+  }
+  const updates = {};
+  if (name && name.trim() && name.trim() !== user.name) {
+    updates.name = name.trim();
+  }
+  if (email3 && email3.trim().toLowerCase() !== user.email) {
+    const existing = await db.select({ id: usersTable.id }).from(usersTable).where(eq(usersTable.email, email3.trim().toLowerCase()));
+    if (existing.length > 0) {
+      res.status(409).json({ error: "Email already in use" });
+      return;
+    }
+    updates.email = email3.trim().toLowerCase();
+    updates.emailVerified = false;
+    updates.emailVerificationToken = crypto6.randomUUID();
+  }
+  if (Object.keys(updates).length === 0) {
+    res.json({ ok: true, message: "No changes" });
+    return;
+  }
+  await db.update(usersTable).set(updates).where(eq(usersTable.id, user.id));
+  if (updates.emailVerificationToken) {
+    sendVerificationEmail({
+      id: user.id,
+      name: updates.name || user.name,
+      email: updates.email,
+      emailVerificationToken: updates.emailVerificationToken
+    }).catch((err) => logger.error({ err }, "Failed to send verification email after email change"));
+  }
+  const [updated] = await db.select().from(usersTable).where(eq(usersTable.id, user.id));
+  const [workspace] = await db.select().from(workspacesTable).where(eq(workspacesTable.userId, user.id));
+  res.json({
+    user: { id: updated.id, name: updated.name, email: updated.email, emailVerified: updated.emailVerified, createdAt: updated.createdAt },
+    workspace: workspace ? { id: workspace.id, name: workspace.name, slug: workspace.slug } : null
+  });
+});
+router2.post("/auth/change-password", requireAuth, async (req, res) => {
+  const { currentPassword, newPassword } = req.body;
+  if (!currentPassword || !newPassword) {
+    res.status(400).json({ error: "Current password and new password are required" });
+    return;
+  }
+  if (newPassword.length < 8) {
+    res.status(400).json({ error: "New password must be at least 8 characters" });
+    return;
+  }
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.id, req.session.userId));
+  if (!user) {
+    res.status(404).json({ error: "User not found" });
+    return;
+  }
+  const valid = await bcryptjs_default.compare(currentPassword, user.passwordHash);
+  if (!valid) {
+    res.status(401).json({ error: "Current password is incorrect" });
+    return;
+  }
+  const newHash = await bcryptjs_default.hash(newPassword, 10);
+  await db.update(usersTable).set({ passwordHash: newHash }).where(eq(usersTable.id, user.id));
+  res.json({ ok: true, message: "Password changed successfully" });
+});
+router2.delete("/auth/account", requireAuth, async (req, res) => {
+  const { password } = req.body;
+  if (!password) {
+    res.status(400).json({ error: "Password is required to delete account" });
+    return;
+  }
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.id, req.session.userId));
+  if (!user) {
+    res.status(404).json({ error: "User not found" });
+    return;
+  }
+  const valid = await bcryptjs_default.compare(password, user.passwordHash);
+  if (!valid) {
+    res.status(401).json({ error: "Password is incorrect" });
+    return;
+  }
+  await db.delete(workspacesTable).where(eq(workspacesTable.userId, user.id));
+  await db.delete(usersTable).where(eq(usersTable.id, user.id));
+  req.session.destroy(() => {
+    res.json({ ok: true, message: "Account deleted" });
+  });
+});
 var auth_default = router2;
 
 // src/routes/links.ts
