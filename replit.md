@@ -63,7 +63,7 @@ artifacts-monorepo/
 - `/signup` — Account registration
 
 ### Authenticated App (Sidebar layout)
-- `/live` — Real-Time Link Tracking: live SSE-powered feed of click events (slug, country flag, city, device, browser, referrer), 4 KPI cards (Active in last 5 min, This Session total, Unique Links, Countries), Top Links + Top Countries panels with progress bars. Auto-reconnects on disconnect.
+- `/live` — Real-Time Intelligence: live SSE-powered feed with expandable visitor detail rows (click any event → full details: location, device, OS, browser, referrer, QR status, timestamp). 5 KPI cards (Active Now, Session Total, Mobile count + %, Desktop count + %, Countries). Right sidebar: Device Breakdown (mobile/desktop/tablet progress bars + browser list + OS list), Realtime Countries (ranked with flags, progress bars, percentages), Top Active Links (ranked with colored progress bars). All panels have icon + explanation empty states. Auto-reconnects on disconnect.
 - `/dashboard` — Overview dashboard: KPI cards (Total Links, 7-Day Clicks, Unique Visitors, Active Links with delta vs last week), Quick Actions, 7-day click bar chart (Recharts), Top Links table with click progress bars, AI Insights summary panel
 - `/links` — Link management: search bar, filter tabs (All/Active/Disabled), sort (newest/oldest/name), per-link KPI strip (Total Links/Active/All-Time Clicks from `/api/links/clicks`), copy button, status toggle, click count column, QR/edit/delete actions
 - `/analytics` — Workspace analytics: area chart (Recharts AreaChart with gradients), period selector (7/30/90 days), link filter, KPI cards with delta vs prior period, top lists (links/countries/referrers/browsers/devices) with colored progress bars
