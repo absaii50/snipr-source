@@ -9,9 +9,9 @@ import {
 import type { Link, Domain, TopEntry, TimeseriesPoint, AiInsight } from "@workspace/api-client-react";
 import {
   LinkIcon, Sparkles, Loader2, ArrowRight, Plus, BarChart3, Zap,
-  MousePointerClick, ExternalLink, RefreshCw, ArrowUpRight, ArrowDownRight,
-  Globe, Copy, CheckCircle2, Rocket, Monitor, Smartphone, Chrome, Wifi,
-  Users, TrendingUp, Activity, Eye, MapPin, AlertTriangle, ToggleLeft,
+  MousePointerClick, ExternalLink, ArrowUpRight, ArrowDownRight,
+  Globe, Copy, CheckCircle2, Rocket, Monitor, Smartphone, Wifi,
+  TrendingUp, Activity, Eye, MapPin, AlertTriangle, ToggleLeft,
   Share2, Clock, ChevronRight, PieChart,
 } from "lucide-react";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
@@ -564,6 +564,7 @@ export default function Dashboard() {
             badgeColor="warning"
             emptyTitle="All links are active"
             emptyHint="Disabled links will appear here when you need to pause them."
+            emptyCta={<Link href="/links"><span className="text-[10px] font-bold text-[#4F46E5] hover:text-[#4338CA] flex items-center gap-0.5 transition-colors">Manage links <ArrowRight className="w-3 h-3" /></span></Link>}
           >
             {!isLoading && disabledLinks.length > 0 && (
               <div className="space-y-1.5">
@@ -593,6 +594,7 @@ export default function Dashboard() {
             badgeColor="danger"
             emptyTitle="All links have clicks"
             emptyHint="Active links with no clicks yet will show here so you can share or promote them."
+            emptyCta={<Link href="/links"><span className="text-[10px] font-bold text-[#4F46E5] hover:text-[#4338CA] flex items-center gap-0.5 transition-colors">View links <ArrowRight className="w-3 h-3" /></span></Link>}
           >
             {!isLoading && zeroClickLinks.length > 0 && (
               <div className="space-y-1.5">
@@ -682,9 +684,10 @@ function BentoCard({ title, icon, action, children }: {
   );
 }
 
-function ActionPanel({ icon, title, badge, badgeColor, emptyTitle, emptyHint, children }: {
+function ActionPanel({ icon, title, badge, badgeColor, emptyTitle, emptyHint, emptyCta, children }: {
   icon: React.ReactNode; title: string; badge?: number;
-  badgeColor?: "warning" | "danger"; emptyTitle: string; emptyHint: string; children?: React.ReactNode;
+  badgeColor?: "warning" | "danger"; emptyTitle: string; emptyHint: string;
+  emptyCta?: React.ReactNode; children?: React.ReactNode;
 }) {
   const hasItems = badge !== undefined && badge > 0;
   return (
@@ -708,6 +711,7 @@ function ActionPanel({ icon, title, badge, badgeColor, emptyTitle, emptyHint, ch
               <p className="text-[11px] font-semibold text-[#475569]">{emptyTitle}</p>
               <p className="text-[10px] text-[#94A3B8] mt-0.5 max-w-[160px]">{emptyHint}</p>
             </div>
+            {emptyCta}
           </div>
       }
     </div>
@@ -749,6 +753,9 @@ function ChartEmpty() {
         <p className="text-[12px] font-semibold text-[#475569]">No click data yet</p>
         <p className="text-[10px] text-[#94A3B8] mt-0.5">Share your short links to see activity here.</p>
       </div>
+      <Link href="/links" className="inline-flex items-center gap-1 text-[11px] font-bold text-[#4F46E5] hover:text-[#4338CA] transition-colors">
+        Create a link <ArrowRight className="w-3 h-3" />
+      </Link>
     </div>
   );
 }
