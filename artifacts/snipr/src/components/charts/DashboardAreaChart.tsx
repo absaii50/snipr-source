@@ -6,7 +6,13 @@ import {
 
 const I = "#4F46E5";
 
-function ChartTip({ active, payload, label }: any) {
+interface ChartTipProps {
+  active?: boolean;
+  payload?: Array<{ value?: number | null; name?: string }>;
+  label?: string;
+}
+
+function ChartTip({ active, payload, label }: ChartTipProps) {
   if (!active || !payload?.length) return null;
   return (
     <div className="bg-[#0F172A] text-white px-3.5 py-2.5 rounded-xl shadow-2xl text-[12px] pointer-events-none">

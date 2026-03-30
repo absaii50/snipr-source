@@ -317,7 +317,13 @@ export default function Dashboard() {
                       <div className="h-full rounded-full bg-[#4F46E5]" style={{ width: `${Math.min(topLinkAllPct * 2, 100)}%` }} />
                     </div>
                   </>
-                : <p className="text-[12px] text-[#94A3B8] mt-1">No links yet</p>
+                : <div className="mt-1">
+                  <p className="text-[12px] text-[#475569] font-semibold">No links yet</p>
+                  <p className="text-[10px] text-[#94A3B8] mt-0.5 mb-2">Create your first short link to track performance.</p>
+                  <Link href="/links" className="inline-flex items-center gap-0.5 text-[10px] font-bold text-[#4F46E5] hover:text-[#4338CA] transition-colors">
+                    Create a link <ChevronRight className="w-3 h-3" />
+                  </Link>
+                </div>
             }
           </div>
 
@@ -343,7 +349,13 @@ export default function Dashboard() {
                     <div className="h-full rounded-full bg-[#14B8A6]" style={{ width: `${topCountryPct}%` }} />
                   </div>
                 </>
-              : <p className="text-[12px] text-[#94A3B8] mt-1">No data yet</p>
+              : <div className="mt-1">
+                  <p className="text-[12px] text-[#475569] font-semibold">No country data yet</p>
+                  <p className="text-[10px] text-[#94A3B8] mt-0.5 mb-2">Share your links to see where visitors come from.</p>
+                  <Link href="/links" className="inline-flex items-center gap-0.5 text-[10px] font-bold text-[#14B8A6] hover:text-[#0D9488] transition-colors">
+                    Share a link <ChevronRight className="w-3 h-3" />
+                  </Link>
+                </div>
             }
           </div>
 
@@ -368,7 +380,13 @@ export default function Dashboard() {
                     <div className="h-full rounded-full bg-[#0EA5E9]" style={{ width: `${topDevicePct}%` }} />
                   </div>
                 </>
-              : <p className="text-[12px] text-[#94A3B8] mt-1">No data yet</p>
+              : <div className="mt-1">
+                  <p className="text-[12px] text-[#475569] font-semibold">No device data yet</p>
+                  <p className="text-[10px] text-[#94A3B8] mt-0.5 mb-2">Device breakdown appears after your first clicks.</p>
+                  <Link href="/analytics" className="inline-flex items-center gap-0.5 text-[10px] font-bold text-[#0EA5E9] hover:text-[#0284C7] transition-colors">
+                    View analytics <ChevronRight className="w-3 h-3" />
+                  </Link>
+                </div>
             }
           </div>
 

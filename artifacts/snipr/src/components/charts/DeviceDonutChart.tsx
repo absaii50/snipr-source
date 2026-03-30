@@ -1,5 +1,4 @@
 "use client";
-import type { TopEntry } from "@workspace/api-client-react";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import { Monitor } from "lucide-react";
 
@@ -11,8 +10,13 @@ function fmtK(n: number) {
   return n.toString();
 }
 
+interface DataItem {
+  label: string;
+  count: number;
+}
+
 interface Props {
-  data: TopEntry[];
+  data: DataItem[];
 }
 
 export default function DeviceDonutChart({ data }: Props) {

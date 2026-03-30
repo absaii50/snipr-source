@@ -6439,6 +6439,13 @@
       }
     }
   }
+  .hover\:text-\[\#0D9488\] {
+    &:hover {
+      @media (hover: hover) {
+        color: #0D9488;
+      }
+    }
+  }
   .hover\:text-\[\#1F2937\] {
     &:hover {
       @media (hover: hover) {
@@ -6506,6 +6513,13 @@
     &:hover {
       @media (hover: hover) {
         color: #111;
+      }
+    }
+  }
+  .hover\:text-\[\#0284C7\] {
+    &:hover {
+      @media (hover: hover) {
+        color: #0284C7;
       }
     }
   }
