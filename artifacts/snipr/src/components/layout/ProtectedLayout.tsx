@@ -75,8 +75,7 @@ export function ProtectedLayout({ children }: { children: ReactNode }) {
 
   if (error || !user) return null;
 
-  // Email verification gate
-  if (!(user as any)?.user?.emailVerified) {
+  if (!user?.emailVerified) {
     return <VerifyEmailGate />;
   }
 

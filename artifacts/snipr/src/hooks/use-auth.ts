@@ -10,7 +10,7 @@ export function useAuth() {
   const router = useRouter();
   const { toast } = useToast();
 
-  const { data: user, isLoading, error } = useGetMe({
+  const { data, isLoading, error } = useGetMe({
     query: {
       queryKey: getGetMeQueryKey(),
       retry: false,
@@ -18,10 +18,13 @@ export function useAuth() {
     }
   });
 
+  const meData = data as any;
+  const user = meData?.user ?? meData;
+  const workspace = meData?.workspace ?? null;
+
   const loginMutation = useLogin({
     mutation: {
       onSuccess: (data: any) => {
-        // Set user data immediately so ProtectedLayout doesn't see the old 401 error
         queryClient.setQueryData(getGetMeQueryKey(), data);
         toast({ title: "Welcome back!", description: "You have successfully logged in." });
         router.push("/dashboard");
@@ -65,6 +68,7 @@ export function useAuth() {
 
   return {
     user,
+    workspace,
     isLoading,
     error,
     login: (data: LoginRequest) => loginMutation.mutate({ data }),
