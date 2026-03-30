@@ -27,11 +27,71 @@ import { format, parseISO, subDays } from "date-fns";
 
 const iso = (d: Date) => d.toISOString().split("T")[0];
 
-const PERIODS = [
-  { label: "7D", value: 7 },
-  { label: "30D", value: 30 },
-  { label: "90D", value: 90 },
-  { label: "1Y", value: 365 },
+type PeriodKey = "1h" | "6h" | "today" | "7d" | "30d" | "90d" | "1y";
+interface PeriodDef {
+  key: PeriodKey;
+  label: string;
+  getRange: (now: Date) => { from: string; to: string };
+  getPrevRange: (now: Date) => { from: string; to: string };
+  tsInterval: string;
+  staleMs: number;
+  displayLabel: string;
+}
+
+function hoursAgo(now: Date, h: number) {
+  return new Date(now.getTime() - h * 60 * 60 * 1000).toISOString();
+}
+
+const PERIODS: PeriodDef[] = [
+  {
+    key: "1h", label: "1H", displayLabel: "1 hour",
+    getRange: (now) => ({ from: hoursAgo(now, 1), to: now.toISOString() }),
+    getPrevRange: (now) => ({ from: hoursAgo(now, 2), to: hoursAgo(now, 1) }),
+    tsInterval: "hour", staleMs: 15_000,
+  },
+  {
+    key: "6h", label: "6H", displayLabel: "6 hours",
+    getRange: (now) => ({ from: hoursAgo(now, 6), to: now.toISOString() }),
+    getPrevRange: (now) => ({ from: hoursAgo(now, 12), to: hoursAgo(now, 6) }),
+    tsInterval: "hour", staleMs: 30_000,
+  },
+  {
+    key: "today", label: "Today", displayLabel: "today",
+    getRange: (now) => {
+      const sod = new Date(now); sod.setHours(0,0,0,0);
+      return { from: sod.toISOString(), to: now.toISOString() };
+    },
+    getPrevRange: (now) => {
+      const yStart = subDays(now, 1); yStart.setHours(0,0,0,0);
+      const yEnd = new Date(yStart); yEnd.setHours(23,59,59,999);
+      return { from: yStart.toISOString(), to: yEnd.toISOString() };
+    },
+    tsInterval: "hour", staleMs: 30_000,
+  },
+  {
+    key: "7d", label: "7D", displayLabel: "7 days",
+    getRange: (now) => ({ from: iso(subDays(now, 6)), to: iso(now) }),
+    getPrevRange: (now) => ({ from: iso(subDays(now, 13)), to: iso(subDays(now, 7)) }),
+    tsInterval: "day", staleMs: 5 * 60 * 1000,
+  },
+  {
+    key: "30d", label: "30D", displayLabel: "30 days",
+    getRange: (now) => ({ from: iso(subDays(now, 29)), to: iso(now) }),
+    getPrevRange: (now) => ({ from: iso(subDays(now, 59)), to: iso(subDays(now, 30)) }),
+    tsInterval: "day", staleMs: 5 * 60 * 1000,
+  },
+  {
+    key: "90d", label: "90D", displayLabel: "90 days",
+    getRange: (now) => ({ from: iso(subDays(now, 89)), to: iso(now) }),
+    getPrevRange: (now) => ({ from: iso(subDays(now, 179)), to: iso(subDays(now, 90)) }),
+    tsInterval: "day", staleMs: 5 * 60 * 1000,
+  },
+  {
+    key: "1y", label: "1Y", displayLabel: "1 year",
+    getRange: (now) => ({ from: iso(subDays(now, 364)), to: iso(now) }),
+    getPrevRange: (now) => ({ from: iso(subDays(now, 729)), to: iso(subDays(now, 365)) }),
+    tsInterval: "day", staleMs: 5 * 60 * 1000,
+  },
 ];
 
 function countryFlag(code: string | null) {
@@ -84,29 +144,21 @@ function fmtNum(n: number) {
 }
 
 export default function Analytics() {
-  const [days, setDays] = useState<number>(30);
+  const [periodKey, setPeriodKey] = useState<PeriodKey>("30d");
   const [selectedLinkId, setSelectedLinkId] = useState<string>("");
 
-  const today = useMemo(() => new Date(), []);
-  const todayStr = iso(today);
-  const yesterdayStr = iso(subDays(today, 1));
+  const period = PERIODS.find(p => p.key === periodKey)!;
+  const now = useMemo(() => new Date(), []);
+  const todayStr = iso(now);
+  const yesterdayStr = iso(subDays(now, 1));
 
-  const { from, to } = useMemo(() => ({
-    from: iso(subDays(today, days - 1)),
-    to: todayStr,
-  }), [days, today, todayStr]);
+  const { from, to } = useMemo(() => period.getRange(now), [period, now]);
+  const { from: prevFrom, to: prevTo } = useMemo(() => period.getPrevRange(now), [period, now]);
+  const sevenFrom = useMemo(() => iso(subDays(now, 6)), [now]);
 
-  const { from: prevFrom, to: prevTo } = useMemo(() => ({
-    from: iso(subDays(today, days * 2 - 1)),
-    to: iso(subDays(today, days)),
-  }), [days, today]);
-
-  const sevenFrom = useMemo(() => iso(subDays(today, 6)), [today]);
-
-  const ST5 = 5 * 60 * 1000;
   const linkFilter = selectedLinkId ? { linkId: selectedLinkId } : {};
 
-  const { data: links } = useGetLinks(undefined, { query: { staleTime: ST5 } });
+  const { data: links } = useGetLinks(undefined, { query: { staleTime: 5 * 60 * 1000 } });
 
   const todayParams = { from: todayStr, to: todayStr, ...linkFilter };
   const yesterdayParams = { from: yesterdayStr, to: yesterdayStr, ...linkFilter };
@@ -118,20 +170,21 @@ export default function Analytics() {
     query: { queryKey: getGetWorkspaceAnalyticsQueryKey(todayParams), staleTime: 30_000 },
   });
   const { data: yesterdayStats } = useGetWorkspaceAnalytics(yesterdayParams, {
-    query: { queryKey: getGetWorkspaceAnalyticsQueryKey(yesterdayParams), staleTime: ST5 },
+    query: { queryKey: getGetWorkspaceAnalyticsQueryKey(yesterdayParams), staleTime: 5 * 60 * 1000 },
   });
   const { data: stats, isLoading: statsLoading } = useGetWorkspaceAnalytics(periodParams, {
-    query: { queryKey: getGetWorkspaceAnalyticsQueryKey(periodParams), placeholderData: keepPreviousData, staleTime: ST5 },
+    query: { queryKey: getGetWorkspaceAnalyticsQueryKey(periodParams), placeholderData: keepPreviousData, staleTime: period.staleMs },
   });
   const { data: prevStats } = useGetWorkspaceAnalytics(prevParams, {
-    query: { queryKey: getGetWorkspaceAnalyticsQueryKey(prevParams), placeholderData: keepPreviousData, staleTime: ST5 },
+    query: { queryKey: getGetWorkspaceAnalyticsQueryKey(prevParams), placeholderData: keepPreviousData, staleTime: period.staleMs },
   });
   const { data: sevenStats } = useGetWorkspaceAnalytics(sevenParams, {
-    query: { queryKey: getGetWorkspaceAnalyticsQueryKey(sevenParams), staleTime: ST5 },
+    query: { queryKey: getGetWorkspaceAnalyticsQueryKey(sevenParams), staleTime: 5 * 60 * 1000 },
   });
 
-  const tsParams = { from, to, ...linkFilter };
-  const { data: timeseries, isLoading: tsLoading } = useWorkspaceTimeseriesWithFormatting(tsParams, ST5);
+  const tsParams = { from, to, interval: period.tsInterval, ...linkFilter };
+  const isHourly = period.tsInterval === "hour";
+  const { data: timeseries, isLoading: tsLoading } = useWorkspaceTimeseriesWithFormatting(tsParams, period.staleMs, isHourly);
 
   const clickDelta = useMemo(() => {
     const cur = stats?.totalClicks ?? 0;
@@ -196,13 +249,13 @@ export default function Analytics() {
               <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-400 pointer-events-none" />
             </div>
 
-            <div className="flex bg-slate-100 p-1 rounded-xl">
+            <div className="flex bg-slate-100 p-1 rounded-xl flex-wrap">
               {PERIODS.map((p) => (
                 <button
-                  key={p.value}
-                  onClick={() => setDays(p.value)}
-                  className={`px-3.5 py-1.5 text-[12px] font-semibold rounded-lg transition-all ${
-                    days === p.value
+                  key={p.key}
+                  onClick={() => setPeriodKey(p.key)}
+                  className={`px-3 py-1.5 text-[11px] font-semibold rounded-lg transition-all ${
+                    periodKey === p.key
                       ? "bg-white text-slate-900 shadow-sm"
                       : "text-slate-400 hover:text-slate-700"
                   }`}
@@ -223,7 +276,7 @@ export default function Analytics() {
                 </div>
                 <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wide">Today</p>
               </div>
-              <p className="text-[10px] text-slate-400">{format(today, "MMM d, yyyy")}</p>
+              <p className="text-[10px] text-slate-400">{format(now, "MMM d, yyyy")}</p>
             </div>
             <div className="flex items-end gap-2">
               <span className="text-[32px] font-display font-black text-slate-900 leading-none">
@@ -246,7 +299,7 @@ export default function Analytics() {
                 </div>
                 <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wide">Yesterday</p>
               </div>
-              <p className="text-[10px] text-slate-400">{format(subDays(today, 1), "MMM d, yyyy")}</p>
+              <p className="text-[10px] text-slate-400">{format(subDays(now, 1), "MMM d, yyyy")}</p>
             </div>
             <div className="flex items-end gap-2">
               <span className="text-[32px] font-display font-black text-slate-900 leading-none">
@@ -292,8 +345,8 @@ export default function Analytics() {
         </div>
 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <KpiCard title="Total Clicks" value={stats?.totalClicks} delta={clickDelta} icon={<MousePointerClick className="w-4 h-4" />} color="text-indigo-600" bg="bg-indigo-50" loading={statsLoading} periodLabel={`${days}D`} />
-          <KpiCard title="Unique Visitors" value={stats?.uniqueClicks} delta={uniqueDelta} icon={<Users className="w-4 h-4" />} color="text-violet-600" bg="bg-violet-50" loading={statsLoading} periodLabel={`${days}D`} />
+          <KpiCard title="Total Clicks" value={stats?.totalClicks} delta={clickDelta} icon={<MousePointerClick className="w-4 h-4" />} color="text-indigo-600" bg="bg-indigo-50" loading={statsLoading} periodLabel={period.displayLabel} />
+          <KpiCard title="Unique Visitors" value={stats?.uniqueClicks} delta={uniqueDelta} icon={<Users className="w-4 h-4" />} color="text-violet-600" bg="bg-violet-50" loading={statsLoading} periodLabel={period.displayLabel} />
           <KpiCard title="Total Links" value={stats?.totalLinks} icon={<LinkIcon className="w-4 h-4" />} color="text-amber-600" bg="bg-amber-50" loading={statsLoading} />
           <KpiCard title="Active Links" value={stats?.enabledLinks} icon={<Activity className="w-4 h-4" />} color="text-emerald-600" bg="bg-emerald-50" loading={statsLoading} />
         </div>
@@ -564,7 +617,7 @@ export default function Analytics() {
   );
 }
 
-function useWorkspaceTimeseriesWithFormatting(params: Record<string, string>, staleTime?: number) {
+function useWorkspaceTimeseriesWithFormatting(params: Record<string, string>, staleTime?: number, hourly?: boolean) {
   const result = useGetWorkspaceTimeseries(params, {
     query: { queryKey: getGetWorkspaceTimeseriesQueryKey(params), placeholderData: keepPreviousData, staleTime },
   });
@@ -572,9 +625,9 @@ function useWorkspaceTimeseriesWithFormatting(params: Record<string, string>, st
     if (!result.data) return [];
     return result.data.map((pt) => ({
       ...pt,
-      formattedTime: format(parseISO(pt.time), "MMM d"),
+      formattedTime: format(parseISO(pt.time), hourly ? "HH:mm" : "MMM d"),
     }));
-  }, [result.data]);
+  }, [result.data, hourly]);
   return { ...result, data: formattedData };
 }
 

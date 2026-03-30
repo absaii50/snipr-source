@@ -78807,8 +78807,8 @@ var import_express4 = __toESM(require_express2(), 1);
 var router4 = (0, import_express4.Router)();
 function parseDateRange(from, to) {
   const now = /* @__PURE__ */ new Date();
-  const toDate = to ? /* @__PURE__ */ new Date(to + "T23:59:59Z") : now;
-  const fromDate = from ? /* @__PURE__ */ new Date(from + "T00:00:00Z") : new Date(now.getTime() - 30 * 24 * 60 * 60 * 1e3);
+  const toDate = to ? to.includes("T") ? new Date(to) : /* @__PURE__ */ new Date(to + "T23:59:59Z") : now;
+  const fromDate = from ? from.includes("T") ? new Date(from) : /* @__PURE__ */ new Date(from + "T00:00:00Z") : new Date(now.getTime() - 30 * 24 * 60 * 60 * 1e3);
   return { fromDate, toDate };
 }
 async function topN(workspaceId, column, fromDate, toDate, linkId, limit2 = 10) {

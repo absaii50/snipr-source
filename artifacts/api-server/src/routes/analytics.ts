@@ -7,9 +7,11 @@ const router: IRouter = Router();
 
 function parseDateRange(from?: string, to?: string) {
   const now = new Date();
-  const toDate = to ? new Date(to + "T23:59:59Z") : now;
+  const toDate = to
+    ? (to.includes("T") ? new Date(to) : new Date(to + "T23:59:59Z"))
+    : now;
   const fromDate = from
-    ? new Date(from + "T00:00:00Z")
+    ? (from.includes("T") ? new Date(from) : new Date(from + "T00:00:00Z"))
     : new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
   return { fromDate, toDate };
 }
