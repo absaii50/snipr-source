@@ -78139,6 +78139,14 @@ router2.post("/auth/register", async (req, res) => {
   const [user] = await db.insert(usersTable).values({ name, email: email3.toLowerCase(), passwordHash, emailVerificationToken }).returning();
   const workspaceSlug = email3.toLowerCase().split("@")[0].replace(/[^a-z0-9]/g, "-") + "-" + Date.now();
   const [workspace] = await db.insert(workspacesTable).values({ name: `${name}'s Workspace`, slug: workspaceSlug, userId: user.id }).returning();
+  await db.insert(workspaceMembersTable).values({
+    workspaceId: workspace.id,
+    userId: user.id,
+    email: user.email,
+    role: "owner",
+    status: "active",
+    joinedAt: /* @__PURE__ */ new Date()
+  });
   sendVerificationEmail({
     id: user.id,
     name: user.name,
@@ -79923,6 +79931,7 @@ router11.get("/team", requireAuth, async (req, res) => {
   const workspaceId = req.session.workspaceId;
   const members = await db.select({
     id: workspaceMembersTable.id,
+    userId: workspaceMembersTable.userId,
     email: workspaceMembersTable.email,
     role: workspaceMembersTable.role,
     status: workspaceMembersTable.status,

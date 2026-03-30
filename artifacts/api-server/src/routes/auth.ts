@@ -3,7 +3,7 @@ import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import { eq } from "drizzle-orm";
 import geoip from "geoip-lite";
-import { db, usersTable, workspacesTable } from "@workspace/db";
+import { db, usersTable, workspacesTable, workspaceMembersTable } from "@workspace/db";
 import {
   RegisterBody,
   LoginBody,
@@ -46,6 +46,15 @@ router.post("/auth/register", async (req, res): Promise<void> => {
     .insert(workspacesTable)
     .values({ name: `${name}'s Workspace`, slug: workspaceSlug, userId: user.id })
     .returning();
+
+  await db.insert(workspaceMembersTable).values({
+    workspaceId: workspace.id,
+    userId: user.id,
+    email: user.email,
+    role: "owner",
+    status: "active",
+    joinedAt: new Date(),
+  });
 
   // Send verification email (non-blocking)
   sendVerificationEmail({

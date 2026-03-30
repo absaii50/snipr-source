@@ -14,6 +14,7 @@ router.get("/team", requireAuth, async (req, res): Promise<void> => {
   const members = await db
     .select({
       id: workspaceMembersTable.id,
+      userId: workspaceMembersTable.userId,
       email: workspaceMembersTable.email,
       role: workspaceMembersTable.role,
       status: workspaceMembersTable.status,
