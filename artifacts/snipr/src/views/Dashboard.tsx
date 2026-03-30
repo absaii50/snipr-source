@@ -470,7 +470,7 @@ export default function Dashboard() {
           <div className="lg:col-span-5">
             <BentoCard title="Top Countries" icon={<MapPin className="w-3 h-3" />}>
               {topCountries.length === 0
-                ? <EmptySection icon={<Globe className="w-5 h-5 text-[#CBD5E1]" />} title="No geographic data yet" hint="Country-level data appears after your first clicks from different regions." />
+                ? <EmptySection icon={<Globe className="w-5 h-5 text-[#CBD5E1]" />} title="No geographic data yet" hint="Country-level data appears after your first clicks from different regions." cta={<Link href="/links"><span className="text-[11px] font-bold text-[#14B8A6] flex items-center gap-1">Share a link <ArrowRight className="w-3 h-3" /></span></Link>} />
                 : <div className="grid grid-cols-2 gap-x-4 gap-y-2 pt-1">
                     {topCountries.map((c: TopEntry) => {
                       const pct = Math.round((c.count / Math.max(...topCountries.map((x: TopEntry) => x.count), 1)) * 100);
@@ -498,7 +498,7 @@ export default function Dashboard() {
           <div className="lg:col-span-4">
             <BentoCard title="Traffic Sources" icon={<Wifi className="w-3 h-3" />}>
               {topRefs.length === 0
-                ? <EmptySection icon={<Wifi className="w-5 h-5 text-[#CBD5E1]" />} title="No referrer data yet" hint="Traffic sources appear when your links receive clicks from other websites or apps." />
+                ? <EmptySection icon={<Wifi className="w-5 h-5 text-[#CBD5E1]" />} title="No referrer data yet" hint="Traffic sources appear when your links receive clicks from other websites or apps." cta={<Link href="/links"><span className="text-[11px] font-bold text-[#4F46E5] flex items-center gap-1">Share a link <ArrowRight className="w-3 h-3" /></span></Link>} />
                 : <div className="space-y-2.5 pt-1">
                     {topRefs.map((r: TopEntry, i: number) => {
                       const total = Math.max(...topRefs.map((x: TopEntry) => x.count), 1);
@@ -531,7 +531,7 @@ export default function Dashboard() {
               {isLoading
                 ? <SkeletonRows n={4} />
                 : recentLinks.length === 0
-                  ? <EmptySection icon={<Clock className="w-5 h-5 text-[#CBD5E1]" />} title="No links yet" hint="Your newly created links will appear here." />
+                  ? <EmptySection icon={<Clock className="w-5 h-5 text-[#CBD5E1]" />} title="No links yet" hint="Your newly created links will appear here." cta={<Link href="/links"><span className="text-[11px] font-bold text-[#4F46E5] flex items-center gap-1">Create a link <ArrowRight className="w-3 h-3" /></span></Link>} />
                   : <div className="space-y-1 pt-1">
                       {recentLinks.map((link: Link) => (
                         <div key={link.id} className="group flex items-start gap-2.5 py-2 rounded-lg hover:bg-[#F8FAFC] -mx-2 px-2 transition-colors">
