@@ -19,6 +19,7 @@ Snipr is a full-stack URL shortener SaaS built in a pnpm monorepo. Features: sho
 - **Geo/Device detection**: geoip-lite, ua-parser-js
 - **Validation**: Zod (`zod/v4`), `drizzle-zod`
 - **API codegen**: Orval (from OpenAPI spec)
+- **AI**: DeepSeek (`deepseek-chat` model via OpenAI-compatible SDK, `DEEPSEEK_API_KEY` secret)
 - **Build**: esbuild (CJS bundle)
 
 ## Structure

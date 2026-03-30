@@ -86793,50 +86793,11 @@ OpenAI.Containers = Containers;
 OpenAI.Skills = Skills;
 OpenAI.Videos = Videos;
 
-// ../../lib/integrations-openai-ai-server/src/client.ts
-var _client = null;
-function getOpenAIClient() {
-  if (!process.env.AI_INTEGRATIONS_OPENAI_BASE_URL) {
-    throw new Error(
-      "AI_INTEGRATIONS_OPENAI_BASE_URL must be set. Did you forget to provision the OpenAI AI integration?"
-    );
-  }
-  if (!process.env.AI_INTEGRATIONS_OPENAI_API_KEY) {
-    throw new Error(
-      "AI_INTEGRATIONS_OPENAI_API_KEY must be set. Did you forget to provision the OpenAI AI integration?"
-    );
-  }
-  if (!_client) {
-    _client = new OpenAI({
-      apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
-      baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL
-    });
-  }
-  return _client;
-}
-var openai = new Proxy({}, {
-  get(_target, prop) {
-    return getOpenAIClient()[prop];
-  }
-});
-
-// ../../lib/integrations-openai-ai-server/src/image/client.ts
-if (!process.env.AI_INTEGRATIONS_OPENAI_BASE_URL) {
-  throw new Error(
-    "AI_INTEGRATIONS_OPENAI_BASE_URL must be set. Did you forget to provision the OpenAI AI integration?"
-  );
-}
-if (!process.env.AI_INTEGRATIONS_OPENAI_API_KEY) {
-  throw new Error(
-    "AI_INTEGRATIONS_OPENAI_API_KEY must be set. Did you forget to provision the OpenAI AI integration?"
-  );
-}
-var openai2 = new OpenAI({
-  apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
-  baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL
-});
-
 // src/routes/ai.ts
+var deepseek = new OpenAI({
+  apiKey: process.env.DEEPSEEK_API_KEY,
+  baseURL: "https://api.deepseek.com"
+});
 var router12 = (0, import_express12.Router)();
 async function gatherAnalyticsContext(workspaceId, days = 7) {
   const now = /* @__PURE__ */ new Date();
@@ -86943,9 +86904,9 @@ Write a weekly summary covering:
 3. Key geographic trends
 4. Conversion/revenue highlights (if any)
 5. One actionable recommendation`;
-  const response = await openai.chat.completions.create({
-    model: "gpt-5.2",
-    max_completion_tokens: 512,
+  const response = await deepseek.chat.completions.create({
+    model: "deepseek-chat",
+    max_tokens: 512,
     messages: [
       { role: "system", content: systemPrompt },
       { role: "user", content: userPrompt }
@@ -86991,9 +86952,9 @@ FORMAT RULES:
 ${JSON.stringify(ctx, null, 2)}
 
 Question: ${question}`;
-  const response = await openai.chat.completions.create({
-    model: "gpt-5.2",
-    max_completion_tokens: 400,
+  const response = await deepseek.chat.completions.create({
+    model: "deepseek-chat",
+    max_tokens: 400,
     messages: [
       { role: "system", content: systemPrompt },
       { role: "user", content: userPrompt }
@@ -87039,9 +87000,9 @@ Question: ${question}`;
   res.flushHeaders();
   let fullAnswer = "";
   try {
-    const stream = await openai.chat.completions.create({
-      model: "gpt-5.2",
-      max_completion_tokens: 256,
+    const stream = await deepseek.chat.completions.create({
+      model: "deepseek-chat",
+      max_tokens: 256,
       stream: true,
       messages: [
         { role: "system", content: systemPrompt },
@@ -87094,9 +87055,9 @@ ${JSON.stringify(ctx, null, 2)}
 Generate 5 smart, actionable insights for this user. Return only a JSON array.`;
   let suggestions = [];
   try {
-    const response = await openai.chat.completions.create({
-      model: "gpt-5.2",
-      max_completion_tokens: 512,
+    const response = await deepseek.chat.completions.create({
+      model: "deepseek-chat",
+      max_tokens: 512,
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt }
@@ -87165,9 +87126,9 @@ ${JSON.stringify(linkSummaries, null, 2)}
 Produce the audit report as a JSON array.`;
   let findings = [];
   try {
-    const response = await openai.chat.completions.create({
-      model: "gpt-5.2",
-      max_completion_tokens: 768,
+    const response = await deepseek.chat.completions.create({
+      model: "deepseek-chat",
+      max_tokens: 768,
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt }
@@ -87224,9 +87185,9 @@ router12.post("/ai/slug-suggest", requireAuth, async (req, res) => {
   }
   let suggestions = [];
   try {
-    const response = await openai.chat.completions.create({
-      model: "gpt-5.2",
-      max_completion_tokens: 200,
+    const response = await deepseek.chat.completions.create({
+      model: "deepseek-chat",
+      max_tokens: 200,
       messages: [
         {
           role: "system",

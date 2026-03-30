@@ -1,8 +1,13 @@
 import { Router, type IRouter } from "express";
 import { eq, and, gte, lte, sql, sum, count, desc, lt, inArray } from "drizzle-orm";
 import { db, linksTable, clickEventsTable, conversionsTable, aiInsightsTable } from "@workspace/db";
-import { openai } from "@workspace/integrations-openai-ai-server";
+import OpenAI from "openai";
 import { requireAuth } from "../lib/auth";
+
+const deepseek = new OpenAI({
+  apiKey: process.env.DEEPSEEK_API_KEY,
+  baseURL: "https://api.deepseek.com",
+});
 
 const router: IRouter = Router();
 
@@ -160,9 +165,9 @@ Write a weekly summary covering:
 4. Conversion/revenue highlights (if any)
 5. One actionable recommendation`;
 
-  const response = await openai.chat.completions.create({
-    model: "gpt-5.2",
-    max_completion_tokens: 512,
+  const response = await deepseek.chat.completions.create({
+    model: "deepseek-chat",
+    max_tokens: 512,
     messages: [
       { role: "system", content: systemPrompt },
       { role: "user", content: userPrompt },
@@ -228,9 +233,9 @@ ${JSON.stringify(ctx, null, 2)}
 
 Question: ${question}`;
 
-  const response = await openai.chat.completions.create({
-    model: "gpt-5.2",
-    max_completion_tokens: 400,
+  const response = await deepseek.chat.completions.create({
+    model: "deepseek-chat",
+    max_tokens: 400,
     messages: [
       { role: "system", content: systemPrompt },
       { role: "user", content: userPrompt },
@@ -291,9 +296,9 @@ Question: ${question}`;
   let fullAnswer = "";
 
   try {
-    const stream = await openai.chat.completions.create({
-      model: "gpt-5.2",
-      max_completion_tokens: 256,
+    const stream = await deepseek.chat.completions.create({
+      model: "deepseek-chat",
+      max_tokens: 256,
       stream: true,
       messages: [
         { role: "system", content: systemPrompt },
@@ -349,9 +354,9 @@ Generate 5 smart, actionable insights for this user. Return only a JSON array.`;
   let suggestions: Array<{ title: string; body: string; icon: string }> = [];
 
   try {
-    const response = await openai.chat.completions.create({
-      model: "gpt-5.2",
-      max_completion_tokens: 512,
+    const response = await deepseek.chat.completions.create({
+      model: "deepseek-chat",
+      max_tokens: 512,
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt },
@@ -440,9 +445,9 @@ Produce the audit report as a JSON array.`;
   let findings: Array<{ type: string; slug: string; message: string }> = [];
 
   try {
-    const response = await openai.chat.completions.create({
-      model: "gpt-5.2",
-      max_completion_tokens: 768,
+    const response = await deepseek.chat.completions.create({
+      model: "deepseek-chat",
+      max_tokens: 768,
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt },
@@ -528,9 +533,9 @@ router.post("/ai/slug-suggest", requireAuth, async (req, res): Promise<void> => 
   let suggestions: string[] = [];
 
   try {
-    const response = await openai.chat.completions.create({
-      model: "gpt-5.2",
-      max_completion_tokens: 200,
+    const response = await deepseek.chat.completions.create({
+      model: "deepseek-chat",
+      max_tokens: 200,
       messages: [
         {
           role: "system",
