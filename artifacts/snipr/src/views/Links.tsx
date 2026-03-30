@@ -12,7 +12,7 @@ import {
   Plus, Edit2, Trash2, QrCode, ExternalLink, LinkIcon,
   Search, Copy, Check, ToggleLeft, ToggleRight, Loader2,
   TrendingUp, MousePointerClick, ChevronDown, Globe, Layers,
-  CheckSquare, Square, XCircle, FolderInput,
+  CheckSquare, Square, XCircle, FolderInput, FolderOpen, Tag, X,
 } from "lucide-react";
 
 type FilterType = "all" | "active" | "disabled";
@@ -125,6 +125,8 @@ export default function Links() {
   const [moveFolderId, setMoveFolderId] = useState<string>("");
   const [bulkTagId, setBulkTagId] = useState<string>("");
   const [baseUrl, setBaseUrl] = useState("");
+  const [folderFilter, setFolderFilter] = useState<string>("");
+  const [tagFilter, setTagFilter] = useState<string>("");
 
   useEffect(() => {
     setBaseUrl(window.location.origin);
@@ -134,6 +136,8 @@ export default function Links() {
     if (typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
     const slug = params.get("slug");
+    const folder = params.get("folder");
+    if (folder) setFolderFilter(folder);
     if (slug) {
       setPrefilledSlug(slug);
       setEditingLink(null);
@@ -158,12 +162,26 @@ export default function Links() {
     }
     if (filter === "active") result = result.filter((l) => l.enabled);
     if (filter === "disabled") result = result.filter((l) => !l.enabled);
+    if (folderFilter) result = result.filter((l) => (l as any).folderId === folderFilter);
+    if (tagFilter) result = result.filter((l) => ((l as any).tags ?? []).some((t: any) => t.id === tagFilter));
     if (sortBy === "newest") result.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     if (sortBy === "oldest") result.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
     if (sortBy === "name") result.sort((a, b) => a.slug.localeCompare(b.slug));
     if (sortBy === "clicks") result.sort((a, b) => (clickCounts[b.id] ?? 0) - (clickCounts[a.id] ?? 0));
     return result;
-  }, [links, search, filter, sortBy, clickCounts]);
+  }, [links, search, filter, sortBy, clickCounts, folderFilter, tagFilter]);
+
+  const folderMap = useMemo(() => {
+    const map: Record<string, { name: string; color: string }> = {};
+    (folders as any[]).forEach((f) => { map[f.id] = { name: f.name, color: f.color }; });
+    return map;
+  }, [folders]);
+
+  const tagMap = useMemo(() => {
+    const map: Record<string, { name: string; color: string }> = {};
+    (tags as any[]).forEach((t) => { map[t.id] = { name: t.name, color: t.color }; });
+    return map;
+  }, [tags]);
 
   const handleCreate = () => { setEditingLink(null); setIsModalOpen(true); };
   const handleEdit = (link: Link) => { setEditingLink(link); setIsModalOpen(true); };
@@ -387,46 +405,94 @@ export default function Links() {
         <div className="bg-white border border-[#EBEBF0] rounded-2xl overflow-hidden shadow-[0_1px_4px_rgba(0,0,0,0.04)]">
 
           {/* Toolbar */}
-          <div className="px-4 py-3 border-b border-[#F2F2F6] flex flex-col sm:flex-row gap-2.5 items-start sm:items-center bg-white">
-            <div className="relative flex-1 min-w-0">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#CCCCDA] pointer-events-none" />
-              <input
-                type="text"
-                placeholder="Search slug, title, or URL…"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-8.5 pr-4 py-2 text-[13px] bg-[#F6F6F9] border border-transparent rounded-xl outline-none focus:border-[#728DA7] focus:bg-white focus:ring-2 focus:ring-[#728DA7]/10 transition-all placeholder:text-[#C0C0CC]"
-                style={{ paddingLeft: "2.25rem" }}
-              />
-            </div>
+          <div className="px-4 py-3 border-b border-[#F2F2F6] flex flex-col gap-2 bg-white">
+            <div className="flex flex-col sm:flex-row gap-2.5 items-start sm:items-center">
+              <div className="relative flex-1 min-w-0">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#CCCCDA] pointer-events-none" />
+                <input
+                  type="text"
+                  placeholder="Search slug, title, or URL…"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="w-full pl-8.5 pr-4 py-2 text-[13px] bg-[#F6F6F9] border border-transparent rounded-xl outline-none focus:border-[#728DA7] focus:bg-white focus:ring-2 focus:ring-[#728DA7]/10 transition-all placeholder:text-[#C0C0CC]"
+                  style={{ paddingLeft: "2.25rem" }}
+                />
+              </div>
 
-            <div className="flex gap-0.5 bg-[#F2F2F6] rounded-xl p-1 shrink-0">
-              {(["all", "active", "disabled"] as FilterType[]).map((f) => (
-                <button
-                  key={f}
-                  onClick={() => setFilter(f)}
-                  className={`px-3 py-1.5 text-[12px] font-semibold rounded-lg transition-all capitalize ${
-                    filter === f ? "bg-white text-[#0A0A0A] shadow-sm" : "text-[#9090A0] hover:text-[#0A0A0A]"
-                  }`}
+              <div className="flex gap-0.5 bg-[#F2F2F6] rounded-xl p-1 shrink-0">
+                {(["all", "active", "disabled"] as FilterType[]).map((f) => (
+                  <button
+                    key={f}
+                    onClick={() => setFilter(f)}
+                    className={`px-3 py-1.5 text-[12px] font-semibold rounded-lg transition-all capitalize ${
+                      filter === f ? "bg-white text-[#0A0A0A] shadow-sm" : "text-[#9090A0] hover:text-[#0A0A0A]"
+                    }`}
+                  >
+                    {f === "all" ? `All (${totalLinks})` : f === "active" ? `Active (${activeLinks})` : `Off (${totalLinks - activeLinks})`}
+                  </button>
+                ))}
+              </div>
+
+              <div className="relative shrink-0">
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value as SortType)}
+                  className="pl-3 pr-8 py-2 text-[12px] font-medium bg-[#F2F2F6] border border-transparent rounded-xl outline-none cursor-pointer appearance-none text-[#3A3A3E] hover:bg-[#EAEAF0] transition-colors"
                 >
-                  {f === "all" ? `All (${totalLinks})` : f === "active" ? `Active (${activeLinks})` : `Off (${totalLinks - activeLinks})`}
-                </button>
-              ))}
+                  <option value="newest">Newest first</option>
+                  <option value="oldest">Oldest first</option>
+                  <option value="name">Name A–Z</option>
+                  <option value="clicks">Most clicks</option>
+                </select>
+                <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-[#B0B0BA] pointer-events-none" />
+              </div>
             </div>
 
-            <div className="relative shrink-0">
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as SortType)}
-                className="pl-3 pr-8 py-2 text-[12px] font-medium bg-[#F2F2F6] border border-transparent rounded-xl outline-none cursor-pointer appearance-none text-[#3A3A3E] hover:bg-[#EAEAF0] transition-colors"
-              >
-                <option value="newest">Newest first</option>
-                <option value="oldest">Oldest first</option>
-                <option value="name">Name A–Z</option>
-                <option value="clicks">Most clicks</option>
-              </select>
-              <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-[#B0B0BA] pointer-events-none" />
-            </div>
+            {/* Folder + Tag filter row */}
+            {((folders as any[]).length > 0 || (tags as any[]).length > 0) && (
+              <div className="flex flex-wrap gap-2 items-center">
+                {(folders as any[]).length > 0 && (
+                  <div className="relative shrink-0">
+                    <FolderOpen className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#728DA7] pointer-events-none" />
+                    <select
+                      value={folderFilter}
+                      onChange={(e) => setFolderFilter(e.target.value)}
+                      className="pl-8 pr-7 py-1.5 text-[12px] font-medium bg-[#F6F6F9] border border-transparent rounded-xl outline-none cursor-pointer appearance-none text-[#3A3A3E] hover:bg-[#EAEAF0] transition-colors"
+                    >
+                      <option value="">All folders</option>
+                      {(folders as any[]).map((f) => (
+                        <option key={f.id} value={f.id}>{f.name}</option>
+                      ))}
+                    </select>
+                    <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-[#B0B0BA] pointer-events-none" />
+                  </div>
+                )}
+                {(tags as any[]).length > 0 && (
+                  <div className="relative shrink-0">
+                    <Tag className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#728DA7] pointer-events-none" />
+                    <select
+                      value={tagFilter}
+                      onChange={(e) => setTagFilter(e.target.value)}
+                      className="pl-8 pr-7 py-1.5 text-[12px] font-medium bg-[#F6F6F9] border border-transparent rounded-xl outline-none cursor-pointer appearance-none text-[#3A3A3E] hover:bg-[#EAEAF0] transition-colors"
+                    >
+                      <option value="">All tags</option>
+                      {(tags as any[]).map((t) => (
+                        <option key={t.id} value={t.id}>{t.name}</option>
+                      ))}
+                    </select>
+                    <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-[#B0B0BA] pointer-events-none" />
+                  </div>
+                )}
+                {(folderFilter || tagFilter) && (
+                  <button
+                    onClick={() => { setFolderFilter(""); setTagFilter(""); }}
+                    className="flex items-center gap-1 text-[11px] font-medium text-[#9090A0] hover:text-[#E05050] transition-colors"
+                  >
+                    <X className="w-3 h-3" /> Clear filters
+                  </button>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Table body */}
@@ -515,6 +581,36 @@ export default function Links() {
                         {link.title && (
                           <span className="text-[11px] text-[#B0B0BA] truncate mt-0.5">{link.title}</span>
                         )}
+                        {/* Folder + tag badges */}
+                        {(() => {
+                          const linkFolderId = (link as any).folderId;
+                          const linkTags: Array<{ id: string; name: string; color: string }> = (link as any).tags ?? [];
+                          if (!linkFolderId && linkTags.length === 0) return null;
+                          const folder = linkFolderId ? folderMap[linkFolderId] : null;
+                          return (
+                            <div className="flex flex-wrap gap-1 mt-1">
+                              {folder && (
+                                <span
+                                  className="inline-flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-md"
+                                  style={{ backgroundColor: `${folder.color}18`, color: folder.color }}
+                                >
+                                  <FolderOpen className="w-2.5 h-2.5" />
+                                  {folder.name}
+                                </span>
+                              )}
+                              {linkTags.map((t) => (
+                                <span
+                                  key={t.id}
+                                  className="inline-flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-md"
+                                  style={{ backgroundColor: `${t.color}18`, color: t.color }}
+                                >
+                                  <Tag className="w-2.5 h-2.5" />
+                                  {t.name}
+                                </span>
+                              ))}
+                            </div>
+                          );
+                        })()}
                       </div>
 
                       {/* Destination */}

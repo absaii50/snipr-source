@@ -78327,7 +78327,18 @@ function serializeLink(link) {
 router3.get("/links", requireAuth, async (req, res) => {
   const workspaceId = req.session.workspaceId;
   const links = await db.select().from(linksTable).where(eq(linksTable.workspaceId, workspaceId)).orderBy(desc(linksTable.createdAt));
-  res.json(links.map(serializeLink));
+  if (links.length === 0) {
+    res.json([]);
+    return;
+  }
+  const linkIds = links.map((l) => l.id);
+  const linkTagRows = await db.select({ linkId: linkTagsTable.linkId, id: tagsTable.id, name: tagsTable.name, color: tagsTable.color }).from(linkTagsTable).innerJoin(tagsTable, eq(tagsTable.id, linkTagsTable.tagId)).where(inArray(linkTagsTable.linkId, linkIds));
+  const tagsByLinkId = linkTagRows.reduce((acc, row) => {
+    if (!acc[row.linkId]) acc[row.linkId] = [];
+    acc[row.linkId].push({ id: row.id, name: row.name, color: row.color });
+    return acc;
+  }, {});
+  res.json(links.map((link) => ({ ...serializeLink(link), tags: tagsByLinkId[link.id] ?? [] })));
 });
 router3.post("/links", requireAuth, async (req, res) => {
   const parsed = CreateLinkBody.safeParse(req.body);
