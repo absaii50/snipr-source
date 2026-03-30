@@ -638,7 +638,7 @@ export default function Dashboard() {
 
             <button
               onClick={async () => {
-                try { await summaryMutation.mutateAsync(); queryClient.invalidateQueries({ queryKey: getGetAiInsightsQueryKey() }); } catch {}
+                try { await summaryMutation.mutateAsync(); queryClient.invalidateQueries({ queryKey: getGetAiInsightsQueryKey() }); } catch (err) { console.error("[AI insights] generation failed:", err); }
               }}
               disabled={summaryMutation.isPending}
               className="w-full flex items-center gap-2 text-[11px] font-semibold text-[#7C3AED] hover:text-[#6D28D9] bg-[#F5F3FF] hover:bg-[#EDE9FE] border border-[#DDD6FE] rounded-lg px-3 py-2 transition-colors disabled:opacity-50">

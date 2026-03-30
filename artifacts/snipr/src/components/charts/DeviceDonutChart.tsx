@@ -1,6 +1,7 @@
 "use client";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
-import { Monitor } from "lucide-react";
+import { Monitor, ArrowRight } from "lucide-react";
+import Link from "next/link";
 
 const PALETTE = ["#4F46E5", "#0EA5E9", "#14B8A6", "#F59E0B", "#94A3B8"];
 
@@ -38,7 +39,10 @@ export default function DeviceDonutChart({ data }: Props) {
         </div>
         <div className="text-center">
           <p className="text-[11px] font-semibold text-[#475569]">No device data yet</p>
-          <p className="text-[10px] text-[#94A3B8] mt-0.5">Appears after your first clicks</p>
+          <p className="text-[10px] text-[#94A3B8] mt-0.5 mb-2">Appears after your first clicks</p>
+          <Link href="/links" className="inline-flex items-center gap-1 text-[10px] font-bold text-[#4F46E5] hover:text-[#4338CA] transition-colors">
+            Share a link <ArrowRight className="w-3 h-3" />
+          </Link>
         </div>
       </div>
     );
