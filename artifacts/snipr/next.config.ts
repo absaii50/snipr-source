@@ -29,10 +29,6 @@ const nextConfig: NextConfig = {
   async headers() {
     const isDev = process.env.NODE_ENV !== "production";
     return [
-      ...(isDev ? [{
-        source: "/:path*",
-        headers: [{ key: "Clear-Site-Data", value: '"cache"' }],
-      }] : []),
       {
         source: "/:path*.(woff2|woff|ttf|otf|eot)",
         headers: [
