@@ -2,19 +2,18 @@
 import { useMemo, useState, useEffect } from "react";
 import { ProtectedLayout } from "@/components/layout/ProtectedLayout";
 import {
-  useGetLinks, useGetAiInsights, useGenerateWeeklySummary,
-  getGetAiInsightsQueryKey, useGetWorkspaceAnalytics,
+  useGetLinks, useGetWorkspaceAnalytics,
   useGetWorkspaceTimeseries, useGetDomains,
 } from "@workspace/api-client-react";
-import type { Link, Domain, TopEntry, TimeseriesPoint, AiInsight } from "@workspace/api-client-react";
+import type { Link, Domain, TopEntry, TimeseriesPoint } from "@workspace/api-client-react";
 import {
-  LinkIcon, Sparkles, Loader2, ArrowRight, Plus, BarChart3, Zap,
+  LinkIcon, Loader2, ArrowRight, Plus, BarChart3,
   MousePointerClick, ExternalLink, ArrowUpRight, ArrowDownRight,
   Globe, Copy, CheckCircle2, Rocket, Monitor, Smartphone, Wifi,
-  TrendingUp, Activity, Eye, MapPin, AlertTriangle, ToggleLeft,
-  Share2, Clock, ChevronRight, PieChart,
+  TrendingUp, Activity, Eye, MapPin, ToggleLeft,
+  Clock, ChevronRight, PieChart,
 } from "lucide-react";
-import { useQueryClient, useQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { useAuth } from "@/hooks/use-auth";
 import { format, parseISO, subDays, formatDistanceToNow } from "date-fns";
@@ -113,7 +112,6 @@ async function fetchUserContext({ signal }: { signal: AbortSignal }): Promise<Us
 
 /* ─── main component ───────────────────────────────────────── */
 export default function Dashboard() {
-  const queryClient  = useQueryClient();
   const { user }     = useAuth();
   const [mounted, setMounted] = useState(false);
   const [origin, setOrigin]   = useState("");
@@ -129,10 +127,6 @@ export default function Dashboard() {
     allDomains?.forEach((d: Domain) => { if (d.id) m[d.id] = d.domain; });
     return m;
   }, [allDomains]);
-
-  const { data: aiInsights } = useGetAiInsights({ limit: 5 }, { query: { staleTime: ST5 } });
-  const summaryMutation      = useGenerateWeeklySummary();
-  const latestAI             = aiInsights?.find((i: AiInsight) => i.type === "weekly_summary");
 
   const { from, to, interval, days } = getPeriodConfig(period);
   const prevFrom = subDays(new Date(from), days).toISOString().split("T")[0];
@@ -594,7 +588,7 @@ export default function Dashboard() {
         {/* ════════════════════════════════════════════════════════
             E — LOWER ACTIONABLE STRIP
         ════════════════════════════════════════════════════════ */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
 
           {/* Panel 1: Disabled links */}
           <ActionPanel
@@ -655,41 +649,6 @@ export default function Dashboard() {
               </div>
             )}
           </ActionPanel>
-
-          {/* Panel 3: Suggestions */}
-          <div className="bg-white rounded-2xl border border-[#E2E8F0] shadow-[0_1px_3px_rgba(0,0,0,0.04),0_4px_14px_rgba(0,0,0,0.05)] p-4 flex flex-col gap-3">
-            <div className="flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5 text-[#7C3AED]" />
-              <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-[#94A3B8]">Suggestions</p>
-            </div>
-
-            {latestAI ? (
-              <div className="bg-[#FAFAFA] border border-[#F1F5F9] rounded-xl p-3">
-                <p className="text-[11px] text-[#475569] leading-relaxed line-clamp-4">{latestAI.content}</p>
-                <Link href="/ai" className="inline-flex items-center gap-1 text-[10px] font-bold text-[#7C3AED] hover:text-[#6D28D9] transition-colors mt-2">
-                  Full analysis <ArrowRight className="w-3 h-3" />
-                </Link>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {domainCount === 0 && (
-                  <SuggestionItem icon={<Globe className="w-3.5 h-3.5 text-[#14B8A6]" />} label="Set up a custom domain" href="/domains" />
-                )}
-                <SuggestionItem icon={<Share2 className="w-3.5 h-3.5 text-[#4F46E5]" />} label="Share your top link" href="/links" />
-                <SuggestionItem icon={<BarChart3 className="w-3.5 h-3.5 text-[#0EA5E9]" />} label="View full analytics" href="/analytics" />
-              </div>
-            )}
-
-            <button
-              onClick={async () => {
-                try { await summaryMutation.mutateAsync(); queryClient.invalidateQueries({ queryKey: getGetAiInsightsQueryKey() }); } catch (err) { console.error("[AI insights] generation failed:", err); }
-              }}
-              disabled={summaryMutation.isPending}
-              className="w-full flex items-center gap-2 text-[11px] font-semibold text-[#7C3AED] hover:text-[#6D28D9] bg-[#F5F3FF] hover:bg-[#EDE9FE] border border-[#DDD6FE] rounded-lg px-3 py-2 transition-colors disabled:opacity-50">
-              {summaryMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Zap className="w-3 h-3" />}
-              {summaryMutation.isPending ? "Analyzing…" : latestAI ? "Regenerate insights" : "Generate AI insights"}
-            </button>
-          </div>
         </div>
 
       </div>
@@ -762,17 +721,6 @@ function ActionPanel({ icon, title, badge, badgeColor, emptyTitle, emptyHint, em
   );
 }
 
-function SuggestionItem({ icon, label, href }: { icon: React.ReactNode; label: string; href: string }) {
-  return (
-    <Link href={href}>
-      <div className="group flex items-center gap-2 py-1.5 rounded-lg hover:bg-[#F8FAFC] -mx-1 px-1 transition-colors cursor-pointer">
-        <div className="w-6 h-6 rounded-md bg-[#F1F5F9] border border-[#E2E8F0] flex items-center justify-center shrink-0">{icon}</div>
-        <span className="text-[11px] font-medium text-[#475569] group-hover:text-[#0F172A] transition-colors flex-1">{label}</span>
-        <ArrowRight className="w-3 h-3 text-[#CBD5E1] group-hover:translate-x-0.5 transition-transform shrink-0" />
-      </div>
-    </Link>
-  );
-}
 
 function EmptySection({ icon, title, hint, cta }: { icon: React.ReactNode; title: string; hint?: string; cta?: React.ReactNode }) {
   return (
