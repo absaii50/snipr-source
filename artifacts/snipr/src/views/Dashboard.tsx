@@ -198,14 +198,14 @@ export default function Dashboard() {
 
   return (
     <ProtectedLayout>
-      <div className="min-h-full px-5 lg:px-8 pt-6 pb-12 space-y-4 max-w-[1280px] mx-auto w-full">
+      <div className="min-h-full px-4 sm:px-5 lg:px-8 pt-14 lg:pt-6 pb-12 space-y-3 sm:space-y-4 max-w-[1280px] mx-auto w-full">
 
         {/* ════════════════════════════════════════════════════════
             A — HEADER
         ════════════════════════════════════════════════════════ */}
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h1 className="text-[24px] font-extrabold text-[#0F172A] tracking-tight leading-none" suppressHydrationWarning>
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4">
+          <div className="min-w-0">
+            <h1 className="text-[20px] sm:text-[24px] font-extrabold text-[#0F172A] tracking-tight leading-none" suppressHydrationWarning>
               {userContext
                 ? `${userContext.greeting}, ${firstName}`
                 : mounted
@@ -213,8 +213,8 @@ export default function Dashboard() {
                   : `Welcome back, ${firstName}`
               }
             </h1>
-            <div className="flex items-center gap-2 mt-1.5 flex-wrap" suppressHydrationWarning>
-              <span className="text-[13px] text-[#64748B]">
+            <div className="flex items-center gap-1.5 sm:gap-2 mt-1 sm:mt-1.5 flex-wrap text-[12px] sm:text-[13px] text-[#64748B]" suppressHydrationWarning>
+              <span>
                 {userContext
                   ? userContext.dateFormatted
                   : mounted ? format(new Date(), "EEE, MMM d") : ""
@@ -223,7 +223,7 @@ export default function Dashboard() {
               {userContext?.city && userContext?.countryName && (
                 <>
                   <span className="text-[#CBD5E1]">·</span>
-                  <span className="inline-flex items-center gap-1 text-[13px] text-[#64748B]">
+                  <span className="inline-flex items-center gap-1">
                     <MapPin className="w-3 h-3 text-[#94A3B8]" />
                     {userContext.city}, {userContext.countryName}
                   </span>
@@ -232,7 +232,7 @@ export default function Dashboard() {
               {userContext?.localTime && (
                 <>
                   <span className="text-[#CBD5E1]">·</span>
-                  <span className="inline-flex items-center gap-1 text-[13px] text-[#64748B]">
+                  <span className="inline-flex items-center gap-1">
                     <Clock className="w-3 h-3 text-[#94A3B8]" />
                     {userContext.localTime}
                   </span>
@@ -250,7 +250,7 @@ export default function Dashboard() {
               ))}
             </div>
             <Link href="/links">
-              <button className="inline-flex items-center gap-1.5 bg-[#4F46E5] hover:bg-[#4338CA] active:scale-[0.97] text-white text-[13px] font-semibold px-4 py-2.5 rounded-xl transition-all shadow-[0_2px_12px_rgba(79,70,229,0.3)]">
+              <button className="inline-flex items-center gap-1.5 bg-[#4F46E5] hover:bg-[#4338CA] active:scale-[0.97] text-white text-[12px] sm:text-[13px] font-semibold px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl transition-all shadow-[0_2px_12px_rgba(79,70,229,0.3)]">
                 <Plus className="w-3.5 h-3.5" /> New Link
               </button>
             </Link>
@@ -283,24 +283,24 @@ export default function Dashboard() {
         <div className="bg-white rounded-2xl border border-[#E2E8F0] shadow-[0_1px_3px_rgba(0,0,0,0.04),0_8px_24px_rgba(0,0,0,0.06)] overflow-hidden">
           <div className="flex flex-col lg:flex-row">
             {/* left panel */}
-            <div className="lg:w-[252px] shrink-0 bg-[#F8FAFC] border-b lg:border-b-0 lg:border-r border-[#E2E8F0] px-6 py-5 flex flex-col gap-4">
+            <div className="lg:w-[252px] shrink-0 bg-[#F8FAFC] border-b lg:border-b-0 lg:border-r border-[#E2E8F0] px-4 sm:px-6 py-4 sm:py-5 flex flex-col gap-3 sm:gap-4">
               <div>
                 <p className="text-[9px] font-bold uppercase tracking-[0.14em] text-[#94A3B8]">Click Activity</p>
                 <p className="text-[10px] text-[#CBD5E1] mt-0.5">{PERIOD_LABEL[period]}</p>
               </div>
-              <div>
+              <div className="flex items-end gap-3 sm:block">
                 {stats == null
-                  ? <div className="h-11 w-28 bg-[#E2E8F0] rounded-xl animate-pulse" />
-                  : <p className="text-[42px] font-extrabold text-[#0F172A] leading-none tabular-nums tracking-tight">{fmtNum(clicksNow)}</p>
+                  ? <div className="h-9 sm:h-11 w-24 sm:w-28 bg-[#E2E8F0] rounded-xl animate-pulse" />
+                  : <p className="text-[32px] sm:text-[42px] font-extrabold text-[#0F172A] leading-none tabular-nums tracking-tight">{fmtNum(clicksNow)}</p>
                 }
                 {delta !== null && (
-                  <span className={`inline-flex items-center gap-0.5 text-[11px] font-bold mt-2 px-2 py-1 rounded-lg ${delta >= 0 ? "bg-[#F0FDF4] text-[#16A34A]" : "bg-[#FEF2F2] text-[#DC2626]"}`}>
-                    {delta >= 0 ? <ArrowUpRight className="w-3.5 h-3.5" /> : <ArrowDownRight className="w-3.5 h-3.5" />}
-                    {Math.abs(delta)}% vs prior
+                  <span className={`inline-flex items-center gap-0.5 text-[10px] sm:text-[11px] font-bold sm:mt-2 px-2 py-1 rounded-lg ${delta >= 0 ? "bg-[#F0FDF4] text-[#16A34A]" : "bg-[#FEF2F2] text-[#DC2626]"}`}>
+                    {delta >= 0 ? <ArrowUpRight className="w-3 h-3 sm:w-3.5 sm:h-3.5" /> : <ArrowDownRight className="w-3 h-3 sm:w-3.5 sm:h-3.5" />}
+                    {Math.abs(delta)}%
                   </span>
                 )}
               </div>
-              <div className="space-y-2.5 border-t border-[#E2E8F0] pt-4">
+              <div className="grid grid-cols-2 sm:grid-cols-1 gap-2 sm:gap-2.5 border-t border-[#E2E8F0] pt-3 sm:pt-4">
                 <HeroStat icon={<Eye className="w-3.5 h-3.5" />}       label="Unique visitors"  value={stats == null ? "—" : fmtNum(uniqueNow)} />
                 <HeroStat icon={<Activity className="w-3.5 h-3.5" />}  label="Today's clicks"   value={fmtNum(todayClicks)} accent />
                 <HeroStat icon={<MapPin className="w-3.5 h-3.5" />}    label="Countries"        value={topCountries.length > 0 ? String(topCountries.length) : "—"} />
@@ -308,19 +308,19 @@ export default function Dashboard() {
               </div>
             </div>
             {/* right panel: chart */}
-            <div className="flex-1 flex flex-col min-h-[240px]">
-              <div className="flex sm:hidden items-center justify-between px-5 pt-3 pb-1">
+            <div className="flex-1 flex flex-col min-h-[200px] sm:min-h-[240px]">
+              <div className="flex sm:hidden items-center justify-between px-4 pt-3 pb-1">
                 <p className="text-[10px] font-bold uppercase tracking-wider text-[#94A3B8]">Trend</p>
                 <div className="flex gap-0.5 bg-[#F1F5F9] rounded-lg p-0.5">
                   {(["7d","30d","3m","all"] as Period[]).map(p => (
                     <button key={p} onClick={() => setPeriod(p)}
-                      className={`text-[9px] font-bold px-2 py-1 rounded-md transition-all ${period === p ? "bg-white text-[#0F172A] shadow-sm" : "text-[#94A3B8]"}`}>
+                      className={`text-[9px] font-bold px-2.5 py-1 rounded-md transition-all ${period === p ? "bg-white text-[#0F172A] shadow-sm" : "text-[#94A3B8]"}`}>
                       {p === "7d" ? "7D" : p === "30d" ? "30D" : p === "3m" ? "3M" : "1Y"}
                     </button>
                   ))}
                 </div>
               </div>
-              <div className="flex-1 px-3 py-4">
+              <div className="flex-1 px-2 sm:px-3 py-3 sm:py-4">
                 {tsResult.isLoading
                   ? <div className="h-full flex items-center justify-center"><Loader2 className="w-5 h-5 animate-spin text-[#CBD5E1]" /></div>
                   : timeseries.length > 0
@@ -335,9 +335,9 @@ export default function Dashboard() {
         {/* ════════════════════════════════════════════════════════
             C — INSIGHT KPI BAND (new KPIs)
         ════════════════════════════════════════════════════════ */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
           {/* Top Link */}
-          <div className="bg-white rounded-2xl border border-[#E2E8F0] shadow-[0_1px_3px_rgba(0,0,0,0.04),0_4px_14px_rgba(0,0,0,0.05)] p-4">
+          <div className="bg-white rounded-2xl border border-[#E2E8F0] shadow-[0_1px_3px_rgba(0,0,0,0.04),0_4px_14px_rgba(0,0,0,0.05)] p-3 sm:p-4">
             <div className="flex items-center justify-between mb-3">
               <p className="text-[9px] font-bold uppercase tracking-[0.12em] text-[#94A3B8]">Top Link</p>
               <div className="w-7 h-7 rounded-lg bg-[#EEF2FF] flex items-center justify-center">
@@ -368,7 +368,7 @@ export default function Dashboard() {
           </div>
 
           {/* Top Country */}
-          <div className="bg-white rounded-2xl border border-[#E2E8F0] shadow-[0_1px_3px_rgba(0,0,0,0.04),0_4px_14px_rgba(0,0,0,0.05)] p-4">
+          <div className="bg-white rounded-2xl border border-[#E2E8F0] shadow-[0_1px_3px_rgba(0,0,0,0.04),0_4px_14px_rgba(0,0,0,0.05)] p-3 sm:p-4">
             <div className="flex items-center justify-between mb-3">
               <p className="text-[9px] font-bold uppercase tracking-[0.12em] text-[#94A3B8]">Top Country</p>
               <div className="w-7 h-7 rounded-lg bg-[#F0FDFA] flex items-center justify-center">
@@ -400,7 +400,7 @@ export default function Dashboard() {
           </div>
 
           {/* Best Device */}
-          <div className="bg-white rounded-2xl border border-[#E2E8F0] shadow-[0_1px_3px_rgba(0,0,0,0.04),0_4px_14px_rgba(0,0,0,0.05)] p-4">
+          <div className="bg-white rounded-2xl border border-[#E2E8F0] shadow-[0_1px_3px_rgba(0,0,0,0.04),0_4px_14px_rgba(0,0,0,0.05)] p-3 sm:p-4">
             <div className="flex items-center justify-between mb-3">
               <p className="text-[9px] font-bold uppercase tracking-[0.12em] text-[#94A3B8]">Best Device</p>
               <div className="w-7 h-7 rounded-lg bg-[#F0F9FF] flex items-center justify-center">
@@ -431,7 +431,7 @@ export default function Dashboard() {
           </div>
 
           {/* Domain Health */}
-          <div className="bg-white rounded-2xl border border-[#E2E8F0] shadow-[0_1px_3px_rgba(0,0,0,0.04),0_4px_14px_rgba(0,0,0,0.05)] p-4">
+          <div className="bg-white rounded-2xl border border-[#E2E8F0] shadow-[0_1px_3px_rgba(0,0,0,0.04),0_4px_14px_rgba(0,0,0,0.05)] p-3 sm:p-4">
             <div className="flex items-center justify-between mb-3">
               <p className="text-[9px] font-bold uppercase tracking-[0.12em] text-[#94A3B8]">Domain Health</p>
               <div className="w-7 h-7 rounded-lg bg-[#FFFBEB] flex items-center justify-center">
@@ -463,7 +463,7 @@ export default function Dashboard() {
             D — BENTO SECONDARY GRID
             Row A: Top Links (7) + Device Donut (5)
         ════════════════════════════════════════════════════════ */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 sm:gap-4">
 
           {/* Top Performing Links — col-span-7 */}
           <div className="lg:col-span-7">
@@ -504,14 +504,14 @@ export default function Dashboard() {
         </div>
 
         {/* Row B: Countries (5) + Traffic Sources (4) + Recent Activity (3) */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 sm:gap-4">
 
           {/* Top Countries — col-span-5 */}
           <div className="lg:col-span-5">
             <BentoCard title="Top Countries" icon={<MapPin className="w-3 h-3" />}>
               {topCountries.length === 0
                 ? <EmptySection icon={<Globe className="w-5 h-5 text-[#CBD5E1]" />} title="No geographic data yet" hint="Country-level data appears after your first clicks from different regions." cta={<Link href="/links"><span className="text-[11px] font-bold text-[#14B8A6] flex items-center gap-1">Share a link <ArrowRight className="w-3 h-3" /></span></Link>} />
-                : <div className="grid grid-cols-2 gap-x-4 gap-y-2 pt-1">
+                : <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1.5 sm:gap-y-2 pt-1">
                     {topCountries.map((c: TopEntry) => {
                       const pct = Math.round((c.count / Math.max(...topCountries.map((x: TopEntry) => x.count), 1)) * 100);
                       return (
@@ -594,7 +594,7 @@ export default function Dashboard() {
         {/* ════════════════════════════════════════════════════════
             E — LOWER ACTIONABLE STRIP
         ════════════════════════════════════════════════════════ */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4">
 
           {/* Panel 1: Disabled links */}
           <ActionPanel
@@ -825,27 +825,27 @@ function LinkLeaderRow({ rank, slug, domain, shortUrl, enabled, clicks, pct }: {
   const [copied, setCopied] = useState(false);
   function copy() { navigator.clipboard.writeText(shortUrl); setCopied(true); setTimeout(() => setCopied(false), 1500); }
   return (
-    <div className="group flex items-center gap-3 py-2.5 hover:bg-[#F8FAFC] -mx-4 px-4 transition-colors">
-      <span className="text-[10px] font-bold text-[#CBD5E1] w-4 text-right tabular-nums shrink-0">{rank}</span>
+    <div className="group flex items-center gap-2 sm:gap-3 py-2 sm:py-2.5 hover:bg-[#F8FAFC] -mx-4 px-4 transition-colors">
+      <span className="text-[10px] font-bold text-[#CBD5E1] w-4 text-right tabular-nums shrink-0 hidden sm:block">{rank}</span>
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-1.5 mb-1.5">
-          <p className="text-[12px] font-semibold text-[#1E293B] truncate">
-            {domain ? <span className="text-[#94A3B8]">{domain}/</span> : null}{slug}
+        <div className="flex items-center gap-1.5 mb-1 sm:mb-1.5">
+          <p className="text-[11px] sm:text-[12px] font-semibold text-[#1E293B] truncate">
+            {domain ? <span className="text-[#94A3B8] hidden sm:inline">{domain}/</span> : null}{slug}
           </p>
           <span className={`text-[7px] font-black px-1.5 py-0.5 rounded-full shrink-0 tracking-wider ${enabled ? "bg-[#F0FDF4] text-[#16A34A]" : "bg-[#F8FAFC] text-[#94A3B8]"}`}>
             {enabled ? "LIVE" : "OFF"}
           </span>
         </div>
-        <div className="h-1.5 bg-[#F1F5F9] rounded-full overflow-hidden">
+        <div className="h-1 sm:h-1.5 bg-[#F1F5F9] rounded-full overflow-hidden">
           <div className="h-full rounded-full bg-gradient-to-r from-[#4F46E5] to-[#818CF8] transition-all duration-500" style={{ width: `${pct}%` }} />
         </div>
       </div>
-      <span className="text-[13px] font-extrabold text-[#0F172A] tabular-nums shrink-0 min-w-[32px] text-right">{fmtNum(clicks)}</span>
-      <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-        <button onClick={copy} className="p-1.5 rounded-lg hover:bg-[#EEF2FF] transition-colors">
+      <span className="text-[12px] sm:text-[13px] font-extrabold text-[#0F172A] tabular-nums shrink-0 min-w-[28px] sm:min-w-[32px] text-right">{fmtNum(clicks)}</span>
+      <div className="flex items-center gap-0.5 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity shrink-0">
+        <button onClick={copy} className="p-1 sm:p-1.5 rounded-lg hover:bg-[#EEF2FF] transition-colors">
           {copied ? <CheckCircle2 className="w-3.5 h-3.5 text-[#16A34A]" /> : <Copy className="w-3.5 h-3.5 text-[#CBD5E1]" />}
         </button>
-        <a href={shortUrl} target="_blank" rel="noopener noreferrer" className="p-1.5 rounded-lg hover:bg-[#EEF2FF] transition-colors">
+        <a href={shortUrl} target="_blank" rel="noopener noreferrer" className="p-1 sm:p-1.5 rounded-lg hover:bg-[#EEF2FF] transition-colors hidden sm:block">
           <ExternalLink className="w-3.5 h-3.5 text-[#CBD5E1]" />
         </a>
       </div>
