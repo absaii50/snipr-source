@@ -1,0 +1,98 @@
+Redesign ONLY the Dashboard page of my Link Shortener SaaS by combining the best ideas from these dashboard references into one unique premium white-theme design:
+
+References:
+- https://dribbble.com/shots/24593827-SaaS-Dashboard-Light-Mode
+- https://dribbble.com/shots/27163776-Modern-SaaS-Project-Management-Dashboard-UI-Light-Dark-Mode
+- https://dribbble.com/shots/27130581-AI-Lead-Generation-Dashboard-Light-Mode-SaaS-UI
+- https://dribbble.com/shots/24846449-Agency-Management-Dashboard-by-Orbix-Studio
+- https://dribbble.com/shots/25408325-Financial-SaaS-Dashboard-Template
+
+Goal:
+Create one unique “Link Intelligence Dashboard” for a URL shortener SaaS.
+Do not make it look like a generic admin template.
+Do not just change colors.
+Do not keep the same layout.
+
+Design direction:
+- white / light / premium / modern
+- calm enterprise shell + startup polish
+- clear hierarchy
+- elegant analytics
+- dense but readable information
+- better empty states
+- bento-style rhythm in lower grid
+- one strong brand accent only
+
+Required final structure:
+1. Left sidebar with clean grouped nav and soft active state
+2. Top header with title, subtitle, filters/date range, export, and one clear primary CTA
+3. Large hero analytics card showing clicks trend and overall link performance
+4. KPI row with 4 compact premium stat cards:
+   - Top Link
+   - Top Country
+   - Best Device
+   - Domain Health
+5. Secondary bento grid:
+   - Top Performing Links
+   - Traffic by Device
+   - Top Countries
+   - Traffic Sources
+   - Recent Activity Feed
+   - Suggestions / Quick Actions
+6. Lower actionable strip for issues/opportunities:
+   - links needing attention
+   - domain/SSL issues
+   - optimization suggestions
+
+Color system:
+- Background #F8FAFC
+- Card #FFFFFF
+- Secondary surface #F1F5F9
+- Soft accent surface #EEF2FF
+- Border #E2E8F0
+- Primary text #0F172A
+- Secondary text #475569
+- Muted text #94A3B8
+- Brand #4F46E5
+- Brand hover #6366F1
+- Success #14B8A6
+- Warning #F59E0B
+- Danger #EF4444
+- Optional very light lime highlight #EAF58B for special accent only
+
+Design system rules:
+- subtle borders and shadows
+- larger hero card radius
+- medium KPI cards
+- mixed card spans in lower grid
+- no black active pill
+- no ugly random gradients
+- no repetitive empty boxes
+- stronger typography hierarchy
+- premium hover/focus states
+- micro-animations only if tasteful
+
+Charts:
+- hero line/area chart for clicks
+- donut for devices
+- ranked horizontal bars for countries
+- stacked segments/pills for traffic sources
+- hybrid table rows for top links
+
+Empty states:
+Design custom empty states for every section with helpful guidance and CTA.
+Never show generic “No data yet” repeatedly.
+Keep the chart shell visible even when empty.
+
+Important:
+- preserve existing functionality
+- keep data bindings intact
+- improve layout meaningfully
+- make the new dashboard feel obviously different from the current one
+- implement production-quality modular components
+
+At the end, summarize:
+- what changed
+- which references influenced which section
+- why the new dashboard is better
+- what should be improved on the next page after Dashboard
