@@ -16,7 +16,7 @@ import {
   Globe, Monitor, Smartphone, Tablet, ExternalLink,
   ArrowUpRight, ArrowDownRight, ChevronDown,
   TrendingUp, TrendingDown, Minus, Calendar,
-  BarChart3, Zap, Clock, Eye, Layers,
+  Zap, Eye, Layers,
 } from "lucide-react";
 import dynamic from "next/dynamic";
 const AnalyticsAreaChart = dynamic(
@@ -149,8 +149,6 @@ export default function Analytics() {
 
   const period = PERIODS.find(p => p.key === periodKey)!;
   const now = useMemo(() => new Date(), []);
-  const todayStr = iso(now);
-  const yesterdayStr = iso(subDays(now, 1));
 
   const { from, to } = useMemo(() => period.getRange(now), [period, now]);
   const { from: prevFrom, to: prevTo } = useMemo(() => period.getPrevRange(now), [period, now]);
@@ -160,18 +158,10 @@ export default function Analytics() {
 
   const { data: links } = useGetLinks(undefined, { query: { staleTime: 5 * 60 * 1000 } });
 
-  const todayParams = { from: todayStr, to: todayStr, ...linkFilter };
-  const yesterdayParams = { from: yesterdayStr, to: yesterdayStr, ...linkFilter };
   const periodParams = { from, to, ...linkFilter };
   const prevParams = { from: prevFrom, to: prevTo, ...linkFilter };
-  const sevenParams = { from: sevenFrom, to: todayStr, ...linkFilter };
+  const sevenParams = { from: sevenFrom, to: iso(now), ...linkFilter };
 
-  const { data: todayStats, isLoading: todayLoading } = useGetWorkspaceAnalytics(todayParams, {
-    query: { queryKey: getGetWorkspaceAnalyticsQueryKey(todayParams), staleTime: 30_000 },
-  });
-  const { data: yesterdayStats } = useGetWorkspaceAnalytics(yesterdayParams, {
-    query: { queryKey: getGetWorkspaceAnalyticsQueryKey(yesterdayParams), staleTime: 5 * 60 * 1000 },
-  });
   const { data: stats, isLoading: statsLoading } = useGetWorkspaceAnalytics(periodParams, {
     query: { queryKey: getGetWorkspaceAnalyticsQueryKey(periodParams), placeholderData: keepPreviousData, staleTime: period.staleMs },
   });
@@ -200,13 +190,6 @@ export default function Analytics() {
     return Math.round(((cur - prev) / prev) * 100);
   }, [stats, prevStats]);
 
-  const todayVsYesterday = useMemo(() => {
-    const tc = todayStats?.totalClicks ?? 0;
-    const yc = yesterdayStats?.totalClicks ?? 0;
-    if (!yc) return null;
-    return Math.round(((tc - yc) / yc) * 100);
-  }, [todayStats, yesterdayStats]);
-
   const prevLinkCounts = useMemo(() => {
     const m: Record<string, number> = {};
     for (const l of prevStats?.topLinks ?? []) m[l.label] = l.count;
@@ -219,6 +202,8 @@ export default function Analytics() {
   const topBrowsers = stats?.topBrowsers ?? [];
   const topCountries = stats?.topCountries ?? [];
   const countryTotal = topCountries.reduce((s: number, c: { count: number }) => s + c.count, 0) || 1;
+
+  const prevPeriodLabel = `prior ${period.displayLabel}`;
 
   return (
     <ProtectedLayout>
@@ -267,83 +252,6 @@ export default function Analytics() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          <div className="bg-white border border-slate-200 rounded-2xl p-5 hover:shadow-sm transition-shadow">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-xl bg-indigo-50 flex items-center justify-center">
-                  <Zap className="w-4 h-4 text-indigo-600" />
-                </div>
-                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wide">Today</p>
-              </div>
-              <p className="text-[10px] text-slate-400">{format(now, "MMM d, yyyy")}</p>
-            </div>
-            <div className="flex items-end gap-2">
-              <span className="text-[32px] font-display font-black text-slate-900 leading-none">
-                {todayLoading ? <span className="inline-block w-12 h-7 bg-slate-100 rounded animate-pulse" /> : fmtNum(todayStats?.totalClicks ?? 0)}
-              </span>
-              <span className="text-[12px] text-slate-500 mb-1">clicks</span>
-            </div>
-            <div className="flex items-center gap-3 mt-2 text-[11px]">
-              <span className="text-slate-500">{todayStats?.uniqueClicks ?? 0} unique</span>
-              <span className="text-slate-300">·</span>
-              <span className="text-slate-500">{todayStats?.topCountries?.length ?? 0} countries</span>
-            </div>
-          </div>
-
-          <div className="bg-white border border-slate-200 rounded-2xl p-5 hover:shadow-sm transition-shadow">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-xl bg-slate-100 flex items-center justify-center">
-                  <Clock className="w-4 h-4 text-slate-500" />
-                </div>
-                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wide">Yesterday</p>
-              </div>
-              <p className="text-[10px] text-slate-400">{format(subDays(now, 1), "MMM d, yyyy")}</p>
-            </div>
-            <div className="flex items-end gap-2">
-              <span className="text-[32px] font-display font-black text-slate-900 leading-none">
-                {fmtNum(yesterdayStats?.totalClicks ?? 0)}
-              </span>
-              <span className="text-[12px] text-slate-500 mb-1">clicks</span>
-            </div>
-            <div className="flex items-center gap-3 mt-2 text-[11px]">
-              <span className="text-slate-500">{yesterdayStats?.uniqueClicks ?? 0} unique</span>
-              <span className="text-slate-300">·</span>
-              <span className="text-slate-500">{yesterdayStats?.topCountries?.length ?? 0} countries</span>
-            </div>
-          </div>
-
-          <div className="bg-white border border-slate-200 rounded-2xl p-5 hover:shadow-sm transition-shadow sm:col-span-2 lg:col-span-1">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-xl bg-emerald-50 flex items-center justify-center">
-                  <BarChart3 className="w-4 h-4 text-emerald-600" />
-                </div>
-                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wide">Today vs Yesterday</p>
-              </div>
-            </div>
-            <div className="flex items-end gap-2">
-              {todayVsYesterday !== null ? (
-                <>
-                  <span className={`text-[32px] font-display font-black leading-none ${todayVsYesterday >= 0 ? "text-emerald-600" : "text-red-500"}`}>
-                    {todayVsYesterday >= 0 ? "+" : ""}{todayVsYesterday}%
-                  </span>
-                  {todayVsYesterday >= 0
-                    ? <ArrowUpRight className="w-5 h-5 text-emerald-500 mb-1" />
-                    : <ArrowDownRight className="w-5 h-5 text-red-400 mb-1" />
-                  }
-                </>
-              ) : (
-                <span className="text-[20px] font-bold text-slate-300 leading-none">No comparison yet</span>
-              )}
-            </div>
-            <p className="text-[11px] text-slate-400 mt-2">
-              {(todayStats?.totalClicks ?? 0)} today vs {(yesterdayStats?.totalClicks ?? 0)} yesterday
-            </p>
-          </div>
-        </div>
-
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           <KpiCard title="Total Clicks" value={stats?.totalClicks} delta={clickDelta} icon={<MousePointerClick className="w-4 h-4" />} color="text-indigo-600" bg="bg-indigo-50" loading={statsLoading} periodLabel={period.displayLabel} />
           <KpiCard title="Unique Visitors" value={stats?.uniqueClicks} delta={uniqueDelta} icon={<Users className="w-4 h-4" />} color="text-violet-600" bg="bg-violet-50" loading={statsLoading} periodLabel={period.displayLabel} />
@@ -386,11 +294,11 @@ export default function Analytics() {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
           <TopLinksCard
-            title="Today's Top Links"
+            title={`Top Links — ${period.label}`}
             icon={<Zap className="w-4 h-4 text-indigo-500" />}
-            data={todayStats?.topLinks}
+            data={stats?.topLinks}
             links={links}
-            loading={todayLoading}
+            loading={statsLoading}
             accentColor="#4F46E5"
           />
           <TopLinksCard
@@ -537,24 +445,23 @@ export default function Analytics() {
             <div className="px-5 py-3.5 border-b border-slate-100 bg-slate-50/70">
               <h3 className="font-semibold text-[14px] text-slate-900 flex items-center gap-2">
                 <Eye className="w-4 h-4 text-sky-500" />
-                Today's Visitors by Device
+                Visitors by Device — {period.label}
               </h3>
             </div>
             <div className="p-5">
-              {todayLoading ? (
+              {statsLoading ? (
                 <div className="space-y-3">{[1,2,3].map(i => <div key={i} className="h-6 bg-slate-100 rounded animate-pulse" />)}</div>
-              ) : !todayStats?.topDevices || todayStats.topDevices.length === 0 ? (
+              ) : topDevices.length === 0 ? (
                 <div className="text-center py-6">
                   <div className="w-10 h-10 rounded-xl bg-sky-50 flex items-center justify-center mx-auto mb-2">
                     <Eye className="w-5 h-5 text-sky-400" />
                   </div>
-                  <p className="text-[12px] text-slate-400">No visitors today yet</p>
+                  <p className="text-[12px] text-slate-400">No visitors in this period</p>
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {todayStats.topDevices.map((d: { label: string; count: number }) => {
-                    const todayTotal = todayStats.topDevices!.reduce((s: number, x: { count: number }) => s + x.count, 0) || 1;
-                    const pct = Math.round((d.count / todayTotal) * 100);
+                  {topDevices.map((d: { label: string; count: number }) => {
+                    const pct = Math.round((d.count / deviceTotal) * 100);
                     return (
                       <div key={d.label} className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-lg bg-slate-50 flex items-center justify-center shrink-0">
@@ -573,11 +480,11 @@ export default function Analytics() {
                     );
                   })}
 
-                  {todayStats.topBrowsers && todayStats.topBrowsers.length > 0 && (
+                  {topBrowsers.length > 0 && (
                     <div className="border-t border-slate-100 pt-3 mt-1">
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.12em] mb-2">Today's Browsers</p>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.12em] mb-2">Browsers</p>
                       <div className="space-y-1.5">
-                        {todayStats.topBrowsers.map((b: { label: string; count: number }) => (
+                        {topBrowsers.map((b: { label: string; count: number }) => (
                           <div key={b.label} className="flex items-center justify-between">
                             <span className="text-[11px] text-slate-600 flex items-center gap-1.5">
                               <span className="text-[12px]">{browserIcon(b.label)}</span>
@@ -590,11 +497,11 @@ export default function Analytics() {
                     </div>
                   )}
 
-                  {todayStats.topCountries && todayStats.topCountries.length > 0 && (
+                  {topCountries.length > 0 && (
                     <div className="border-t border-slate-100 pt-3 mt-1">
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.12em] mb-2">Today's Countries</p>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.12em] mb-2">Countries</p>
                       <div className="space-y-1.5">
-                        {todayStats.topCountries.map((c: { label: string; count: number }) => (
+                        {topCountries.map((c: { label: string; count: number }) => (
                           <div key={c.label} className="flex items-center justify-between">
                             <span className="text-[11px] text-slate-600 flex items-center gap-1.5">
                               <span className="text-[14px]">{countryFlag(c.label)}</span>
