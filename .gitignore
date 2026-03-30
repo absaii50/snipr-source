@@ -57,14 +57,12 @@ Thumbs.db
 # Claude Code
 .claude/
 
-# Next.js build (allow production build)
-# .next/  ← kept for production deploy
-.next/cache/
+# Next.js build output (always regenerated at build/deploy time)
+.next/
 
 # OS files
 .DS_Store
 Thumbs.db
-.next/cache/
 *.pack
 *.pack.gz
 *.pack.gz.old
