@@ -74,7 +74,7 @@ artifacts-monorepo/
 - `/links/:id/rules` — Per-link routing rules (geo, device, A/B test, rotator)
 - `/conversions` — Conversion tracking dashboard with KPIs and recent events table
 - `/revenue` — Revenue analytics by link, campaign, and event type with date range filtering
-- `/ai` — AI Insights: 3-tab interface: Ask AI (Q&A on real analytics + Quick Question chips), Weekly Summary (AI-generated performance digest), Slug Ideas (AI slug generator with fallback)
+- `/ai` — AI Insights: 3-tab interface: Ask AI (Q&A on real analytics + Quick Question chips), Weekly Summary (AI-generated performance digest), Slug Ideas (AI slug generator with fallback). All AI responses render formatted markdown (bold text, line breaks) via `renderFormattedText()` helper.
 - `/team` — Team members management with role assignment and permissions reference
 
 ## Backend Routes

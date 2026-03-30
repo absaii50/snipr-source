@@ -138,10 +138,17 @@ router.post("/ai/insights/weekly", requireAuth, async (req, res): Promise<void> 
 
   const ctx = await gatherAnalyticsContext(workspaceId, 7);
 
-  const systemPrompt = `You are an analytics assistant for a URL shortener SaaS called Snipr. 
-Generate a concise weekly performance summary based ONLY on the provided data. 
-Be direct, specific, and actionable. Use bullet points. Keep it under 200 words.
-If data is empty or zero, acknowledge that honestly rather than inventing insights.`;
+  const systemPrompt = `You are an analytics assistant for a URL shortener SaaS called Snipr.
+Generate a concise weekly performance summary based ONLY on the provided data.
+Be direct, specific, and actionable. Keep it under 200 words.
+If data is empty or zero, acknowledge that honestly rather than inventing insights.
+
+FORMAT RULES:
+- Use clear section headings with a bold label followed by a colon (e.g. "**Click Performance:**")
+- Under each heading, write 1-2 concise sentences
+- Use numbers and percentages when available
+- End with a clear "**Recommendation:**" section with one actionable step
+- Do NOT use raw dash-prefixed bullet lists. Write in short paragraph style under each heading.`;
 
   const userPrompt = `Here is the real analytics data for the past 7 days:
 ${JSON.stringify(ctx, null, 2)}
@@ -205,8 +212,16 @@ router.post("/ai/ask", requireAuth, async (req, res): Promise<void> => {
 
   const systemPrompt = `You are an analytics assistant for a URL shortener SaaS called Snipr.
 Answer the user's question about their analytics using ONLY the provided real data.
-Be concise and direct — 1-3 sentences max. If the answer cannot be determined from the data, say so clearly.
-Never invent numbers. If data shows zeros, say so honestly.`;
+Be concise and direct. If the answer cannot be determined from the data, say so clearly.
+Never invent numbers. If data shows zeros, say so honestly.
+
+FORMAT RULES:
+- Write in clear, well-structured short paragraphs
+- Use **bold** for key metrics and important numbers
+- If comparing periods, format as: "**X clicks** this period vs **Y clicks** last period (**+Z%**)"
+- If listing links or items, use a clear format like "**1.** /slug — X clicks"
+- Keep answers 2-5 sentences. Never dump raw data.
+- End with a brief actionable insight when relevant.`;
 
   const userPrompt = `Analytics data (last 30 days):
 ${JSON.stringify(ctx, null, 2)}
@@ -215,7 +230,7 @@ Question: ${question}`;
 
   const response = await openai.chat.completions.create({
     model: "gpt-5.2",
-    max_completion_tokens: 256,
+    max_completion_tokens: 400,
     messages: [
       { role: "system", content: systemPrompt },
       { role: "user", content: userPrompt },
@@ -252,8 +267,16 @@ router.post("/ai/ask/stream", requireAuth, async (req, res): Promise<void> => {
 
   const systemPrompt = `You are an analytics assistant for a URL shortener SaaS called Snipr.
 Answer the user's question about their analytics using ONLY the provided real data.
-Be concise and direct — 1-4 sentences max. If the answer cannot be determined from the data, say so clearly.
-Never invent numbers. If data shows zeros, say so honestly.`;
+Be concise and direct. If the answer cannot be determined from the data, say so clearly.
+Never invent numbers. If data shows zeros, say so honestly.
+
+FORMAT RULES:
+- Write in clear, well-structured short paragraphs
+- Use **bold** for key metrics and important numbers
+- If comparing periods, format as: "**X clicks** this period vs **Y clicks** last period (**+Z%**)"
+- If listing links or items, use a clear format like "**1.** /slug — X clicks"
+- Keep answers 2-5 sentences. Never dump raw data.
+- End with a brief actionable insight when relevant.`;
 
   const userPrompt = `Analytics data (last 30 days):
 ${JSON.stringify(ctx, null, 2)}

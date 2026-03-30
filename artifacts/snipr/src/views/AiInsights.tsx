@@ -53,6 +53,29 @@ function AuditFindingBg(type: string) {
   return "bg-[#F0FAF5] border-[#B4E8CE]";
 }
 
+function renderFormattedText(text: string) {
+  const lines = text.split("\n");
+  return lines.map((line, lineIdx) => {
+    const parts = line.split(/(\*\*[^*]+\*\*)/g);
+    const rendered = parts.map((part, partIdx) => {
+      if (part.startsWith("**") && part.endsWith("**")) {
+        return (
+          <strong key={partIdx} className="font-bold text-[#0A0A0A]">
+            {part.slice(2, -2)}
+          </strong>
+        );
+      }
+      return <span key={partIdx}>{part}</span>;
+    });
+    return (
+      <span key={lineIdx}>
+        {lineIdx > 0 && <br />}
+        {rendered}
+      </span>
+    );
+  });
+}
+
 export default function AiInsights() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -328,10 +351,10 @@ export default function AiInsights() {
                     {currentQ && (
                       <p className="text-[11px] font-bold text-[#7C5CC4] uppercase tracking-wider mb-2">Q: {currentQ}</p>
                     )}
-                    <p className="text-[13px] text-[#0A0A0A] leading-relaxed whitespace-pre-wrap">
-                      {streamingAnswer}
+                    <div className="text-[13px] text-[#3A3A3E] leading-[1.75]">
+                      {renderFormattedText(streamingAnswer)}
                       {isStreaming && <span className="inline-block w-1.5 h-3.5 bg-[#7C5CC4] ml-0.5 align-middle animate-pulse rounded-sm" />}
-                    </p>
+                    </div>
                     {!isStreaming && (
                       <p className="mt-3 text-[11px] text-[#8888A0]">Based on your last 30 days of data</p>
                     )}
@@ -352,10 +375,10 @@ export default function AiInsights() {
                       return (
                         <div key={item.id} className="px-5 py-4 hover:bg-[#FAFAFE] transition-colors">
                           <p className="text-[12px] font-semibold text-[#0A0A0A] mb-1.5">"{q}"</p>
-                          <p className="text-[12px] text-[#3A3A3E] leading-relaxed flex gap-2 items-start">
+                          <div className="text-[12px] text-[#3A3A3E] leading-[1.7] flex gap-2 items-start">
                             <ArrowRight className="w-3.5 h-3.5 shrink-0 mt-0.5 text-[#7C5CC4]" />
-                            <span>{item.content}</span>
-                          </p>
+                            <div>{renderFormattedText(item.content)}</div>
+                          </div>
                           <p className="text-[11px] text-[#AAAAB4] mt-2">
                             {format(new Date(item.createdAt), "MMM d, h:mm a")}
                           </p>
@@ -591,9 +614,9 @@ export default function AiInsights() {
                   <Loader2 className="w-6 h-6 animate-spin text-[#7C5CC4]/40" />
                 </div>
               ) : latestSummary ? (
-                <div className="prose max-w-none">
-                  <div className="whitespace-pre-wrap text-[14px] text-[#0A0A0A] leading-relaxed">
-                    {latestSummary.content}
+                <div className="max-w-none">
+                  <div className="text-[14px] text-[#3A3A3E] leading-[1.75]">
+                    {renderFormattedText(latestSummary.content)}
                   </div>
                 </div>
               ) : (
