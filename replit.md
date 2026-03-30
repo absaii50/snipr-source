@@ -154,6 +154,19 @@ Rule evaluation order:
 
 **Click limits**: COUNT query on click_events at redirect time; exceeds limit → fallback URL or 410 page.
 
+## Performance Optimizations
+
+Applied across all authenticated route pages (Dashboard, Analytics, Links, LinkAnalytics):
+
+- **Recharts lazy-loaded**: Chart components split into `artifacts/snipr/src/components/charts/` and loaded via `next/dynamic({ ssr: false })` — removes ~500KB recharts from the initial JS bundle of Dashboard, Analytics, and LinkAnalytics pages.
+- **`staleTime: 5 min` everywhere**: All React Query hooks (useGetLinks, useGetDomains, useGetWorkspaceAnalytics, useGetWorkspaceTimeseries, useGetAiInsights, useGetFolders, useGetTags, etc.) have `staleTime: 5 * 60 * 1000` — prevents unnecessary re-fetches when navigating between pages.
+- **All-time analytics query fixed**: Dashboard `from: "2020-01-01"` all-time analytics query changed to last 365 days — stops full DB table scans growing indefinitely.
+
+Chart components:
+- `src/components/charts/DashboardAreaChart.tsx` — Dashboard area chart (recharts)
+- `src/components/charts/AnalyticsAreaChart.tsx` — Analytics area chart (recharts)
+- `src/components/charts/LinkAnalyticsChart.tsx` — Per-link analytics chart (recharts)
+
 ## Key Files
 
 - `artifacts/api-server/src/routes/redirect.ts` — Smart redirect engine

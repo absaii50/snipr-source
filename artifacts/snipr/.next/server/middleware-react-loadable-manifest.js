@@ -1,1 +1,1 @@
-self.__REACT_LOADABLE_MANIFEST="{}"
+self.__REACT_LOADABLE_MANIFEST="{\"views/Dashboard.tsx -> @/components/charts/DashboardAreaChart\":{\"id\":\"views/Dashboard.tsx -> @/components/charts/DashboardAreaChart\",\"files\":[\"static/chunks/_app-pages-browser_src_components_charts_DashboardAreaChart_tsx.js\"]}}"

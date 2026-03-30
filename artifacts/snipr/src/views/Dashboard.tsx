@@ -17,9 +17,11 @@ import { useQueryClient, useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { useAuth } from "@/hooks/use-auth";
 import { format, parseISO, subDays } from "date-fns";
-import {
-  AreaChart, Area, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid,
-} from "recharts";
+import dynamic from "next/dynamic";
+const DashboardAreaChart = dynamic(
+  () => import("@/components/charts/DashboardAreaChart"),
+  { ssr: false }
+);
 
 /* ─────────────────────────────────────────────────────────────
    Design tokens
@@ -37,7 +39,7 @@ function getPeriodConfig(p: Period) {
   if (p === "7d")  return { from: iso(subDays(today, 6)),  to: iso(today), interval: "day"   as const, days: 7   };
   if (p === "30d") return { from: iso(subDays(today, 29)), to: iso(today), interval: "day"   as const, days: 30  };
   if (p === "3m")  return { from: iso(subDays(today, 89)), to: iso(today), interval: "week"  as const, days: 90  };
-  return           { from: "2020-01-01",                   to: iso(today), interval: "month" as const, days: 9999 };
+  return           { from: iso(subDays(today, 364)),        to: iso(today), interval: "month" as const, days: 365  };
 }
 
 function fmtNum(n: number): string {
@@ -98,20 +100,6 @@ async function fetchLinkClicks({ signal }: { signal: AbortSignal }): Promise<Rec
 }
 
 /* ─────────────────────────────────────────────────────────────
-   Custom chart tooltip
-───────────────────────────────────────────────────────────── */
-function ChartTip({ active, payload, label }: any) {
-  if (!active || !payload?.length) return null;
-  return (
-    <div className="bg-[#0F172A] text-white px-3.5 py-2.5 rounded-xl shadow-2xl text-[12px] pointer-events-none">
-      <p className="text-[#64748B] font-medium mb-1">{label}</p>
-      <p className="font-bold text-[15px]">{payload[0]?.value?.toLocaleString()} <span className="text-[#64748B] font-normal text-[11px]">clicks</span></p>
-      {payload[1] && <p className="text-[#818CF8] mt-0.5">{payload[1]?.value?.toLocaleString()} unique</p>}
-    </div>
-  );
-}
-
-/* ─────────────────────────────────────────────────────────────
    Main dashboard
 ───────────────────────────────────────────────────────────── */
 export default function Dashboard() {
@@ -124,28 +112,33 @@ export default function Dashboard() {
 
   useEffect(() => { setMounted(true); setOrigin(window.location.origin); }, []);
 
-  const { data: links, isLoading } = useGetLinks();
-  const { data: allDomains } = useGetDomains();
+  const ST5 = 5 * 60 * 1000;
+  const { data: links, isLoading } = useGetLinks(undefined, { query: { staleTime: ST5 } });
+  const { data: allDomains } = useGetDomains({ query: { staleTime: ST5 } });
   const domainMap = useMemo(() => {
     const m: Record<string, string> = {};
     allDomains?.forEach((d: any) => { if (d.id) m[d.id] = d.domain; });
     return m;
   }, [allDomains]);
 
-  const { data: aiInsights } = useGetAiInsights({ limit: 10 });
+  const { data: aiInsights } = useGetAiInsights({ limit: 10 }, { query: { staleTime: ST5 } });
   const summaryMutation = useGenerateWeeklySummary();
 
   const { from, to, interval, days } = getPeriodConfig(period);
   const prevFrom = subDays(new Date(from), days).toISOString().split("T")[0];
   const prevTo   = subDays(new Date(from), 1).toISOString().split("T")[0];
 
-  const { data: allStats }  = useGetWorkspaceAnalytics({ from: "2020-01-01", to: new Date().toISOString().split("T")[0] });
-  const { data: stats }     = useGetWorkspaceAnalytics({ from, to });
-  const { data: prevStats } = useGetWorkspaceAnalytics({ from: prevFrom, to: prevTo });
+  const allStatsFrom = useMemo(() => subDays(new Date(), 364).toISOString().split("T")[0], []);
+  const { data: allStats }  = useGetWorkspaceAnalytics(
+    { from: allStatsFrom, to: new Date().toISOString().split("T")[0] },
+    { query: { staleTime: 10 * 60 * 1000 } }
+  );
+  const { data: stats }     = useGetWorkspaceAnalytics({ from, to }, { query: { staleTime: ST5 } });
+  const { data: prevStats } = useGetWorkspaceAnalytics({ from: prevFrom, to: prevTo }, { query: { staleTime: ST5 } });
   const { data: todayClicks = 0 } = useQuery({ queryKey: ["stats-today"], queryFn: fetchTodayClicks, staleTime: 30_000 });
   const { data: clickCounts = {} } = useQuery({ queryKey: ["links-clicks"], queryFn: fetchLinkClicks, staleTime: 60_000 });
 
-  const tsResult = useGetWorkspaceTimeseries({ from, to, interval });
+  const tsResult = useGetWorkspaceTimeseries({ from, to, interval }, { query: { staleTime: ST5 } });
   const timeseries = useMemo(() => {
     if (!tsResult.data) return [];
     return tsResult.data.map(pt => ({ ...pt, day: fmtDay(pt.time, interval, period) }));
@@ -302,29 +295,7 @@ export default function Dashboard() {
                 <Loader2 className="w-5 h-5 animate-spin text-[#E2E8F0]" />
               </div>
             ) : timeseries.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={timeseries} margin={{ top: 4, right: 16, bottom: 0, left: -24 }}>
-                  <defs>
-                    <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%"   stopColor={I} stopOpacity={0.15} />
-                      <stop offset="100%" stopColor={I} stopOpacity={0} />
-                    </linearGradient>
-                    <linearGradient id="uniqueGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%"   stopColor="#818CF8" stopOpacity={0.08} />
-                      <stop offset="100%" stopColor="#818CF8" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid vertical={false} stroke="#E8EBF4" strokeDasharray="4 4" />
-                  <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fill: "#A8B4C6", fontSize: 10, fontWeight: 500 }} dy={6}
-                    interval={period === "all" ? 1 : period === "30d" ? 4 : 0} />
-                  <YAxis axisLine={false} tickLine={false} tick={{ fill: "#A8B4C6", fontSize: 10 }} allowDecimals={false} />
-                  <Tooltip content={<ChartTip />} cursor={{ stroke: "#E2E8F0", strokeWidth: 1 }} />
-                  <Area type="monotone" dataKey="uniqueClicks" name="Unique" stroke="#818CF8" strokeWidth={1.5}
-                    fill="url(#uniqueGrad)" dot={false} activeDot={{ r: 3, fill: "#818CF8", strokeWidth: 2, stroke: "#fff" }} />
-                  <Area type="monotone" dataKey="clicks" name="Clicks" stroke={I} strokeWidth={2}
-                    fill="url(#areaGrad)" dot={false} activeDot={{ r: 4, fill: I, strokeWidth: 2, stroke: "#fff" }} />
-                </AreaChart>
-              </ResponsiveContainer>
+              <DashboardAreaChart data={timeseries} period={period} />
             ) : (
               <div className="h-full flex flex-col items-center justify-center gap-2">
                 <BarChart3 className="w-8 h-8 text-indigo-200" />

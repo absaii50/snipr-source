@@ -23,16 +23,11 @@ import {
   CalendarDays,
   ExternalLink
 } from "lucide-react";
-import { 
-  AreaChart, 
-  Area, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  ResponsiveContainer, 
-  Legend 
-} from "recharts";
+import dynamic from "next/dynamic";
+const LinkAnalyticsChart = dynamic(
+  () => import("@/components/charts/LinkAnalyticsChart"),
+  { ssr: false }
+);
 import { format, parseISO } from "date-fns";
 
 function getDateRange(days: number) {
@@ -54,16 +49,18 @@ export default function LinkAnalytics() {
 
   const queryParams = { from, to };
 
-  const { data: link, isLoading: isLoadingLink } = useGetLink(linkId || "");
+  const ST5 = 5 * 60 * 1000;
+
+  const { data: link, isLoading: isLoadingLink } = useGetLink(linkId || "", { query: { staleTime: ST5 } });
   
   const { data: stats, isLoading: isLoadingStats } = useGetLinkAnalytics(linkId || "", queryParams, {
-    query: { queryKey: getGetLinkAnalyticsQueryKey(linkId || "", queryParams), placeholderData: keepPreviousData, enabled: !!linkId }
+    query: { queryKey: getGetLinkAnalyticsQueryKey(linkId || "", queryParams), placeholderData: keepPreviousData, enabled: !!linkId, staleTime: ST5 }
   });
 
-  const { data: timeseries, isLoading: isLoadingTimeseries } = useLinkTimeseriesWithFormatting(linkId || "", queryParams);
+  const { data: timeseries, isLoading: isLoadingTimeseries } = useLinkTimeseriesWithFormatting(linkId || "", queryParams, ST5);
 
   const { data: events, isLoading: isLoadingEvents } = useGetLinkEvents(linkId || "", { limit: 50 }, {
-    query: { queryKey: getGetLinkEventsQueryKey(linkId || "", { limit: 50 }), enabled: !!linkId }
+    query: { queryKey: getGetLinkEventsQueryKey(linkId || "", { limit: 50 }), enabled: !!linkId, staleTime: ST5 }
   });
 
   if (isLoadingLink) {
@@ -187,54 +184,7 @@ export default function LinkAnalytics() {
                 No click data available for this period.
               </div>
             ) : (
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={timeseries} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
-                  <defs>
-                    <linearGradient id="colorClicks" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#728DA7" stopOpacity={0.3}/>
-                      <stop offset="95%" stopColor="#728DA7" stopOpacity={0}/>
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-border)" />
-                  <XAxis 
-                    dataKey="formattedTime" 
-                    axisLine={false}
-                    tickLine={false}
-                    tick={{ fill: 'var(--color-muted-foreground)', fontSize: 12 }}
-                    dy={10}
-                  />
-                  <YAxis 
-                    axisLine={false}
-                    tickLine={false}
-                    tick={{ fill: 'var(--color-muted-foreground)', fontSize: 12 }}
-                    dx={-10}
-                  />
-                  <Tooltip 
-                    contentStyle={{ borderRadius: '12px', border: '1px solid var(--color-border)', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                    cursor={{ stroke: 'var(--color-muted)', strokeWidth: 2, strokeDasharray: '4 4' }}
-                  />
-                  <Legend iconType="circle" wrapperStyle={{ paddingTop: '20px' }} />
-                  <Area 
-                    type="monotone" 
-                    name="Total Clicks"
-                    dataKey="clicks" 
-                    stroke="#728DA7" 
-                    strokeWidth={3}
-                    fillOpacity={1}
-                    fill="url(#colorClicks)"
-                    activeDot={{ r: 6, strokeWidth: 0 }}
-                  />
-                  <Area 
-                    type="monotone" 
-                    name="Unique Clicks"
-                    dataKey="uniqueClicks" 
-                    stroke="#C3C3C1" 
-                    strokeWidth={3}
-                    fill="none"
-                    activeDot={{ r: 6, fill: '#C3C3C1', strokeWidth: 0 }}
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
+              <LinkAnalyticsChart data={timeseries} />
             )}
           </div>
         </div>
@@ -323,8 +273,8 @@ interface TimeseriesQueryParams {
 }
 
 // Wrapper to format dates safely
-function useLinkTimeseriesWithFormatting(id: string, params: TimeseriesQueryParams) {
-  const result = useGetLinkTimeseries(id, params, { query: { queryKey: getGetLinkTimeseriesQueryKey(id, params), placeholderData: keepPreviousData, enabled: !!id }});
+function useLinkTimeseriesWithFormatting(id: string, params: TimeseriesQueryParams, staleTime?: number) {
+  const result = useGetLinkTimeseries(id, params, { query: { queryKey: getGetLinkTimeseriesQueryKey(id, params), placeholderData: keepPreviousData, enabled: !!id, staleTime }});
   
   const formattedData = useMemo(() => {
     if (!result.data) return [];

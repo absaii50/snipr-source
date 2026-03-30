@@ -27,15 +27,11 @@ import {
   TrendingDown,
   Minus,
 } from "lucide-react";
-import {
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-} from "recharts";
+import dynamic from "next/dynamic";
+const AnalyticsAreaChart = dynamic(
+  () => import("@/components/charts/AnalyticsAreaChart"),
+  { ssr: false }
+);
 import { format, parseISO } from "date-fns";
 
 function getDateRange(days: number) {
@@ -77,16 +73,17 @@ export default function Analytics() {
     ...(selectedLinkId ? { linkId: selectedLinkId } : {}),
   };
 
-  const { data: links } = useGetLinks();
+  const ST5 = 5 * 60 * 1000;
+  const { data: links } = useGetLinks(undefined, { query: { staleTime: ST5 } });
   const { data: stats, isLoading: isLoadingStats } = useGetWorkspaceAnalytics(queryParams, {
-    query: { queryKey: getGetWorkspaceAnalyticsQueryKey(queryParams), placeholderData: keepPreviousData },
+    query: { queryKey: getGetWorkspaceAnalyticsQueryKey(queryParams), placeholderData: keepPreviousData, staleTime: ST5 },
   });
   const prevPeriodParams = { from: prevPeriodRange.from, to: prevPeriodRange.to, ...(selectedLinkId ? { linkId: selectedLinkId } : {}) };
   const { data: prevPeriodStats } = useGetWorkspaceAnalytics(
     prevPeriodParams,
-    { query: { queryKey: getGetWorkspaceAnalyticsQueryKey(prevPeriodParams), placeholderData: keepPreviousData } }
+    { query: { queryKey: getGetWorkspaceAnalyticsQueryKey(prevPeriodParams), placeholderData: keepPreviousData, staleTime: ST5 } }
   );
-  const { data: timeseries, isLoading: isLoadingTimeseries } = useWorkspaceTimeseriesWithFormatting(queryParams);
+  const { data: timeseries, isLoading: isLoadingTimeseries } = useWorkspaceTimeseriesWithFormatting(queryParams, ST5);
 
   const clickDelta = useMemo(() => {
     const cur = stats?.totalClicks ?? 0;
@@ -195,43 +192,7 @@ export default function Analytics() {
                 <p className="text-[13px] text-[#9090A0]">No click data for this period</p>
               </div>
             ) : (
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={timeseries} margin={{ top: 4, right: 12, bottom: 0, left: -24 }}>
-                  <defs>
-                    <linearGradient id="clicksGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#728DA7" stopOpacity={0.18} />
-                      <stop offset="95%" stopColor="#728DA7" stopOpacity={0} />
-                    </linearGradient>
-                    <linearGradient id="uniqueGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#7C5CC4" stopOpacity={0.12} />
-                      <stop offset="95%" stopColor="#7C5CC4" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F2F2F6" />
-                  <XAxis
-                    dataKey="formattedTime"
-                    axisLine={false}
-                    tickLine={false}
-                    tick={{ fill: "#B0B0BA", fontSize: 11 }}
-                    dy={8}
-                    interval="preserveStartEnd"
-                  />
-                  <YAxis
-                    axisLine={false}
-                    tickLine={false}
-                    tick={{ fill: "#B0B0BA", fontSize: 11 }}
-                    allowDecimals={false}
-                  />
-                  <Tooltip
-                    contentStyle={{ borderRadius: "12px", border: "1px solid #EBEBF0", boxShadow: "0 4px 20px rgba(0,0,0,0.08)", background: "#FFFFFF" }}
-                    labelStyle={{ color: "#0A0A0A", fontWeight: 600, fontSize: 12, marginBottom: 4 }}
-                    itemStyle={{ fontSize: 12 }}
-                    cursor={{ stroke: "#EBEBF0", strokeWidth: 1, strokeDasharray: "4 4" }}
-                  />
-                  <Area type="monotone" name="Total Clicks"   dataKey="clicks"       stroke="#728DA7" strokeWidth={2}   fill="url(#clicksGrad)" dot={false} activeDot={{ r: 5, fill: "#728DA7",  strokeWidth: 0 }} />
-                  <Area type="monotone" name="Unique"         dataKey="uniqueClicks" stroke="#7C5CC4" strokeWidth={1.5} fill="url(#uniqueGrad)" dot={false} activeDot={{ r: 4, fill: "#7C5CC4",  strokeWidth: 0 }} />
-                </AreaChart>
-              </ResponsiveContainer>
+              <AnalyticsAreaChart data={timeseries} />
             )}
           </div>
         </div>
@@ -252,8 +213,8 @@ export default function Analytics() {
   );
 }
 
-function useWorkspaceTimeseriesWithFormatting(params: any) {
-  const result = useGetWorkspaceTimeseries(params, { query: { queryKey: getGetWorkspaceTimeseriesQueryKey(params), placeholderData: keepPreviousData } });
+function useWorkspaceTimeseriesWithFormatting(params: any, staleTime?: number) {
+  const result = useGetWorkspaceTimeseries(params, { query: { queryKey: getGetWorkspaceTimeseriesQueryKey(params), placeholderData: keepPreviousData, staleTime } });
   const formattedData = useMemo(() => {
     if (!result.data) return [];
     return result.data.map((pt) => ({

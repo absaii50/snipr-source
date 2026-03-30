@@ -83,9 +83,10 @@ const COUNTRY_FLAGS: Record<string, string> = {
 };
 
 export default function Links() {
-  const { data: links, isLoading } = useGetLinks();
-  const { data: folders = [] } = useGetFolders();
-  const { data: tags = [] } = useGetTags();
+  const ST5 = 5 * 60 * 1000;
+  const { data: links, isLoading } = useGetLinks(undefined, { query: { staleTime: ST5 } });
+  const { data: folders = [] } = useGetFolders({ query: { staleTime: ST5 } });
+  const { data: tags = [] } = useGetTags({ query: { staleTime: ST5 } });
   const { data: clickCounts = {} } = useQuery({
     queryKey: ["links-clicks"],
     queryFn: fetchLinkClicks,
@@ -97,7 +98,7 @@ export default function Links() {
     staleTime: 60_000,
   });
 
-  const { data: allDomains } = useGetDomains();
+  const { data: allDomains } = useGetDomains({ query: { staleTime: ST5 } });
   const domainMap = useMemo(() => {
     const map: Record<string, string> = {};
     allDomains?.forEach((d: any) => { if (d.id) map[d.id] = d.domain; });
