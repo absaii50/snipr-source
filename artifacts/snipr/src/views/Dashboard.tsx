@@ -87,6 +87,17 @@ const PERIOD_LABEL: Record<Period, string> = {
   "7d": "Last 7 days", "30d": "Last 30 days", "3m": "Last 3 months", "all": "Last 12 months",
 };
 
+interface UserContext {
+  greeting: string;
+  dateFormatted: string;
+  localTime: string;
+  timezone: string;
+  country: string | null;
+  countryName: string | null;
+  city: string | null;
+  ip: string;
+}
+
 async function fetchTodayClicks({ signal }: { signal: AbortSignal }): Promise<number> {
   try { const r = await fetch("/api/stats/today", { credentials: "include", signal }); return r.ok ? (await r.json()).clicks ?? 0 : 0; }
   catch { return 0; }
@@ -94,6 +105,10 @@ async function fetchTodayClicks({ signal }: { signal: AbortSignal }): Promise<nu
 async function fetchLinkClicks({ signal }: { signal: AbortSignal }): Promise<Record<string, number>> {
   try { const r = await fetch("/api/links/clicks", { credentials: "include", signal }); return r.ok ? r.json() : {}; }
   catch { return {}; }
+}
+async function fetchUserContext({ signal }: { signal: AbortSignal }): Promise<UserContext | null> {
+  try { const r = await fetch("/api/auth/context", { credentials: "include", signal }); return r.ok ? r.json() : null; }
+  catch { return null; }
 }
 
 /* ─── main component ───────────────────────────────────────── */
@@ -129,6 +144,7 @@ export default function Dashboard() {
   const { data: prevStats } = useGetWorkspaceAnalytics({ from: prevFrom, to: prevTo }, { query: { staleTime: ST5 } });
   const { data: todayClicks = 0 } = useQuery({ queryKey: ["stats-today"], queryFn: fetchTodayClicks, staleTime: 30_000 });
   const { data: clickCounts = {} } = useQuery({ queryKey: ["links-clicks"], queryFn: fetchLinkClicks, staleTime: 60_000 });
+  const { data: userContext } = useQuery({ queryKey: ["user-context"], queryFn: fetchUserContext, staleTime: 5 * 60 * 1000 });
 
   const tsResult   = useGetWorkspaceTimeseries({ from, to, interval }, { query: { staleTime: ST5 } });
   const timeseries = useMemo(() => {
@@ -189,16 +205,40 @@ export default function Dashboard() {
         ════════════════════════════════════════════════════════ */}
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h1 className="text-[24px] font-extrabold text-[#0F172A] tracking-tight leading-none">
-              Link Intelligence
+            <h1 className="text-[24px] font-extrabold text-[#0F172A] tracking-tight leading-none" suppressHydrationWarning>
+              {userContext
+                ? `${userContext.greeting}, ${firstName}`
+                : mounted
+                  ? `${new Date().getHours() < 12 ? "Good morning" : new Date().getHours() < 17 ? "Good afternoon" : "Good evening"}, ${firstName}`
+                  : `Welcome back, ${firstName}`
+              }
             </h1>
-            <p className="text-[13px] text-[#64748B] mt-1" suppressHydrationWarning>
-              {mounted
-                ? (new Date().getHours() < 12 ? "Good morning" : new Date().getHours() < 17 ? "Good afternoon" : "Good evening")
-                : "Welcome back"
-              }, <span className="font-semibold text-[#475569]">{firstName}</span>
-              {mounted ? ` · ${format(new Date(), "EEE, MMM d")}` : ""}
-            </p>
+            <div className="flex items-center gap-2 mt-1.5 flex-wrap" suppressHydrationWarning>
+              <span className="text-[13px] text-[#64748B]">
+                {userContext
+                  ? userContext.dateFormatted
+                  : mounted ? format(new Date(), "EEE, MMM d") : ""
+                }
+              </span>
+              {userContext?.city && userContext?.countryName && (
+                <>
+                  <span className="text-[#CBD5E1]">·</span>
+                  <span className="inline-flex items-center gap-1 text-[13px] text-[#64748B]">
+                    <MapPin className="w-3 h-3 text-[#94A3B8]" />
+                    {userContext.city}, {userContext.countryName}
+                  </span>
+                </>
+              )}
+              {userContext?.localTime && (
+                <>
+                  <span className="text-[#CBD5E1]">·</span>
+                  <span className="inline-flex items-center gap-1 text-[13px] text-[#64748B]">
+                    <Clock className="w-3 h-3 text-[#94A3B8]" />
+                    {userContext.localTime}
+                  </span>
+                </>
+              )}
+            </div>
           </div>
           <div className="flex items-center gap-2 shrink-0">
             <div className="hidden sm:flex items-center gap-0.5 bg-[#F1F5F9] rounded-xl p-1 border border-[#E2E8F0]">

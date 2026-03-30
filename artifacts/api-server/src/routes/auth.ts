@@ -2,6 +2,7 @@ import { Router, type IRouter } from "express";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import { eq } from "drizzle-orm";
+import geoip from "geoip-lite";
 import { db, usersTable, workspacesTable } from "@workspace/db";
 import {
   RegisterBody,
@@ -139,6 +140,90 @@ router.get("/auth/me", requireAuth, async (req, res): Promise<void> => {
     workspace: workspace
       ? { id: workspace.id, name: workspace.name, slug: workspace.slug }
       : null,
+  });
+});
+
+/* ── User Context (IP-based geo + greeting) ────────────────────── */
+
+const COUNTRY_NAMES: Record<string, string> = {
+  US:"United States", GB:"United Kingdom", DE:"Germany", FR:"France",
+  NL:"Netherlands", IT:"Italy", VN:"Vietnam", CA:"Canada", AU:"Australia",
+  JP:"Japan", CN:"China", KR:"South Korea", BR:"Brazil", MX:"Mexico",
+  IN:"India", ES:"Spain", PL:"Poland", SE:"Sweden", NO:"Norway",
+  DK:"Denmark", FI:"Finland", CH:"Switzerland", AT:"Austria", BE:"Belgium",
+  PT:"Portugal", CZ:"Czech Republic", TR:"Turkey", RU:"Russia", UA:"Ukraine",
+  PK:"Pakistan", BD:"Bangladesh", NG:"Nigeria", ZA:"South Africa", EG:"Egypt",
+  AR:"Argentina", CL:"Chile", CO:"Colombia", ID:"Indonesia", TH:"Thailand",
+  MY:"Malaysia", SG:"Singapore", PH:"Philippines", HK:"Hong Kong", TW:"Taiwan",
+  NZ:"New Zealand", IE:"Ireland", IL:"Israel", AE:"UAE", SA:"Saudi Arabia",
+  GR:"Greece", RO:"Romania", HU:"Hungary", SK:"Slovakia", HR:"Croatia",
+};
+
+function getGreeting(hour: number): string {
+  if (hour < 5) return "Good night";
+  if (hour < 12) return "Good morning";
+  if (hour < 17) return "Good afternoon";
+  return "Good evening";
+}
+
+function getRealIpFromReq(req: import("express").Request): string {
+  const forwarded = req.headers["x-forwarded-for"];
+  if (forwarded) {
+    const first = Array.isArray(forwarded) ? forwarded[0] : forwarded.split(",")[0];
+    return first.trim();
+  }
+  return req.ip ?? req.socket.remoteAddress ?? "";
+}
+
+router.get("/auth/context", requireAuth, async (req, res): Promise<void> => {
+  const ip = getRealIpFromReq(req);
+  const geo = geoip.lookup(ip);
+
+  const timezone = geo?.timezone || "UTC";
+  const country = geo?.country || null;
+  const city = geo?.city || null;
+  const countryName = country ? (COUNTRY_NAMES[country] || country) : null;
+
+  let localDate: Date;
+  try {
+    const formatter = new Intl.DateTimeFormat("en-US", {
+      timeZone: timezone,
+      year: "numeric", month: "2-digit", day: "2-digit",
+      hour: "2-digit", minute: "2-digit", second: "2-digit",
+      hour12: false,
+    });
+    const parts = formatter.formatToParts(new Date());
+    const get = (t: string) => parts.find(p => p.type === t)?.value || "0";
+    localDate = new Date(
+      parseInt(get("year")),
+      parseInt(get("month")) - 1,
+      parseInt(get("day")),
+      parseInt(get("hour")),
+      parseInt(get("minute")),
+      parseInt(get("second"))
+    );
+  } catch {
+    localDate = new Date();
+  }
+
+  const hour = localDate.getHours();
+  const greeting = getGreeting(hour);
+
+  const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const dateFormatted = `${dayNames[localDate.getDay()]}, ${monthNames[localDate.getMonth()]} ${localDate.getDate()}`;
+
+  const localTimeFormatted = localDate.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
+
+  res.json({
+    greeting,
+    dateFormatted,
+    localTime: localTimeFormatted,
+    timezone,
+    country,
+    countryName,
+    city,
+    ip: ip.replace(/(\d+)\.(\d+)\.(\d+)\.(\d+)/, "$1.$2.***.$4"),
   });
 });
 

@@ -89,6 +89,7 @@ artifacts-monorepo/
 - `POST /api/auth/change-password` — Change password (requires current password)
 - `DELETE /api/auth/account` — Delete account (requires password confirmation)
 - `GET /api/auth/me` — Get current user + workspace
+- `GET /api/auth/context` — IP-based user context: greeting, local date/time, timezone, city, country (uses geoip-lite)
 
 ### Links
 - `GET /api/links` — List workspace links

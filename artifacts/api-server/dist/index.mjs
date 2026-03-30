@@ -57575,6 +57575,9 @@ function sum(expression) {
   return sql`sum(${expression})`.mapWith(String);
 }
 
+// src/routes/auth.ts
+import geoip from "geoip-lite";
+
 // ../../node_modules/.pnpm/drizzle-orm@0.45.2_@types+pg@8.20.0_pg@8.20.0/node_modules/drizzle-orm/node-postgres/driver.js
 import pg2 from "pg";
 
@@ -78199,6 +78202,125 @@ router2.get("/auth/me", requireAuth, async (req, res) => {
     workspace: workspace ? { id: workspace.id, name: workspace.name, slug: workspace.slug } : null
   });
 });
+var COUNTRY_NAMES = {
+  US: "United States",
+  GB: "United Kingdom",
+  DE: "Germany",
+  FR: "France",
+  NL: "Netherlands",
+  IT: "Italy",
+  VN: "Vietnam",
+  CA: "Canada",
+  AU: "Australia",
+  JP: "Japan",
+  CN: "China",
+  KR: "South Korea",
+  BR: "Brazil",
+  MX: "Mexico",
+  IN: "India",
+  ES: "Spain",
+  PL: "Poland",
+  SE: "Sweden",
+  NO: "Norway",
+  DK: "Denmark",
+  FI: "Finland",
+  CH: "Switzerland",
+  AT: "Austria",
+  BE: "Belgium",
+  PT: "Portugal",
+  CZ: "Czech Republic",
+  TR: "Turkey",
+  RU: "Russia",
+  UA: "Ukraine",
+  PK: "Pakistan",
+  BD: "Bangladesh",
+  NG: "Nigeria",
+  ZA: "South Africa",
+  EG: "Egypt",
+  AR: "Argentina",
+  CL: "Chile",
+  CO: "Colombia",
+  ID: "Indonesia",
+  TH: "Thailand",
+  MY: "Malaysia",
+  SG: "Singapore",
+  PH: "Philippines",
+  HK: "Hong Kong",
+  TW: "Taiwan",
+  NZ: "New Zealand",
+  IE: "Ireland",
+  IL: "Israel",
+  AE: "UAE",
+  SA: "Saudi Arabia",
+  GR: "Greece",
+  RO: "Romania",
+  HU: "Hungary",
+  SK: "Slovakia",
+  HR: "Croatia"
+};
+function getGreeting(hour) {
+  if (hour < 5) return "Good night";
+  if (hour < 12) return "Good morning";
+  if (hour < 17) return "Good afternoon";
+  return "Good evening";
+}
+function getRealIpFromReq(req) {
+  const forwarded = req.headers["x-forwarded-for"];
+  if (forwarded) {
+    const first = Array.isArray(forwarded) ? forwarded[0] : forwarded.split(",")[0];
+    return first.trim();
+  }
+  return req.ip ?? req.socket.remoteAddress ?? "";
+}
+router2.get("/auth/context", requireAuth, async (req, res) => {
+  const ip = getRealIpFromReq(req);
+  const geo = geoip.lookup(ip);
+  const timezone = geo?.timezone || "UTC";
+  const country = geo?.country || null;
+  const city = geo?.city || null;
+  const countryName = country ? COUNTRY_NAMES[country] || country : null;
+  let localDate;
+  try {
+    const formatter = new Intl.DateTimeFormat("en-US", {
+      timeZone: timezone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: false
+    });
+    const parts = formatter.formatToParts(/* @__PURE__ */ new Date());
+    const get = (t) => parts.find((p) => p.type === t)?.value || "0";
+    localDate = new Date(
+      parseInt(get("year")),
+      parseInt(get("month")) - 1,
+      parseInt(get("day")),
+      parseInt(get("hour")),
+      parseInt(get("minute")),
+      parseInt(get("second"))
+    );
+  } catch {
+    localDate = /* @__PURE__ */ new Date();
+  }
+  const hour = localDate.getHours();
+  const greeting = getGreeting(hour);
+  const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const dateFormatted = `${dayNames[localDate.getDay()]}, ${monthNames[localDate.getMonth()]} ${localDate.getDate()}`;
+  const localTimeFormatted = localDate.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
+  res.json({
+    greeting,
+    dateFormatted,
+    localTime: localTimeFormatted,
+    timezone,
+    country,
+    countryName,
+    city,
+    ip: ip.replace(/(\d+)\.(\d+)\.(\d+)\.(\d+)/, "$1.$2.***.$4")
+  });
+});
 router2.get("/auth/verify-email", async (req, res) => {
   const token = req.query.token;
   if (!token) {
@@ -88897,7 +89019,7 @@ var import_express18 = __toESM(require_express2(), 1);
 
 // src/lib/click-tracker.ts
 init_ua_parser();
-import geoip from "geoip-lite";
+import geoip2 from "geoip-lite";
 import crypto10 from "crypto";
 function hashIp(ip) {
   return crypto10.createHash("sha256").update(ip + "snipr-salt").digest("hex").slice(0, 16);
@@ -88922,7 +89044,7 @@ function parseUserAgent(ua) {
 }
 function getGeo(ip) {
   try {
-    const geo = geoip.lookup(ip);
+    const geo = geoip2.lookup(ip);
     return { country: geo?.country ?? null, city: geo?.city ?? null };
   } catch {
     return { country: null, city: null };
@@ -89379,8 +89501,8 @@ router18.get("/r/:slug", async (req, res) => {
     let userCountry = null;
     let userDevice = "desktop";
     try {
-      const geoip2 = (await import("geoip-lite")).default;
-      userCountry = geoip2.lookup(ip)?.country ?? null;
+      const geoip3 = (await import("geoip-lite")).default;
+      userCountry = geoip3.lookup(ip)?.country ?? null;
     } catch {
     }
     try {
