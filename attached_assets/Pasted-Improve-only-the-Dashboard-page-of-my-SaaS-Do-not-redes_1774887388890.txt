@@ -1,0 +1,65 @@
+Improve only the Dashboard page of my SaaS.
+Do not redesign other pages right now.
+We will improve pages one by one, so for this task focus only on the Dashboard page.
+
+Important:
+- Keep the overall theme white / light / clean / premium
+- Do not turn the dashboard into a dark design
+- Do not rebuild the whole app
+- Do not break existing functionality, routing, auth, APIs, or data logic
+- Keep the current product structure, but redesign this Dashboard page deeply
+- Make it feel much more advanced, premium, modern, and product-quality
+- Do not make it look like a generic AI-generated template
+
+Main goal:
+Redesign the Dashboard page so it looks like a premium analytics dashboard for a modern URL shortener / link intelligence SaaS.
+
+The current page feels too empty, weak, and visually underpowered.
+I want the Dashboard to feel:
+- cleaner
+- more advanced
+- more premium
+- better structured
+- more useful
+- more polished
+- still light and mostly white
+
+Design direction:
+- white / light premium SaaS theme
+- elegant and modern
+- very clean layout
+- stronger hierarchy
+- better spacing
+- better card design
+- better empty states
+- better chart presentation
+- better data grouping
+- more refined typography
+- subtle but high-quality shadows and borders
+- minimal but not boring
+
+Use a premium light palette such as:
+- page background: #F8FAFC
+- primary card background: #FFFFFF
+- secondary surface: #F1F5F9
+- borders/dividers: #E2E8F0
+- primary text: #0F172A
+- secondary text: #475569
+- muted text: #94A3B8
+- primary brand color: #4F46E5
+- softer brand accent: #6366F1
+- success accent: #14B8A6
+- warning accent: #F59E0B
+- danger accent: #EF4444
+
+Dashboard-specific improvements required:
+
+1. Header area
+- Improve the top greeting area and make it feel more polished
+- Keep the main CTA button, but make the header feel more premium and better spaced
+- Improve the date/subtext styling
+- Make the top section look less empty and more intentional
+
+2. KPI cards row
+- Redesign the KPI cards so they feel consistent and premium
+-<span class="cursor">█</span>
