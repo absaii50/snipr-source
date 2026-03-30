@@ -78030,7 +78030,7 @@ function getWelcomeEmailHtml(name, dashboardUrl) {
 // src/lib/email.ts
 var RESEND_API_KEY = process.env.RESEND_API_KEY;
 var FRONTEND_URL = process.env.FRONTEND_URL || "https://snipr.sh";
-var FROM_EMAIL = "Snipr <no-reply@snipr.sh>";
+var FROM_EMAIL = process.env.FROM_EMAIL || "Snipr <onboarding@resend.dev>";
 var resend = null;
 if (RESEND_API_KEY && RESEND_API_KEY !== "dev_key") {
   resend = new Resend(RESEND_API_KEY);

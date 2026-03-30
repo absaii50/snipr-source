@@ -5,7 +5,7 @@ import { getVerificationEmailHtml, getWelcomeEmailHtml } from "./email-templates
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
 const FRONTEND_URL = process.env.FRONTEND_URL || "https://snipr.sh";
-const FROM_EMAIL = "Snipr <no-reply@snipr.sh>";
+const FROM_EMAIL = process.env.FROM_EMAIL || "Snipr <onboarding@resend.dev>";
 
 let resend: Resend | null = null;
 
