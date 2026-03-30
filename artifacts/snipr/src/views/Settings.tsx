@@ -37,7 +37,12 @@ function ProfileSection() {
         toast({ title: "Update failed", description: data.error, variant: "destructive" });
         return;
       }
-      queryClient.setQueryData(getGetMeQueryKey(), data);
+      if (data.user) {
+        queryClient.setQueryData(getGetMeQueryKey(), data);
+        await queryClient.invalidateQueries({ queryKey: getGetMeQueryKey() });
+        setName(data.user.name ?? "");
+        setEmail(data.user.email ?? "");
+      }
       toast({ title: "Profile updated", description: data.message === "No changes" ? "No changes were made." : "Your profile has been updated." });
     } catch {
       toast({ title: "Something went wrong", variant: "destructive" });
