@@ -1325,6 +1325,9 @@
   .h-\[80px\] {
     height: 80px;
   }
+  .h-\[120px\] {
+    height: 120px;
+  }
   .h-\[200px\] {
     height: 200px;
   }
@@ -1570,6 +1573,9 @@
   }
   .w-\[100px\] {
     width: 100px;
+  }
+  .w-\[120px\] {
+    width: 120px;
   }
   .w-\[232px\] {
     width: 232px;

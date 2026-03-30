@@ -6,6 +6,7 @@ import {
   getGetAiInsightsQueryKey, useGetWorkspaceAnalytics,
   useGetWorkspaceTimeseries, useGetDomains,
 } from "@workspace/api-client-react";
+import type { Link, Domain, TopEntry, TimeseriesPoint, AiInsight } from "@workspace/api-client-react";
 import {
   LinkIcon, Sparkles, Loader2, ArrowRight, Plus, BarChart3, Zap,
   MousePointerClick, ExternalLink, RefreshCw, ArrowUpRight, ArrowDownRight,
@@ -110,13 +111,13 @@ export default function Dashboard() {
   const { data: allDomains } = useGetDomains({ query: { staleTime: ST5 } });
   const domainMap = useMemo(() => {
     const m: Record<string, string> = {};
-    allDomains?.forEach((d: any) => { if (d.id) m[d.id] = d.domain; });
+    allDomains?.forEach((d: Domain) => { if (d.id) m[d.id] = d.domain; });
     return m;
   }, [allDomains]);
 
   const { data: aiInsights } = useGetAiInsights({ limit: 5 }, { query: { staleTime: ST5 } });
   const summaryMutation      = useGenerateWeeklySummary();
-  const latestAI             = aiInsights?.find((i: any) => i.type === "weekly_summary");
+  const latestAI             = aiInsights?.find((i: AiInsight) => i.type === "weekly_summary");
 
   const { from, to, interval, days } = getPeriodConfig(period);
   const prevFrom = subDays(new Date(from), days).toISOString().split("T")[0];
@@ -132,11 +133,11 @@ export default function Dashboard() {
   const tsResult   = useGetWorkspaceTimeseries({ from, to, interval }, { query: { staleTime: ST5 } });
   const timeseries = useMemo(() => {
     if (!tsResult.data) return [];
-    return tsResult.data.map((pt: any) => ({ ...pt, day: fmtDay(pt.time, interval, period) }));
+    return (tsResult.data as TimeseriesPoint[]).map((pt) => ({ ...pt, day: fmtDay(pt.time, interval, period) }));
   }, [tsResult.data, interval, period]);
 
   const totalLinks  = links?.length ?? 0;
-  const activeLinks = links?.filter((l: any) => l.enabled).length ?? 0;
+  const activeLinks = links?.filter((l: Link) => l.enabled).length ?? 0;
   const firstName   = user?.name?.split(" ")[0] ?? "there";
 
   const clicksNow  = stats?.totalClicks ?? 0;
@@ -146,7 +147,7 @@ export default function Dashboard() {
   const uniqueNow  = stats?.uniqueClicks ?? 0;
 
   const topLinks = useMemo(() =>
-    !links ? [] : [...links].sort((a: any, b: any) => (clickCounts[b.id] ?? 0) - (clickCounts[a.id] ?? 0)).slice(0, 7),
+    !links ? [] : [...links].sort((a: Link, b: Link) => (clickCounts[b.id] ?? 0) - (clickCounts[a.id] ?? 0)).slice(0, 7),
     [links, clickCounts]
   );
   const topCountries = useMemo(() => (stats?.topCountries ?? []).slice(0, 8), [stats]);
@@ -154,25 +155,25 @@ export default function Dashboard() {
   const topDevices   = useMemo(() => (stats?.topDevices   ?? []).slice(0, 5), [stats]);
 
   const recentLinks  = useMemo(() =>
-    !links ? [] : [...links].sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 6),
+    !links ? [] : [...links].sort((a: Link, b: Link) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 5),
     [links]
   );
-  const disabledLinks   = useMemo(() => (!links ? [] : links.filter((l: any) => !l.enabled).slice(0, 4)), [links]);
-  const zeroClickLinks  = useMemo(() => (!links ? [] : links.filter((l: any) => (clickCounts[l.id] ?? 0) === 0 && l.enabled).slice(0, 4)), [links, clickCounts]);
+  const disabledLinks   = useMemo(() => (!links ? [] : links.filter((l: Link) => !l.enabled).slice(0, 4)), [links]);
+  const zeroClickLinks  = useMemo(() => (!links ? [] : links.filter((l: Link) => (clickCounts[l.id] ?? 0) === 0 && l.enabled).slice(0, 4)), [links, clickCounts]);
 
   /* ── new insight KPI derivations ── */
   const topLinkEntry   = topLinks[0] ?? null;
-  const topLinkClicks  = topLinkEntry ? (clickCounts[(topLinkEntry as any).id] ?? 0) : 0;
+  const topLinkClicks  = topLinkEntry ? (clickCounts[topLinkEntry.id] ?? 0) : 0;
   const topLinkDomain  = topLinkEntry?.domainId ? domainMap[topLinkEntry.domainId] : null;
   const topLinkDisplay = topLinkDomain ? `${topLinkDomain}/${topLinkEntry?.slug}` : (topLinkEntry?.slug ?? "—");
   const topLinkAllPct  = allTime > 0 && topLinkClicks > 0 ? Math.round((topLinkClicks / allTime) * 100) : 0;
 
-  const topCountryEntry = (topCountries[0] ?? null) as any;
-  const topCountryTotal = topCountries.reduce((s: number, c: any) => s + c.count, 0) || 1;
+  const topCountryEntry: TopEntry | null = topCountries[0] ?? null;
+  const topCountryTotal = topCountries.reduce((s: number, c: TopEntry) => s + c.count, 0) || 1;
   const topCountryPct   = topCountryEntry ? Math.round((topCountryEntry.count / topCountryTotal) * 100) : 0;
 
-  const topDeviceEntry  = topDevices[0] as any;
-  const topDeviceTotal  = topDevices.reduce((s: number, d: any) => s + d.count, 0) || 1;
+  const topDeviceEntry: TopEntry | undefined = topDevices[0];
+  const topDeviceTotal  = topDevices.reduce((s: number, d: TopEntry) => s + d.count, 0) || 1;
   const topDevicePct    = topDeviceEntry ? Math.round((topDeviceEntry.count / topDeviceTotal) * 100) : 0;
 
   const domainCount     = allDomains?.length ?? 0;
@@ -418,9 +419,9 @@ export default function Dashboard() {
                 : topLinks.length === 0
                   ? <EmptySection icon={<LinkIcon className="w-5 h-5 text-[#CBD5E1]" />} title="No links yet" hint="Create your first short link to track performance here." cta={<Link href="/links"><span className="text-[11px] font-bold text-[#4F46E5] flex items-center gap-1">Create a link <ArrowRight className="w-3 h-3" /></span></Link>} />
                   : <div className="divide-y divide-[#F8FAFC]">
-                      {topLinks.map((link: any, i: number) => {
+                      {topLinks.map((link: Link, i: number) => {
                         const clicks = clickCounts[link.id] ?? 0;
-                        const maxC   = Math.max(...topLinks.map((l: any) => clickCounts[l.id] ?? 0), 1);
+                        const maxC   = Math.max(...topLinks.map((l: Link) => clickCounts[l.id] ?? 0), 1);
                         const pct    = Math.max((clicks / maxC) * 100, 2);
                         const domain = link.domainId ? domainMap[link.domainId] : null;
                         const shortUrl = domain ? `https://${domain}/${link.slug}` : `${origin}/r/${link.slug}`;
@@ -438,7 +439,7 @@ export default function Dashboard() {
               icon={<PieChart className="w-3 h-3" />}
             >
               <div className="flex-1 flex items-center">
-                <DeviceDonutChart data={topDevices as any} />
+                <DeviceDonutChart data={topDevices} />
               </div>
             </BentoCard>
           </div>
@@ -453,8 +454,8 @@ export default function Dashboard() {
               {topCountries.length === 0
                 ? <EmptySection icon={<Globe className="w-5 h-5 text-[#CBD5E1]" />} title="No geographic data yet" hint="Country-level data appears after your first clicks from different regions." />
                 : <div className="grid grid-cols-2 gap-x-4 gap-y-2 pt-1">
-                    {topCountries.map((c: any) => {
-                      const pct = Math.round((c.count / Math.max(...topCountries.map((x: any) => x.count), 1)) * 100);
+                    {topCountries.map((c: TopEntry) => {
+                      const pct = Math.round((c.count / Math.max(...topCountries.map((x: TopEntry) => x.count), 1)) * 100);
                       return (
                         <div key={c.label} className="flex items-center gap-2 py-1">
                           <span className="text-[16px] shrink-0">{getFlagEmoji(c.label)}</span>
@@ -481,8 +482,8 @@ export default function Dashboard() {
               {topRefs.length === 0
                 ? <EmptySection icon={<Wifi className="w-5 h-5 text-[#CBD5E1]" />} title="No referrer data yet" hint="Traffic sources appear when your links receive clicks from other websites or apps." />
                 : <div className="space-y-2.5 pt-1">
-                    {topRefs.map((r: any, i: number) => {
-                      const total = Math.max(...topRefs.map((x: any) => x.count), 1);
+                    {topRefs.map((r: TopEntry, i: number) => {
+                      const total = Math.max(...topRefs.map((x: TopEntry) => x.count), 1);
                       const pct   = Math.round((r.count / total) * 100);
                       return (
                         <div key={i} className="flex items-center gap-2.5">
@@ -514,7 +515,7 @@ export default function Dashboard() {
                 : recentLinks.length === 0
                   ? <EmptySection icon={<Clock className="w-5 h-5 text-[#CBD5E1]" />} title="No links yet" hint="Your newly created links will appear here." />
                   : <div className="space-y-1 pt-1">
-                      {recentLinks.map((link: any) => (
+                      {recentLinks.map((link: Link) => (
                         <div key={link.id} className="group flex items-start gap-2.5 py-2 rounded-lg hover:bg-[#F8FAFC] -mx-2 px-2 transition-colors">
                           <div className={`w-1.5 h-1.5 rounded-full mt-1.5 shrink-0 ${link.enabled ? "bg-[#14B8A6]" : "bg-[#CBD5E1]"}`} />
                           <div className="flex-1 min-w-0">
@@ -548,7 +549,7 @@ export default function Dashboard() {
           >
             {!isLoading && disabledLinks.length > 0 && (
               <div className="space-y-1.5">
-                {disabledLinks.map((link: any) => (
+                {disabledLinks.map((link: Link) => (
                   <div key={link.id} className="flex items-center gap-2.5">
                     <div className="w-1.5 h-1.5 rounded-full bg-[#CBD5E1] shrink-0" />
                     <p className="text-[11px] font-medium text-[#475569] truncate flex-1 min-w-0">{link.slug}</p>
@@ -557,9 +558,9 @@ export default function Dashboard() {
                     </Link>
                   </div>
                 ))}
-                {disabledLinks.length < (links?.filter((l: any) => !l.enabled).length ?? 0) && (
+                {disabledLinks.length < (links?.filter((l: Link) => !l.enabled).length ?? 0) && (
                   <Link href="/links" className="text-[10px] text-[#94A3B8] hover:text-[#4F46E5] transition-colors flex items-center gap-0.5 mt-1">
-                    +{(links?.filter((l: any) => !l.enabled).length ?? 0) - disabledLinks.length} more <ArrowRight className="w-2.5 h-2.5" />
+                    +{(links?.filter((l: Link) => !l.enabled).length ?? 0) - disabledLinks.length} more <ArrowRight className="w-2.5 h-2.5" />
                   </Link>
                 )}
               </div>
@@ -577,7 +578,7 @@ export default function Dashboard() {
           >
             {!isLoading && zeroClickLinks.length > 0 && (
               <div className="space-y-1.5">
-                {zeroClickLinks.map((link: any) => (
+                {zeroClickLinks.map((link: Link) => (
                   <div key={link.id} className="flex items-center gap-2.5">
                     <div className="w-1.5 h-1.5 rounded-full bg-[#FCA5A5] shrink-0" />
                     <p className="text-[11px] font-medium text-[#475569] truncate flex-1 min-w-0">{link.slug}</p>
@@ -599,30 +600,31 @@ export default function Dashboard() {
             </div>
 
             {latestAI ? (
-              <div className="bg-[#FAFAFA] border border-[#F1F5F9] rounded-xl p-3 flex-1">
+              <div className="bg-[#FAFAFA] border border-[#F1F5F9] rounded-xl p-3">
                 <p className="text-[11px] text-[#475569] leading-relaxed line-clamp-4">{latestAI.content}</p>
                 <Link href="/ai" className="inline-flex items-center gap-1 text-[10px] font-bold text-[#7C3AED] hover:text-[#6D28D9] transition-colors mt-2">
                   Full analysis <ArrowRight className="w-3 h-3" />
                 </Link>
               </div>
             ) : (
-              <div className="space-y-2 flex-1">
+              <div className="space-y-2">
                 {domainCount === 0 && (
                   <SuggestionItem icon={<Globe className="w-3.5 h-3.5 text-[#14B8A6]" />} label="Set up a custom domain" href="/domains" />
                 )}
                 <SuggestionItem icon={<Share2 className="w-3.5 h-3.5 text-[#4F46E5]" />} label="Share your top link" href="/links" />
                 <SuggestionItem icon={<BarChart3 className="w-3.5 h-3.5 text-[#0EA5E9]" />} label="View full analytics" href="/analytics" />
-                <button
-                  onClick={async () => {
-                    try { await summaryMutation.mutateAsync(); queryClient.invalidateQueries({ queryKey: getGetAiInsightsQueryKey() }); } catch {}
-                  }}
-                  disabled={summaryMutation.isPending}
-                  className="w-full flex items-center gap-2 text-[11px] font-semibold text-[#7C3AED] hover:text-[#6D28D9] bg-[#F5F3FF] hover:bg-[#EDE9FE] border border-[#DDD6FE] rounded-lg px-3 py-2 transition-colors disabled:opacity-50">
-                  {summaryMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Zap className="w-3 h-3" />}
-                  {summaryMutation.isPending ? "Analyzing…" : "Generate AI insights"}
-                </button>
               </div>
             )}
+
+            <button
+              onClick={async () => {
+                try { await summaryMutation.mutateAsync(); queryClient.invalidateQueries({ queryKey: getGetAiInsightsQueryKey() }); } catch {}
+              }}
+              disabled={summaryMutation.isPending}
+              className="w-full flex items-center gap-2 text-[11px] font-semibold text-[#7C3AED] hover:text-[#6D28D9] bg-[#F5F3FF] hover:bg-[#EDE9FE] border border-[#DDD6FE] rounded-lg px-3 py-2 transition-colors disabled:opacity-50">
+              {summaryMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Zap className="w-3 h-3" />}
+              {summaryMutation.isPending ? "Analyzing…" : latestAI ? "Regenerate insights" : "Generate AI insights"}
+            </button>
           </div>
         </div>
 

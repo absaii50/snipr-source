@@ -1,4 +1,5 @@
 "use client";
+import type { TopEntry } from "@workspace/api-client-react";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import { Monitor } from "lucide-react";
 
@@ -11,7 +12,7 @@ function fmtK(n: number) {
 }
 
 interface Props {
-  data: Array<{ label: string; count: number }>;
+  data: TopEntry[];
 }
 
 export default function DeviceDonutChart({ data }: Props) {
@@ -21,14 +22,14 @@ export default function DeviceDonutChart({ data }: Props) {
   if (top5.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center gap-3 h-full py-6">
-        <div className="relative w-[80px] h-[80px]">
-          <svg viewBox="0 0 80 80" className="w-full h-full">
-            <circle cx="40" cy="40" r="28" fill="none" stroke="#E2E8F0" strokeWidth="12" />
-            <circle cx="40" cy="40" r="28" fill="none" stroke="#F1F5F9" strokeWidth="12"
-              strokeDasharray="15 161" strokeLinecap="round" strokeDashoffset="-12" />
+        <div className="relative w-[120px] h-[120px]">
+          <svg viewBox="0 0 120 120" className="w-full h-full">
+            <circle cx="60" cy="60" r="38" fill="none" stroke="#E2E8F0" strokeWidth="16" />
+            <circle cx="60" cy="60" r="38" fill="none" stroke="#F1F5F9" strokeWidth="16"
+              strokeDasharray="20 220" strokeLinecap="round" strokeDashoffset="-16" />
           </svg>
           <div className="absolute inset-0 flex items-center justify-center">
-            <Monitor className="w-4 h-4 text-[#CBD5E1]" />
+            <Monitor className="w-5 h-5 text-[#CBD5E1]" />
           </div>
         </div>
         <div className="text-center">
@@ -41,14 +42,15 @@ export default function DeviceDonutChart({ data }: Props) {
 
   return (
     <div className="flex items-center gap-4 h-full w-full py-2">
-      <div className="relative shrink-0" style={{ width: 100, height: 100 }}>
+      <div className="relative shrink-0" style={{ width: 160, height: 160 }}>
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
             <Pie
               data={top5}
               cx="50%" cy="50%"
-              innerRadius={30} outerRadius={46}
+              innerRadius={55} outerRadius={75}
               dataKey="count"
+              nameKey="label"
               stroke="none"
               paddingAngle={2}
             >
@@ -57,7 +59,10 @@ export default function DeviceDonutChart({ data }: Props) {
               ))}
             </Pie>
             <Tooltip
-              content={({ active, payload }: any) => {
+              content={({ active, payload }: {
+                active?: boolean;
+                payload?: Array<{ name: string; value: number }>;
+              }) => {
                 if (!active || !payload?.length) return null;
                 const p = payload[0];
                 const pct = total > 0 ? Math.round((p.value / total) * 100) : 0;
@@ -72,17 +77,17 @@ export default function DeviceDonutChart({ data }: Props) {
           </PieChart>
         </ResponsiveContainer>
         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-          <p className="text-[14px] font-extrabold text-[#0F172A] tabular-nums leading-none">{fmtK(total)}</p>
+          <p className="text-[16px] font-extrabold text-[#0F172A] tabular-nums leading-none">{fmtK(total)}</p>
           <p className="text-[8px] text-[#94A3B8] font-semibold uppercase tracking-wider mt-0.5">clicks</p>
         </div>
       </div>
 
-      <div className="flex-1 min-w-0 space-y-2">
+      <div className="flex-1 min-w-0 space-y-2.5">
         {top5.map((d, i) => {
           const pct = total > 0 ? Math.round((d.count / total) * 100) : 0;
           return (
             <div key={i} className="flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: PALETTE[i % PALETTE.length] }} />
+              <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: PALETTE[i % PALETTE.length] }} />
               <p className="text-[11px] text-[#475569] truncate flex-1 min-w-0">{d.label || "Unknown"}</p>
               <p className="text-[11px] font-bold text-[#0F172A] tabular-nums shrink-0">{pct}%</p>
             </div>
