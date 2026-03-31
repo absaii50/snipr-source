@@ -1311,9 +1311,7 @@ router.post("/admin/settings/billing/webhook-test", requireAdmin, async (req, re
   res.json({ configured: !!secret });
 });
 
-/* ══════════════════════════════════════════════════════════════════════
-   FEATURE 1: Audit Log
-   ══════════════════════════════════════════════════════════════════════ */
+// --- Audit Log ---
 
 router.get("/admin/audit-log", requireAdmin, async (req, res): Promise<void> => {
   const action = (req.query.action as string) ?? "";
@@ -1345,9 +1343,7 @@ router.get("/admin/audit-log", requireAdmin, async (req, res): Promise<void> => 
   res.json({ logs, total, page, limit });
 });
 
-/* ══════════════════════════════════════════════════════════════════════
-   FEATURE 2: System Health Monitor
-   ══════════════════════════════════════════════════════════════════════ */
+// --- System Health Monitor ---
 
 const SERVER_START_TIME = Date.now();
 
@@ -1418,9 +1414,7 @@ router.get("/admin/health-detail", requireAdmin, async (req, res): Promise<void>
   });
 });
 
-/* ══════════════════════════════════════════════════════════════════════
-   FEATURE 3: User Impersonation
-   ══════════════════════════════════════════════════════════════════════ */
+// --- User Impersonation ---
 
 interface ImpersonationData {
   userId: string;
@@ -1478,9 +1472,7 @@ router.get("/admin/impersonation-status", requireAdmin, (req, res): void => {
   res.json({ impersonating: imp ?? null });
 });
 
-/* ══════════════════════════════════════════════════════════════════════
-   FEATURE 4: Bulk User Actions
-   ══════════════════════════════════════════════════════════════════════ */
+// --- Bulk User Actions ---
 
 router.post("/admin/users/bulk", requireAdmin, async (req, res): Promise<void> => {
   const { action, userIds, plan } = req.body as { action: string; userIds: string[]; plan?: string };
@@ -1543,9 +1535,7 @@ router.post("/admin/users/bulk", requireAdmin, async (req, res): Promise<void> =
   res.json({ ok: true, affected });
 });
 
-/* ══════════════════════════════════════════════════════════════════════
-   FEATURE 5: Link Health Checker
-   ══════════════════════════════════════════════════════════════════════ */
+// --- Link Health Checker ---
 
 router.post("/admin/links/health-check", requireAdmin, async (req, res): Promise<void> => {
   const { linkIds } = req.body as { linkIds?: string[] };
@@ -1612,13 +1602,30 @@ router.post("/admin/links/health-check", requireAdmin, async (req, res): Promise
     }
   }
 
+  const healthData: Record<string, { ok: boolean; status: number | null; checkedAt: string; error?: string }> = {};
+  for (const r of results) {
+    healthData[r.id] = { ok: r.ok, status: r.status, checkedAt: r.checkedAt, ...(r.error ? { error: r.error } : {}) };
+  }
+  const existing = await db.select().from(platformSettingsTable).where(eq(platformSettingsTable.key, "link_health_results"));
+  let merged = healthData;
+  if (existing.length > 0 && existing[0].value) {
+    try { merged = { ...JSON.parse(existing[0].value), ...healthData }; } catch {}
+  }
+  await db.insert(platformSettingsTable)
+    .values({ key: "link_health_results", value: JSON.stringify(merged) })
+    .onConflictDoUpdate({ target: platformSettingsTable.key, set: { value: JSON.stringify(merged) } });
+
   await logAuditAction("link_health_check", "link", null, { checked: results.length, broken: results.filter(r => !r.ok).length }, req.ip);
   res.json(results);
 });
 
-/* ══════════════════════════════════════════════════════════════════════
-   FEATURE 6: CSV Export
-   ══════════════════════════════════════════════════════════════════════ */
+router.get("/admin/links/health-status", requireAdmin, async (_req, res): Promise<void> => {
+  const [row] = await db.select().from(platformSettingsTable).where(eq(platformSettingsTable.key, "link_health_results"));
+  if (!row || !row.value) { res.json({}); return; }
+  try { res.json(JSON.parse(row.value)); } catch { res.json({}); }
+});
+
+// --- CSV Export ---
 
 function toCsv(headers: string[], rows: Record<string, unknown>[]): string {
   const escape = (v: unknown) => {
@@ -1695,9 +1702,7 @@ router.get("/admin/export/emails", requireAdmin, async (req, res): Promise<void>
   res.send(csv);
 });
 
-/* ══════════════════════════════════════════════════════════════════════
-   FEATURE 7: Announcement Banner
-   ══════════════════════════════════════════════════════════════════════ */
+// --- Announcement Banner ---
 
 router.get("/admin/announcement", requireAdmin, async (req, res): Promise<void> => {
   const [row] = await db.select().from(platformSettingsTable).where(eq(platformSettingsTable.key, "announcement"));
@@ -1731,9 +1736,7 @@ router.get("/announcement", async (_req, res): Promise<void> => {
   }
 });
 
-/* ══════════════════════════════════════════════════════════════════════
-   FEATURE 8: Rate Limit Dashboard
-   ══════════════════════════════════════════════════════════════════════ */
+// --- Rate Limit Dashboard ---
 
 interface RateLimitEvent {
   path: string;
@@ -1816,9 +1819,7 @@ router.post("/admin/rate-limits/adjust", requireAdmin, async (req, res): Promise
   res.json({ ok: true, overrides: Object.fromEntries(rateLimitOverrides) });
 });
 
-/* ══════════════════════════════════════════════════════════════════════
-   FEATURE 9: Workspace Inspector
-   ══════════════════════════════════════════════════════════════════════ */
+// --- Workspace Inspector ---
 
 router.get("/admin/users/:id/workspace-detail", requireAdmin, async (req, res): Promise<void> => {
   const userId = req.params.id;
@@ -1869,6 +1870,18 @@ router.get("/admin/users/:id/workspace-detail", requireAdmin, async (req, res): 
     `).then(r => r.rows);
   }
 
+  let storageUsage = { links: 0, clickEvents: 0, domains: 0, estimatedBytes: 0 };
+  if (ws) {
+    const linkCount = links.length;
+    const domainCount = domains.length;
+    storageUsage = {
+      links: linkCount,
+      clickEvents: totalClicks,
+      domains: domainCount,
+      estimatedBytes: (linkCount * 512) + (totalClicks * 256) + (domainCount * 256),
+    };
+  }
+
   res.json({
     user: { id: user.id, name: user.name, email: user.email, plan: user.plan, createdAt: user.createdAt, suspendedAt: user.suspendedAt, emailVerified: user.emailVerified },
     workspace: ws ? { id: ws.id, name: ws.name, slug: ws.slug, createdAt: ws.createdAt } : null,
@@ -1877,6 +1890,7 @@ router.get("/admin/users/:id/workspace-detail", requireAdmin, async (req, res): 
     members,
     totalClicks,
     recentClicks,
+    storageUsage,
     summary: {
       totalLinks: links.length,
       activeLinks: links.filter((l) => l.enabled).length,
@@ -1887,9 +1901,7 @@ router.get("/admin/users/:id/workspace-detail", requireAdmin, async (req, res): 
   });
 });
 
-/* ══════════════════════════════════════════════════════════════════════
-   FEATURE 10: Mass Email / Platform Notifications
-   ══════════════════════════════════════════════════════════════════════ */
+// --- Mass Email / Platform Notifications ---
 
 router.post("/admin/notifications/preview", requireAdmin, async (req, res): Promise<void> => {
   const { planFilter, template, subject, body } = req.body as {

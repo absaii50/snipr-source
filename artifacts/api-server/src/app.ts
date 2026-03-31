@@ -10,7 +10,7 @@ import router from "./routes";
 import redirectRouter from "./routes/redirect";
 import { logger } from "./lib/logger";
 import { WebhookHandlers } from "./lib/webhookHandlers";
-import { recordRateLimitEvent, isIpWhitelisted } from "./routes/admin";
+import { recordRateLimitEvent, isIpWhitelisted, getRateLimitOverride } from "./routes/admin";
 
 const sessionSecret = process.env.SESSION_SECRET;
 if (!sessionSecret && process.env.NODE_ENV === "production") {
@@ -136,7 +136,7 @@ function rateLimitHandler(req: Request, res: Response, _next: NextFunction, _opt
 
 const redirectLimiter = rateLimit({
   windowMs: 60 * 1000,
-  max: 120,
+  max: () => getRateLimitOverride("Redirects") ?? 120,
   standardHeaders: true,
   legacyHeaders: false,
   skip: (req) => req.method === "HEAD" || isIpWhitelisted(req.ip || ""),
@@ -145,7 +145,7 @@ const redirectLimiter = rateLimit({
 
 const apiLimiter = rateLimit({
   windowMs: 60 * 1000,
-  max: 200,
+  max: () => getRateLimitOverride("API General") ?? 200,
   standardHeaders: true,
   legacyHeaders: false,
   skip: (req) => isIpWhitelisted(req.ip || ""),
@@ -154,7 +154,7 @@ const apiLimiter = rateLimit({
 
 const passwordResetLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 5,
+  max: () => getRateLimitOverride("Password Reset") ?? 5,
   standardHeaders: true,
   legacyHeaders: false,
   handler: (req: Request, res: Response, _next: NextFunction) => {
@@ -166,7 +166,7 @@ const passwordResetLimiter = rateLimit({
 
 const adminLoginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 5,
+  max: () => getRateLimitOverride("Admin Login") ?? 5,
   standardHeaders: true,
   legacyHeaders: false,
   handler: (req: Request, res: Response, _next: NextFunction) => {

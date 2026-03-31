@@ -72,6 +72,12 @@ export default function LinksTab() {
   }, []);
 
   useEffect(() => {
+    apiFetch("/admin/links/health-status").then((data) => {
+      if (data && typeof data === "object") setLinkHealth(data);
+    }).catch(() => {});
+  }, []);
+
+  useEffect(() => {
     const searchChanged = prevSearchRef.current !== search;
     prevSearchRef.current = search;
     const delay = searchChanged ? 300 : 0;

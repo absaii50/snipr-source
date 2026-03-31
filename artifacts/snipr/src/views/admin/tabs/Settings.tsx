@@ -142,7 +142,7 @@ export default function SettingsTab() {
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<TestResult | null>(null);
   const [webhookUrl, setWebhookUrl] = useState("");
-  const [announcement, setAnnouncement] = useState({ text: "", type: "info" as "info" | "warning" | "success", enabled: false });
+  const [announcement, setAnnouncement] = useState({ text: "", type: "info" as "info" | "warning" | "success" | "error", enabled: false });
   const [announcementSaving, setAnnouncementSaving] = useState(false);
   const [rateLimits, setRateLimits] = useState<{ name: string; path: string; windowMs: number; max: number; effectiveMax: number; overridden: boolean; description: string }[]>([]);
   const [recentBlocked, setRecentBlocked] = useState<{ total: number; byPath: Record<string, number>; lastEvents: { path: string; ip: string; timestamp: string }[] } | null>(null);
@@ -449,12 +449,13 @@ export default function SettingsTab() {
           <div>
             <label className="text-xs font-medium text-[#8888A0] uppercase mb-1.5 block">Type</label>
             <div className="flex gap-2">
-              {(["info", "warning", "success"] as const).map(t => (
+              {(["info", "warning", "success", "error"] as const).map(t => (
                 <button key={t} onClick={() => setAnnouncement(a => ({ ...a, type: t }))}
                   className={`px-3 py-1.5 rounded-lg text-xs font-medium capitalize transition-all ${
                     announcement.type === t
                       ? t === "info" ? "bg-blue-100 text-blue-700 border border-blue-200"
                         : t === "warning" ? "bg-amber-100 text-amber-700 border border-amber-200"
+                        : t === "error" ? "bg-red-100 text-red-700 border border-red-200"
                         : "bg-green-100 text-green-700 border border-green-200"
                       : "bg-[#F4F4F6] text-[#8888A0] border border-transparent hover:bg-[#E8EEF4]"
                   }`}>{t}</button>
@@ -475,6 +476,7 @@ export default function SettingsTab() {
             <div className={`rounded-xl px-4 py-3 text-sm flex items-center gap-2 ${
               announcement.type === "warning" ? "bg-amber-50 text-amber-800 border border-amber-200"
                 : announcement.type === "success" ? "bg-green-50 text-green-800 border border-green-200"
+                : announcement.type === "error" ? "bg-red-50 text-red-800 border border-red-200"
                 : "bg-blue-50 text-blue-800 border border-blue-200"
             }`}>
               <Megaphone className="w-4 h-4 shrink-0" />

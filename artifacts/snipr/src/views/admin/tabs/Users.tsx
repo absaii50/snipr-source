@@ -78,6 +78,7 @@ interface WorkspaceDetail {
   members: { name: string; email: string; role: string }[];
   totalClicks: number;
   recentClicks: { timestamp: string; country: string; device: string; slug: string }[];
+  storageUsage: { links: number; clickEvents: number; domains: number; estimatedBytes: number };
   summary: { totalLinks: number; activeLinks: number; totalClicks: number; totalDomains: number; totalMembers: number };
 }
 
@@ -499,6 +500,26 @@ export default function UsersTab() {
                   <h4 className="text-xs font-semibold text-[#8888A0] uppercase mb-2">Workspace</h4>
                   <div className="text-sm font-medium text-[#0A0A0A]">{inspectorData.workspace.name}</div>
                   <div className="text-xs text-[#8888A0]">Slug: {inspectorData.workspace.slug} · Created: {fmtDate(inspectorData.workspace.createdAt)}</div>
+                </div>
+              )}
+              {inspectorData.storageUsage && (
+                <div className="rounded-xl border border-[#E4E4EC] p-4">
+                  <h4 className="text-xs font-semibold text-[#8888A0] uppercase mb-2">Storage Usage</h4>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    {[
+                      { label: "Links", val: inspectorData.storageUsage.links },
+                      { label: "Click Events", val: inspectorData.storageUsage.clickEvents },
+                      { label: "Domains", val: inspectorData.storageUsage.domains },
+                      { label: "Est. Size", val: inspectorData.storageUsage.estimatedBytes > 1048576
+                        ? `${(inspectorData.storageUsage.estimatedBytes / 1048576).toFixed(1)} MB`
+                        : `${(inspectorData.storageUsage.estimatedBytes / 1024).toFixed(1)} KB` },
+                    ].map((s) => (
+                      <div key={s.label} className="text-center">
+                        <div className="text-sm font-bold text-[#0A0A0A]">{s.val}</div>
+                        <div className="text-[10px] text-[#8888A0]">{s.label}</div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
               {inspectorData.links.length > 0 && (
