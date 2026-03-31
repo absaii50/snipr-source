@@ -105422,7 +105422,6 @@ router18.use(async (req, res, next) => {
   }
   const [link] = await db.select().from(linksTable).where(and(
     eq(linksTable.slug, slug),
-    eq(linksTable.workspaceId, domainRecord.workspaceId),
     eq(linksTable.domainId, domainRecord.id)
   ));
   if (!link || !link.enabled) {

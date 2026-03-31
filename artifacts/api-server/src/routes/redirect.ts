@@ -325,13 +325,12 @@ router.use(async (req, res, next): Promise<void> => {
     return;
   }
 
-  // Look up link by slug and domain
+  // Look up link by slug and domain (slug+domainId is unique — no workspaceId needed)
   const [link] = await db
     .select()
     .from(linksTable)
     .where(and(
       eq(linksTable.slug, slug),
-      eq(linksTable.workspaceId, domainRecord.workspaceId),
       eq(linksTable.domainId, domainRecord.id)
     ));
 
