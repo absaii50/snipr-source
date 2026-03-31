@@ -58,8 +58,18 @@ function fmtAgo(date: string | Date) {
 }
 
 function getFlagEmoji(code: string) {
-  if (!code || code.length !== 2) return "🌍";
-  return String.fromCodePoint(...[...code.toUpperCase()].map(c => 0x1f1e6 + c.charCodeAt(0) - 65));
+  if (!code || code.length !== 2) return <span className="text-[16px]">🌍</span>;
+  return (
+    <img
+      src={`https://flagcdn.com/w20/${code.toLowerCase()}.png`}
+      srcSet={`https://flagcdn.com/w40/${code.toLowerCase()}.png 2x`}
+      width={20}
+      height={15}
+      alt={code}
+      className="rounded-[2px] object-cover"
+      onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+    />
+  );
 }
 
 function cleanReferrer(r: string) {
@@ -376,7 +386,7 @@ export default function Dashboard() {
             {topCountryEntry
               ? <>
                   <div className="flex items-center gap-2 mb-1.5">
-                    <span className="text-[20px] leading-none">{getFlagEmoji(topCountryEntry.label)}</span>
+                    <span className="flex items-center w-5">{getFlagEmoji(topCountryEntry.label)}</span>
                     <p className="text-[13px] font-bold text-[#0F172A] truncate leading-none">{COUNTRY[topCountryEntry.label] ?? topCountryEntry.label}</p>
                   </div>
                   <div className="flex items-center justify-between mb-1.5">
@@ -514,7 +524,7 @@ export default function Dashboard() {
                       const pct = Math.round((c.count / Math.max(...topCountries.map((x: TopEntry) => x.count), 1)) * 100);
                       return (
                         <div key={c.label} className="flex items-center gap-2 py-1">
-                          <span className="text-[16px] shrink-0">{getFlagEmoji(c.label)}</span>
+                          <span className="flex items-center shrink-0 w-5">{getFlagEmoji(c.label)}</span>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center justify-between mb-1">
                               <span className="text-[11px] font-semibold text-[#1E293B] truncate">{COUNTRY[c.label] ?? c.label}</span>

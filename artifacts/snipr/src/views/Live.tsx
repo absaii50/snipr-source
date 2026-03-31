@@ -32,9 +32,18 @@ function DeviceIcon({ device, className }: { device: string | null; className?: 
 }
 
 function countryFlag(code: string | null) {
-  if (!code || code.length !== 2) return "🌐";
-  const codePoints = [...code.toUpperCase()].map(c => 0x1F1E0 + c.charCodeAt(0) - 65);
-  return String.fromCodePoint(...codePoints);
+  if (!code || code.length !== 2) return <span className="text-[16px]">🌐</span>;
+  return (
+    <img
+      src={`https://flagcdn.com/w20/${code.toLowerCase()}.png`}
+      srcSet={`https://flagcdn.com/w40/${code.toLowerCase()}.png 2x`}
+      width={20}
+      height={15}
+      alt={code}
+      className="rounded-[2px] object-cover"
+      onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+    />
+  );
 }
 
 function slugColor(slug: string): string {
@@ -396,7 +405,7 @@ export default function Live() {
                             </div>
                             <div className="grid grid-cols-2 gap-x-4 gap-y-3 p-4">
                               <DetailRow icon={<MapPin className="w-3.5 h-3.5 text-[#2E9A72]" />} label="Location" value={`${ev.city ? ev.city + ", " : ""}${ev.country ? countryName(ev.country) : "Unknown"}`} />
-                              <DetailRow icon={<span className="text-[14px]">{countryFlag(ev.country)}</span>} label="Country" value={ev.country ?? "N/A"} />
+                              <DetailRow icon={<span className="flex items-center w-5">{countryFlag(ev.country)}</span>} label="Country" value={ev.country ?? "N/A"} />
                               <DetailRow icon={<DeviceIcon device={ev.device} className="w-3.5 h-3.5 text-[#7C5CC4]" />} label="Device" value={ev.device ?? "desktop"} />
                               <DetailRow icon={<span className="text-[14px]">{osIcon(ev.os)}</span>} label="OS" value={ev.os ?? "Unknown"} />
                               <DetailRow icon={<span className="text-[14px]">{browserIcon(ev.browser)}</span>} label="Browser" value={ev.browser ?? "Unknown"} />
@@ -527,7 +536,7 @@ export default function Live() {
                         return (
                           <div key={country} className="flex items-center gap-3 px-5 py-3 hover:bg-[#FAFAFE] transition-colors">
                             <span className="text-[10px] font-bold text-[#C0C0CC] w-4 shrink-0 tabular-nums">#{i + 1}</span>
-                            <span className="text-[20px] leading-none shrink-0">{countryFlag(country)}</span>
+                            <span className="flex items-center shrink-0 w-5">{countryFlag(country)}</span>
                             <div className="flex-1 min-w-0">
                               <div className="flex justify-between items-center mb-1">
                                 <span className="text-[12px] font-semibold text-[#0A0A0A]">{country === "Unknown" ? "Unknown" : countryName(country)}</span>

@@ -98,9 +98,18 @@ const PERIODS: PeriodDef[] = [
 ];
 
 function countryFlag(code: string | null) {
-  if (!code || code.length !== 2) return "🌐";
-  const codePoints = [...code.toUpperCase()].map(c => 0x1F1E0 + c.charCodeAt(0) - 65);
-  return String.fromCodePoint(...codePoints);
+  if (!code || code.length !== 2) return <span className="text-[16px]">🌐</span>;
+  return (
+    <img
+      src={`https://flagcdn.com/w20/${code.toLowerCase()}.png`}
+      srcSet={`https://flagcdn.com/w40/${code.toLowerCase()}.png 2x`}
+      width={20}
+      height={15}
+      alt={code}
+      className="rounded-[2px] object-cover"
+      onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+    />
+  );
 }
 
 function countryName(code: string | null): string {
@@ -424,7 +433,7 @@ export default function Analytics() {
                   return (
                     <div key={c.label} className="flex items-center gap-3 px-5 py-3 hover:bg-slate-50/50 transition-colors">
                       <span className="text-[10px] font-bold text-slate-300 w-4 shrink-0">#{i + 1}</span>
-                      <span className="text-[20px] leading-none shrink-0">{countryFlag(c.label)}</span>
+                      <span className="flex items-center shrink-0 w-5">{countryFlag(c.label)}</span>
                       <div className="flex-1 min-w-0">
                         <div className="flex justify-between items-center mb-1">
                           <span className="text-[13px] font-semibold text-slate-900">{countryName(c.label)}</span>
@@ -520,7 +529,7 @@ export default function Analytics() {
                         {topCountries.map((c: { label: string; count: number }) => (
                           <div key={c.label} className="flex items-center justify-between">
                             <span className="text-[11px] text-slate-600 flex items-center gap-1.5">
-                              <span className="text-[14px]">{countryFlag(c.label)}</span>
+                              <span className="flex items-center w-5">{countryFlag(c.label)}</span>
                               {countryName(c.label)}
                             </span>
                             <span className="text-[11px] font-semibold text-slate-700">{c.count}</span>
