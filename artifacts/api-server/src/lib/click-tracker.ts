@@ -53,14 +53,30 @@ function parseReferrer(referrer: string | undefined): string | null {
   }
 }
 
+/* ── Bot / Prefetch Filter ────────────────────────────────────────────── */
+
+const BOT_UA_PATTERN = /bot|crawl|spider|slurp|facebookexternalhit|twitterbot|linkedinbot|whatsapp|telegram|discordbot|slack|preview|prefetch|wget|curl|python|java|ruby|go-http|axios|node-fetch|lighthouse|headless|phantom|puppeteer|playwright|chrome-lighthouse|googleweblight|adsbot|mediapartners|applebot|baiduspider|yandexbot|sogou|duckduckbot|exabot|ia_archiver|msnbot|semrushbot|ahrefsbot|dotbot|rogerbot|360spider|seznambot|blexbot|petalbot/i;
+
+function isBot(req: Request): boolean {
+  const ua = req.headers["user-agent"] ?? "";
+  // Skip empty UAs
+  if (!ua) return true;
+  // Skip known bots by UA
+  if (BOT_UA_PATTERN.test(ua)) return true;
+  // Skip browser prefetch requests
+  const purpose = req.headers["purpose"] ?? req.headers["x-purpose"] ?? req.headers["x-moz"] ?? "";
+  if (/prefetch/i.test(purpose as string)) return true;
+  // Skip HEAD requests — browsers send HEAD to check a URL before following
+  if (req.method === "HEAD") return true;
+  return false;
+}
+
 /* ── Batch Write Queue ────────────────────────────────────────────────── */
 
 const BATCH_MAX = 100;
 const FLUSH_INTERVAL_MS = 500;
-const MAX_RETRY_ATTEMPTS = 3;
 
 const clickQueue: ClickPayload[] = [];
-let consecutiveFailures = 0;
 
 async function flushQueue(): Promise<void> {
   if (clickQueue.length === 0) return;
@@ -69,42 +85,13 @@ async function flushQueue(): Promise<void> {
 
   try {
     await db.insert(clickEventsTable).values(batch);
-
-    // Reset failure counter on success
-    if (consecutiveFailures > 0) {
-      consecutiveFailures = 0;
-      logger.info("Click queue flush recovered after failures");
-    }
   } catch (error) {
-    // Log the error for monitoring
+    // Drop the batch rather than re-queuing — re-queuing risks double-counting
+    // if the INSERT partially succeeded before the error.
     logger.error(error, {
-      message: "Failed to flush click queue",
+      message: "Failed to flush click queue — batch dropped to prevent duplicates",
       batchSize: batch.length,
-      queueSize: clickQueue.length,
     });
-
-    // Re-add batch to queue for retry (only if not already retried too many times)
-    if (consecutiveFailures < MAX_RETRY_ATTEMPTS) {
-      clickQueue.unshift(...batch); // Put at front for next flush
-      consecutiveFailures++;
-
-      // If queue is getting too large, log warning
-      if (clickQueue.length > 5000) {
-        logger.warn({
-          message: "Click queue overflow warning",
-          queueSize: clickQueue.length,
-          consecutiveFailures,
-        });
-      }
-    } else {
-      // After too many failures, drop batch but log it
-      logger.error({
-        message: "Click batch permanently lost after max retries",
-        batchSize: batch.length,
-        consecutiveFailures,
-      });
-      consecutiveFailures = 0; // Reset after giving up
-    }
   }
 }
 
@@ -122,6 +109,9 @@ process.once("SIGINT", shutdown);
 
 export async function trackClick(req: Request, link: Link, isQr: boolean = false): Promise<void> {
   try {
+    // Skip bots, crawlers, prefetch requests, and HEAD requests
+    if (isBot(req)) return;
+
     const ip = getRealIp(req);
     const ipHash = ip ? hashIp(ip) : null;
     const ua = req.headers["user-agent"];
