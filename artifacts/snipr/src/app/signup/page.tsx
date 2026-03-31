@@ -2,16 +2,17 @@ import type { Metadata } from "next";
 import Signup from "@/views/Signup";
 
 export const metadata: Metadata = {
-  title: "Sign up — Get started free",
+  title: "Sign Up Free - Custom Domain URL Shortener & QR Codes",
   description:
-    "Create your free Snipr account and start shortening links with AI-powered insights, analytics, and smart routing.",
+    "Create your free Snipr account and start shortening links with your own custom domain, generating QR codes, and tracking clicks with real-time analytics. No credit card required.",
   alternates: {
     canonical: "https://snipr.sh/signup",
   },
   openGraph: {
-    title: "Sign up — Get started free | Snipr",
-    description: "Create your free account today. No credit card required.",
+    title: "Sign Up Free - Custom Domain URL Shortener | Snipr",
+    description: "Start shortening links with your own branded domain for free. No credit card required. QR codes, analytics, and AI insights included.",
     url: "https://snipr.sh/signup",
+    type: "website",
   },
 };
 

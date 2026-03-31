@@ -14,6 +14,7 @@ interface AdminDomain {
   verified: boolean;
   isParentDomain: boolean;
   supportsSubdomains: boolean;
+  isPlatformDomain: boolean;
   createdAt: string;
   workspaceId: string;
   workspaceName: string;
