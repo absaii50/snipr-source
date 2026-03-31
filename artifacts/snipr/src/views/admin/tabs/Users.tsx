@@ -349,12 +349,12 @@ export default function UsersTab() {
             </thead>
             <tbody className="divide-y divide-[#F4F4F6]">
               {loading && [...Array(5)].map((_, i) => (
-                <tr key={i}>{[...Array(9)].map((_, j) => (
+                <tr key={i}>{[...Array(10)].map((_, j) => (
                   <td key={j} className="px-4 py-4"><div className="h-4 bg-[#F4F4F6] rounded animate-pulse" /></td>
                 ))}</tr>
               ))}
               {!loading && filtered.length === 0 && (
-                <tr><td colSpan={9} className="px-4 py-12 text-center text-[#8888A0]">No users found</td></tr>
+                <tr><td colSpan={10} className="px-4 py-12 text-center text-[#8888A0]">No users found</td></tr>
               )}
               {!loading && filtered.map((u, idx) => (
                 <tr key={u.id} className={`hover:bg-[#F8F8FC] transition-colors group ${selected.has(u.id) ? "bg-[#EEF3F7]/50" : ""}`}>

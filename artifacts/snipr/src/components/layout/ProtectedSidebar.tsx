@@ -158,6 +158,7 @@ export function ProtectedSidebar() {
         <div className={`mx-2.5 mt-2 px-3 py-2 rounded-xl flex items-center gap-2 text-xs ${
           announcement.type === "warning" ? "bg-amber-50 text-amber-800 border border-amber-200"
             : announcement.type === "success" ? "bg-green-50 text-green-800 border border-green-200"
+            : announcement.type === "error" ? "bg-red-50 text-red-800 border border-red-200"
             : "bg-blue-50 text-blue-800 border border-blue-200"
         }`}>
           <Megaphone className="w-3.5 h-3.5 shrink-0" />
