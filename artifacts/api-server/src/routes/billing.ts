@@ -314,20 +314,62 @@ router.post("/billing/create-subscription-intent", requireAuth, async (req: Requ
       return;
     }
 
-    // Create subscription with default_incomplete so we get a payment intent
-    const subscription = await stripe.subscriptions.create({
+    // Reuse existing incomplete subscription for this customer+price (avoids duplicates on retry)
+    let subscription: any = null;
+    const existingSubs = await stripe.subscriptions.list({
       customer: customerId,
-      items: [{ price: priceId }],
-      payment_behavior: "default_incomplete",
-      payment_settings: { save_default_payment_method: "on_subscription" },
-      expand: ["latest_invoice.payment_intent"],
+      status: "incomplete",
+      limit: 10,
+      expand: ["data.latest_invoice.payment_intent"],
     });
+    for (const sub of existingSubs.data) {
+      if (sub.items.data.some((item: any) => item.price.id === priceId)) {
+        subscription = sub;
+        break;
+      }
+    }
 
-    const invoice = subscription.latest_invoice as any;
-    const paymentIntent = invoice?.payment_intent;
+    // No reusable subscription — create a new one
+    if (!subscription) {
+      subscription = await stripe.subscriptions.create({
+        customer: customerId,
+        items: [{ price: priceId }],
+        payment_behavior: "default_incomplete",
+        payment_settings: { save_default_payment_method: "on_subscription" },
+        expand: ["latest_invoice.payment_intent"],
+      });
+    }
 
-    if (!paymentIntent?.client_secret) {
-      res.status(502).json({ error: "Failed to create payment intent." });
+    // Resolve client_secret — handle all possible expand states
+    let clientSecret: string | null = null;
+    const latestInvoice = subscription.latest_invoice;
+
+    if (latestInvoice && typeof latestInvoice === "object") {
+      const pi = latestInvoice.payment_intent;
+      if (pi && typeof pi === "object" && pi.client_secret) {
+        clientSecret = pi.client_secret;
+      } else if (pi && typeof pi === "string") {
+        // expand didn't work — retrieve directly
+        const paymentIntent = await stripe.paymentIntents.retrieve(pi);
+        clientSecret = paymentIntent.client_secret ?? null;
+      }
+    } else if (latestInvoice && typeof latestInvoice === "string") {
+      // Invoice itself wasn't expanded — retrieve it
+      const inv = await stripe.invoices.retrieve(latestInvoice, {
+        expand: ["payment_intent"],
+      });
+      const pi = inv.payment_intent as any;
+      if (pi && typeof pi === "object") {
+        clientSecret = pi.client_secret ?? null;
+      } else if (pi && typeof pi === "string") {
+        const paymentIntent = await stripe.paymentIntents.retrieve(pi);
+        clientSecret = paymentIntent.client_secret ?? null;
+      }
+    }
+
+    if (!clientSecret) {
+      logger.error({ subscriptionId: subscription.id, latestInvoice }, "Could not resolve client_secret");
+      res.status(502).json({ error: "Could not initialize payment. Please try again." });
       return;
     }
 
@@ -340,7 +382,7 @@ router.post("/billing/create-subscription-intent", requireAuth, async (req: Requ
     } as any).where(eq(usersTable.id, user.id));
 
     res.json({
-      clientSecret: paymentIntent.client_secret,
+      clientSecret,
       subscriptionId: subscription.id,
     });
   } catch (err: unknown) {
