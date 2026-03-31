@@ -24,7 +24,16 @@ export class WebhookHandlers {
   static async handleUserPlanUpdates(event: any): Promise<void> {
     const type = event.type;
 
-    if (!type?.startsWith("customer.subscription.") && type !== "checkout.session.completed") {
+    const handledTypes = [
+      "customer.subscription.created",
+      "customer.subscription.updated",
+      "customer.subscription.deleted",
+      "checkout.session.completed",
+      "invoice.payment_succeeded",
+      "invoice.payment_failed",
+    ];
+
+    if (!handledTypes.includes(type)) {
       return;
     }
 
@@ -60,6 +69,55 @@ export class WebhookHandlers {
         .where(eq(usersTable.id, user.id));
 
       logger.info({ userId: user.id, plan, subscriptionId }, "User plan updated from checkout");
+      return;
+    }
+
+    // invoice.payment_succeeded — backup activation for custom Elements checkout
+    if (type === "invoice.payment_succeeded") {
+      const invoice = event.data?.object;
+      if (!invoice?.customer || invoice.billing_reason === "subscription_create" || invoice.billing_reason === "subscription_cycle") {
+        const invoiceCustomerId = invoice?.customer;
+        if (!invoiceCustomerId) return;
+
+        const [invUser] = await db.select().from(usersTable).where(eq(usersTable.stripeCustomerId, invoiceCustomerId));
+        if (!invUser) return;
+
+        const subscriptionId = invoice.subscription;
+        if (!subscriptionId) return;
+
+        const stripe = getStripeClient();
+        const sub = await stripe.subscriptions.retrieve(subscriptionId as string);
+        if (sub.status !== "active" && sub.status !== "trialing") return;
+
+        const priceId = sub.items?.data[0]?.price?.id;
+        const plan = priceId ? await WebhookHandlers.planFromPriceId(priceId) : null;
+        if (!plan || plan === "free") return;
+
+        await db.update(usersTable).set({
+          plan,
+          stripeSubscriptionId: sub.id,
+          stripeSubscriptionStatus: sub.status,
+          planRenewsAt: sub.current_period_end ? new Date(sub.current_period_end * 1000) : null,
+        }).where(eq(usersTable.id, invUser.id));
+
+        logger.info({ userId: invUser.id, plan, subscriptionId }, "Plan activated via invoice.payment_succeeded");
+      }
+      return;
+    }
+
+    // invoice.payment_failed — mark subscription as past_due/incomplete
+    if (type === "invoice.payment_failed") {
+      const invoice = event.data?.object;
+      if (!invoice?.customer) return;
+
+      const [failUser] = await db.select().from(usersTable).where(eq(usersTable.stripeCustomerId, invoice.customer));
+      if (!failUser) return;
+
+      await db.update(usersTable).set({
+        stripeSubscriptionStatus: "incomplete",
+      }).where(eq(usersTable.id, failUser.id));
+
+      logger.info({ userId: failUser.id }, "Payment failed — subscription marked incomplete");
       return;
     }
 
