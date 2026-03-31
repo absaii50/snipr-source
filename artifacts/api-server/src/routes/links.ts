@@ -147,6 +147,16 @@ router.post("/links", requireAuth, async (req, res): Promise<void> => {
 
   const folderId = typeof body.folderId === "string" && body.folderId ? body.folderId : null;
   const isCloakedVal = typeof body.isCloaked === "boolean" ? body.isCloaked : false;
+  const hideReferrerVal = typeof body.hideReferrer === "boolean" ? body.hideReferrer : false;
+
+  let iosDeepLink: string | null = null;
+  if (body.iosDeepLink && typeof body.iosDeepLink === "string") {
+    iosDeepLink = body.iosDeepLink;
+  }
+  let androidDeepLink: string | null = null;
+  if (body.androidDeepLink && typeof body.androidDeepLink === "string") {
+    androidDeepLink = body.androidDeepLink;
+  }
 
   // Require a verified custom domain for every link
   if (!body.domainId || typeof body.domainId !== "string") {
@@ -192,6 +202,9 @@ router.post("/links", requireAuth, async (req, res): Promise<void> => {
         folderId,
         domainId,
         isCloaked: isCloakedVal,
+        hideReferrer: hideReferrerVal,
+        iosDeepLink,
+        androidDeepLink,
       })
       .returning();
 
@@ -525,6 +538,15 @@ router.put("/links/:id", requireAuth, async (req, res): Promise<void> => {
   if ("isCloaked" in body) {
     updateData.isCloaked = typeof body.isCloaked === "boolean" ? body.isCloaked : false;
   }
+  if ("hideReferrer" in body) {
+    updateData.hideReferrer = typeof body.hideReferrer === "boolean" ? body.hideReferrer : false;
+  }
+  if ("iosDeepLink" in body) {
+    updateData.iosDeepLink = typeof body.iosDeepLink === "string" && body.iosDeepLink ? body.iosDeepLink : null;
+  }
+  if ("androidDeepLink" in body) {
+    updateData.androidDeepLink = typeof body.androidDeepLink === "string" && body.androidDeepLink ? body.androidDeepLink : null;
+  }
 
   // Require a verified custom domain — cannot clear domainId
   if ("domainId" in body) {
@@ -698,6 +720,9 @@ router.post("/links/:id/duplicate", requireAuth, async (req, res): Promise<void>
       folderId: link.folderId,
       domainId: link.domainId,
       isCloaked: link.isCloaked,
+      hideReferrer: link.hideReferrer,
+      iosDeepLink: link.iosDeepLink,
+      androidDeepLink: link.androidDeepLink,
     })
     .returning();
 

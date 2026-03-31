@@ -21,6 +21,9 @@ export const linksTable = pgTable("links", {
   clickLimit: integer("click_limit"),
   fallbackUrl: text("fallback_url"),
   isCloaked: boolean("is_cloaked").notNull().default(false),
+  hideReferrer: boolean("hide_referrer").notNull().default(false),
+  iosDeepLink: text("ios_deep_link"),
+  androidDeepLink: text("android_deep_link"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 }, (table) => [

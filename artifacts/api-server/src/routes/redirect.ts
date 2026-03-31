@@ -8,6 +8,34 @@ import { buildPixelPage } from "../lib/pixels";
 
 const router: IRouter = Router();
 
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+function escapeJsString(str: string): string {
+  return str
+    .replace(/\\/g, "\\\\")
+    .replace(/"/g, '\\"')
+    .replace(/'/g, "\\'")
+    .replace(/\n/g, "\\n")
+    .replace(/\r/g, "\\r")
+    .replace(/<\//g, "<\\/");
+}
+
+function isSafeUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    return ["http:", "https:"].includes(parsed.protocol) || url.includes("://");
+  } catch {
+    return url.startsWith("http://") || url.startsWith("https://") || /^[a-z][a-z0-9+.-]*:\/\//i.test(url);
+  }
+}
+
 /**
  * Extract subdomain and parent domain from a host
  * Examples:
@@ -75,7 +103,44 @@ button:hover{background:#4f46e5}
 </html>`);
 }
 
+function serveDeepLinkPage(res: any, destination: string, iosDeepLink: string | null, androidDeepLink: string | null): void {
+  const safeDest = escapeJsString(destination);
+  const iosBlock = iosDeepLink && isSafeUrl(iosDeepLink)
+    ? `if(/iPhone|iPad|iPod/i.test(ua)){window.location.href="${escapeJsString(iosDeepLink)}";setTimeout(function(){window.location.href="${safeDest}"},1500);return;}`
+    : "";
+  const androidBlock = androidDeepLink && isSafeUrl(androidDeepLink)
+    ? `if(/Android/i.test(ua)){window.location.href="${escapeJsString(androidDeepLink)}";setTimeout(function(){window.location.href="${safeDest}"},1500);return;}`
+    : "";
+  res.status(200).send(`<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Redirecting...</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{min-height:100vh;display:flex;align-items:center;justify-content:center;background:#f8fafc;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}
+.loader{text-align:center;color:#64748b;font-size:14px}
+.spinner{width:32px;height:32px;border:3px solid #e2e8f0;border-top-color:#6366f1;border-radius:50%;animation:spin 0.8s linear infinite;margin:0 auto 12px}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div class="loader"><div class="spinner"></div>Opening app...</div>
+<script>
+(function(){
+var ua=navigator.userAgent||"";
+${iosBlock}
+${androidBlock}
+window.location.href="${safeDest}";
+})();
+</script>
+</body>
+</html>`);
+}
+
 function serveCloakedPage(res: any, destination: string): void {
+  const safeDest = escapeHtml(destination);
   res.status(200).send(`<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -89,7 +154,7 @@ iframe{display:block;width:100%;height:100%;border:none}
 </style>
 </head>
 <body>
-<iframe src="${destination}" sandbox="allow-forms allow-pointer-lock allow-popups allow-same-origin allow-scripts" allow="fullscreen; payment" referrerpolicy="no-referrer"></iframe>
+<iframe src="${safeDest}" sandbox="allow-forms allow-pointer-lock allow-popups allow-same-origin allow-scripts" allow="fullscreen; payment" referrerpolicy="no-referrer"></iframe>
 </body>
 </html>`);
 }
@@ -277,8 +342,20 @@ router.use(async (req, res, next): Promise<void> => {
 
   setImmediate(() => { trackClick(req as any, link, false); });
 
+  if (link.iosDeepLink || link.androidDeepLink) {
+    serveDeepLinkPage(res, link.destinationUrl, link.iosDeepLink, link.androidDeepLink);
+    return;
+  }
+
   if (link.isCloaked) {
     serveCloakedPage(res, link.destinationUrl);
+    return;
+  }
+
+  if (link.hideReferrer) {
+    res.setHeader("Referrer-Policy", "no-referrer");
+    res.status(200).send(`<!DOCTYPE html>
+<html><head><meta charset="utf-8"><meta name="referrer" content="no-referrer"><meta http-equiv="refresh" content="0;url=${escapeHtml(link.destinationUrl)}"><title>Redirecting...</title></head><body></body></html>`);
     return;
   }
 
@@ -345,10 +422,15 @@ router.get("/r/:slug", async (req, res): Promise<void> => {
   if (rules.length > 0) {
     const ip = (req.headers["x-forwarded-for"] as string ?? req.ip ?? "").split(",")[0].trim();
     let userCountry: string | null = null;
+    let userCity: string | null = null;
+    let userRegion: string | null = null;
     let userDevice = "desktop";
     try {
       const geoip = (await import("geoip-lite")).default;
-      userCountry = geoip.lookup(ip)?.country ?? null;
+      const geo = geoip.lookup(ip);
+      userCountry = geo?.country ?? null;
+      userCity = geo?.city ?? null;
+      userRegion = geo?.region ?? null;
     } catch {}
     try {
       const { UAParser } = await import("ua-parser-js");
@@ -356,6 +438,7 @@ router.get("/r/:slug", async (req, res): Promise<void> => {
     } catch {}
 
     const geoRules = rules.filter((r) => r.type === "geo");
+    const cityRules = rules.filter((r) => r.type === "city");
     const deviceRules = rules.filter((r) => r.type === "device");
     const abRules = rules.filter((r) => r.type === "ab");
     const rotatorRules = rules.filter((r) => r.type === "rotator");
@@ -368,6 +451,24 @@ router.get("/r/:slug", async (req, res): Promise<void> => {
         destination = rule.destinationUrl;
         matched = true;
         break;
+      }
+    }
+
+    if (!matched) {
+      for (const rule of cityRules) {
+        const cond = rule.conditions as any;
+        const cities = (cond?.cities as string[] | undefined)?.map((c: string) => c.toLowerCase());
+        const regions = (cond?.regions as string[] | undefined)?.map((r: string) => r.toLowerCase());
+        if (cities && userCity && cities.includes(userCity.toLowerCase())) {
+          destination = rule.destinationUrl;
+          matched = true;
+          break;
+        }
+        if (regions && userRegion && regions.includes(userRegion.toLowerCase())) {
+          destination = rule.destinationUrl;
+          matched = true;
+          break;
+        }
       }
     }
 
@@ -408,8 +509,20 @@ router.get("/r/:slug", async (req, res): Promise<void> => {
     return;
   }
 
+  if (link.iosDeepLink || link.androidDeepLink) {
+    serveDeepLinkPage(res, destination, link.iosDeepLink, link.androidDeepLink);
+    return;
+  }
+
   if (link.isCloaked) {
     serveCloakedPage(res, destination);
+    return;
+  }
+
+  if (link.hideReferrer) {
+    res.setHeader("Referrer-Policy", "no-referrer");
+    res.status(200).send(`<!DOCTYPE html>
+<html><head><meta charset="utf-8"><meta name="referrer" content="no-referrer"><meta http-equiv="refresh" content="0;url=${escapeHtml(destination)}"><title>Redirecting...</title></head><body></body></html>`);
     return;
   }
 

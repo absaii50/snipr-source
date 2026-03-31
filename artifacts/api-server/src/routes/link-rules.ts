@@ -3,7 +3,7 @@ import { eq, and } from "drizzle-orm";
 import { db, linksTable, linkRulesTable, linkTagsTable, tagsTable } from "@workspace/db";
 import { requireAuth } from "../lib/auth";
 
-const VALID_RULE_TYPES = ["geo", "device", "ab", "rotator"] as const;
+const VALID_RULE_TYPES = ["geo", "city", "device", "ab", "rotator"] as const;
 
 const router: IRouter = Router();
 

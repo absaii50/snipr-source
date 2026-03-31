@@ -28,7 +28,7 @@ import {
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
-import { Settings2, ChevronDown, ChevronUp, Link as LinkIcon, ShieldAlert, Sparkles, Loader2, EyeOff } from "lucide-react";
+import { Settings2, ChevronDown, ChevronUp, Link as LinkIcon, ShieldAlert, Sparkles, Loader2, EyeOff, ShieldOff, Smartphone } from "lucide-react";
 
 const formSchema = z.object({
   destinationUrl: z.string().url({ message: "Must be a valid URL" }),
@@ -47,6 +47,9 @@ const formSchema = z.object({
   domainId: z.string().min(1, { message: "Please select a custom domain" }),
   tagIds: z.array(z.string()).default([]),
   isCloaked: z.boolean().default(false),
+  hideReferrer: z.boolean().default(false),
+  iosDeepLink: z.string().optional().nullable(),
+  androidDeepLink: z.string().optional().nullable(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -96,6 +99,9 @@ export function LinkModal({ isOpen, onClose, link, initialSlug }: LinkModalProps
       domainId: "",
       tagIds: [],
       isCloaked: false,
+      hideReferrer: false,
+      iosDeepLink: "",
+      androidDeepLink: "",
     }
   });
 
@@ -117,6 +123,9 @@ export function LinkModal({ isOpen, onClose, link, initialSlug }: LinkModalProps
           domainId: link.domainId || "",
           tagIds: linkTags?.map(t => t.id) || [],
           isCloaked: link.isCloaked ?? false,
+          hideReferrer: (link as any).hideReferrer ?? false,
+          iosDeepLink: (link as any).iosDeepLink || "",
+          androidDeepLink: (link as any).androidDeepLink || "",
         });
       } else {
         form.reset({
@@ -132,6 +141,9 @@ export function LinkModal({ isOpen, onClose, link, initialSlug }: LinkModalProps
           domainId: "",
           tagIds: [],
           isCloaked: false,
+          hideReferrer: false,
+          iosDeepLink: "",
+          androidDeepLink: "",
         });
       }
     }
@@ -152,6 +164,9 @@ export function LinkModal({ isOpen, onClose, link, initialSlug }: LinkModalProps
       folderId: values.folderId || null,
       domainId: values.domainId,
       isCloaked: values.isCloaked,
+      hideReferrer: values.hideReferrer,
+      iosDeepLink: values.iosDeepLink || null,
+      androidDeepLink: values.androidDeepLink || null,
     };
 
     try {
@@ -424,6 +439,46 @@ export function LinkModal({ isOpen, onClose, link, initialSlug }: LinkModalProps
                       checked={form.watch("isCloaked")}
                       onCheckedChange={(checked) => form.setValue("isCloaked", checked)}
                     />
+                  </div>
+
+                  <div className="flex items-center justify-between p-4 border border-border rounded-xl bg-background">
+                    <div className="space-y-0.5">
+                      <Label className="text-foreground font-semibold text-sm flex items-center gap-2">
+                        <ShieldOff className="w-4 h-4 text-rose-500" /> Hide Referrer
+                      </Label>
+                      <p className="text-xs text-muted-foreground">Strip referrer information so the destination site cannot see where the click came from.</p>
+                    </div>
+                    <Switch
+                      checked={form.watch("hideReferrer")}
+                      onCheckedChange={(checked) => form.setValue("hideReferrer", checked)}
+                    />
+                  </div>
+
+                  <div className="space-y-4 p-4 border border-border rounded-xl bg-background">
+                    <Label className="text-foreground font-semibold text-sm flex items-center gap-2">
+                      <Smartphone className="w-4 h-4 text-blue-500" /> Mobile Deep Links
+                    </Label>
+                    <p className="text-xs text-muted-foreground -mt-2">Open native apps on mobile devices instead of the web. Falls back to the destination URL if the app is not installed.</p>
+                    <div className="space-y-3">
+                      <div className="space-y-1.5">
+                        <Label htmlFor="iosDeepLink" className="text-xs font-medium text-muted-foreground">iOS Deep Link</Label>
+                        <Input
+                          id="iosDeepLink"
+                          placeholder="myapp://path or https://apps.apple.com/..."
+                          {...form.register("iosDeepLink")}
+                          className="bg-background border-border rounded-xl h-10 text-sm"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="androidDeepLink" className="text-xs font-medium text-muted-foreground">Android Deep Link</Label>
+                        <Input
+                          id="androidDeepLink"
+                          placeholder="myapp://path or intent://..."
+                          {...form.register("androidDeepLink")}
+                          className="bg-background border-border rounded-xl h-10 text-sm"
+                        />
+                      </div>
+                    </div>
                   </div>
 
                   <div className="space-y-3 pt-2">

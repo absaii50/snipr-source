@@ -2,7 +2,7 @@
 
 ## Overview
 
-Snipr is a full-stack URL shortener SaaS built in a pnpm monorepo. Features: short links with custom slugs, QR codes, expiration/enable-disable, session-based auth, full analytics/click tracking, smart routing (geo/device/A/B/rotator redirects), password-protected links, click limits, fallback URLs, retargeting pixels (Meta/Google/LinkedIn/TikTok/custom), custom domains, tags/folders, AI insights (streaming Q&A, smart suggestions, link audit, slug generator), in-process link cache, batch click tracker, PG session store, rate limiting, gzip compression.
+Snipr is a full-stack URL shortener SaaS built in a pnpm monorepo. Features: short links with custom slugs, QR codes, expiration/enable-disable, session-based auth, full analytics/click tracking, smart routing (country targeting/city-region targeting/device/A/B/rotator redirects), password-protected links, click limits, fallback URLs, link cloaking (iframe), referrer hiding (no-referrer meta + header), mobile deep links (iOS/Android with web fallback), retargeting pixels (Meta/Google/LinkedIn/TikTok/custom), custom domains, tags/folders, AI insights (streaming Q&A, smart suggestions, link audit, slug generator), in-process link cache, batch click tracker, PG session store, rate limiting, gzip compression.
 
 ## Stack
 

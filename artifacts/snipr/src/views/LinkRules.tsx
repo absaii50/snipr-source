@@ -11,10 +11,11 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ArrowLeft, Plus, Trash2, GripVertical, Globe2, Smartphone, Shuffle, GitBranch, Loader2, Save } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, GripVertical, Globe2, Smartphone, Shuffle, GitBranch, Loader2, Save, MapPin } from "lucide-react";
 
 const RULE_TYPES = [
-  { value: "geo", label: "Geo Redirect", icon: Globe2, color: "text-[#728DA7] bg-[#728DA7]/10" },
+  { value: "geo", label: "Country Targeting", icon: Globe2, color: "text-[#728DA7] bg-[#728DA7]/10" },
+  { value: "city", label: "City / Region", icon: MapPin, color: "text-teal-500 bg-teal-500/10" },
   { value: "device", label: "Device Redirect", icon: Smartphone, color: "text-green-500 bg-green-500/10" },
   { value: "ab", label: "A/B Test", icon: GitBranch, color: "text-purple-500 bg-purple-500/10" },
   { value: "rotator", label: "Rotator", icon: Shuffle, color: "text-orange-500 bg-orange-500/10" },
@@ -34,10 +35,12 @@ export default function LinkRules() {
   const [isAdding, setIsAdding] = useState(false);
 
   // New Rule State
-  const [newType, setNewType] = useState<"geo" | "device" | "ab" | "rotator">("geo");
+  const [newType, setNewType] = useState<"geo" | "city" | "device" | "ab" | "rotator">("geo");
   const [newDest, setNewDest] = useState("");
   const [newLabel, setNewLabel] = useState("");
   const [geoCountries, setGeoCountries] = useState("");
+  const [cityCities, setCityCities] = useState("");
+  const [cityRegions, setCityRegions] = useState("");
   const [deviceMobile, setDeviceMobile] = useState(false);
   const [deviceTablet, setDeviceTablet] = useState(false);
   const [deviceDesktop, setDeviceDesktop] = useState(false);
@@ -67,6 +70,11 @@ export default function LinkRules() {
       const list = geoCountries.split(",").map(s => s.trim().toUpperCase()).filter(Boolean);
       if (list.length === 0) { toast({ title: "Enter at least one country code", variant: "destructive" }); return; }
       conditions = { countries: list };
+    } else if (newType === "city") {
+      const cities = cityCities.split(",").map(s => s.trim()).filter(Boolean);
+      const regions = cityRegions.split(",").map(s => s.trim()).filter(Boolean);
+      if (cities.length === 0 && regions.length === 0) { toast({ title: "Enter at least one city or region", variant: "destructive" }); return; }
+      conditions = { cities: cities.length > 0 ? cities : undefined, regions: regions.length > 0 ? regions : undefined };
     } else if (newType === "device") {
       const list = [];
       if (deviceMobile) list.push("mobile");
@@ -97,6 +105,8 @@ export default function LinkRules() {
     setNewDest("");
     setNewLabel("");
     setGeoCountries("");
+    setCityCities("");
+    setCityRegions("");
     setDeviceMobile(false);
     setDeviceTablet(false);
     setDeviceDesktop(false);
@@ -132,6 +142,14 @@ export default function LinkRules() {
 
   const formatConditions = (r: CreateLinkRuleRequest) => {
     if (r.type === 'geo') return (r.conditions as any)?.countries?.join(', ');
+    if (r.type === 'city') {
+      const parts: string[] = [];
+      const cities = (r.conditions as any)?.cities;
+      const regions = (r.conditions as any)?.regions;
+      if (cities?.length) parts.push(`Cities: ${cities.join(', ')}`);
+      if (regions?.length) parts.push(`Regions: ${regions.join(', ')}`);
+      return parts.join(' | ');
+    }
     if (r.type === 'device') return (r.conditions as any)?.devices?.map((d: string) => d.charAt(0).toUpperCase() + d.slice(1)).join(', ');
     if (r.type === 'ab') return `${(r.conditions as any)?.weight}% traffic`;
     return 'Any condition';
@@ -180,7 +198,7 @@ export default function LinkRules() {
         </div>
 
         <div className="mb-6 p-4 bg-[#728DA7]/5 border border-[#728DA7]/30 rounded-2xl text-sm text-[#728DA7]">
-          <p><strong>Evaluation Order:</strong> Rules are evaluated from top to bottom. The first Geo or Device rule that matches the user will trigger immediately. If no Geo/Device rules match, A/B and Rotator rules are evaluated as a group.</p>
+          <p><strong>Evaluation Order:</strong> Rules are evaluated from top to bottom. Country targeting matches first, then City/Region, then Device rules. If no targeting rules match, A/B and Rotator rules are evaluated as a group.</p>
         </div>
 
         <div className="space-y-4 mb-8">
@@ -277,6 +295,21 @@ export default function LinkRules() {
                     <label className="text-sm font-semibold">Target Countries</label>
                     <Input placeholder="US, GB, CA, AU" value={geoCountries} onChange={e => setGeoCountries(e.target.value)} className="rounded-xl h-11" />
                     <p className="text-xs text-muted-foreground">Enter 2-letter ISO country codes separated by commas.</p>
+                  </div>
+                )}
+
+                {newType === "city" && (
+                  <div className="space-y-4 animate-in fade-in">
+                    <div className="space-y-2">
+                      <label className="text-sm font-semibold">Target Cities</label>
+                      <Input placeholder="New York, London, Tokyo" value={cityCities} onChange={e => setCityCities(e.target.value)} className="rounded-xl h-11" />
+                      <p className="text-xs text-muted-foreground">Enter city names separated by commas. Matched against visitor GeoIP data.</p>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-semibold">Target Regions (optional)</label>
+                      <Input placeholder="CA, TX, ON" value={cityRegions} onChange={e => setCityRegions(e.target.value)} className="rounded-xl h-11" />
+                      <p className="text-xs text-muted-foreground">Enter region/state codes (e.g. CA for California). Used as fallback if no city match.</p>
+                    </div>
                   </div>
                 )}
 
