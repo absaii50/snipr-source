@@ -120,12 +120,30 @@ export default function Billing() {
   const upgraded = searchParams.get("upgraded") === "1";
 
   useEffect(() => {
-    fetch("/api/billing/subscription", { credentials: "include" })
-      .then((r) => r.json())
-      .then(setSub)
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, []);
+    let attempts = 0;
+    const maxAttempts = upgraded ? 6 : 1;
+    const delay = 2000;
+
+    async function fetchSub() {
+      try {
+        const r = await fetch("/api/billing/subscription", { credentials: "include" });
+        const data = await r.json();
+        setSub(data);
+
+        // If we just upgraded but plan is still free, poll again (webhook may be processing)
+        if (upgraded && data.plan === "free" && attempts < maxAttempts) {
+          attempts++;
+          setTimeout(fetchSub, delay);
+          return;
+        }
+      } catch {
+        // ignore
+      }
+      setLoading(false);
+    }
+
+    fetchSub();
+  }, [upgraded]);
 
   function handleUpgrade(plan: string) {
     setUpgrading(plan);
@@ -163,13 +181,22 @@ export default function Billing() {
             <p className="text-[13px] text-[#8888A0] mt-0.5">Manage your plan, payments, and usage.</p>
           </div>
 
-          {/* Success banner */}
-          {upgraded && (
+          {/* Success / confirming banner */}
+          {upgraded && sub?.plan === "free" && !loading && (
+            <div className="flex items-center gap-3 bg-[#FFF8F0] border border-[#FCD34D] rounded-2xl px-5 py-4">
+              <RefreshCw className="w-5 h-5 text-[#D97706] shrink-0 animate-spin" />
+              <div>
+                <div className="text-[14px] font-semibold text-[#92400E]">Confirming your payment…</div>
+                <div className="text-[12px] text-[#B45309]">This usually takes a few seconds. The page will update automatically.</div>
+              </div>
+            </div>
+          )}
+          {upgraded && sub && sub.plan !== "free" && (
             <div className="flex items-center gap-3 bg-[#F0FDF4] border border-[#86EFAC] rounded-2xl px-5 py-4">
               <BadgeCheck className="w-5 h-5 text-[#22C55E] shrink-0" />
               <div>
                 <div className="text-[14px] font-semibold text-[#15803D]">Payment successful!</div>
-                <div className="text-[12px] text-[#16A34A]">Your plan has been upgraded. It may take a moment to reflect.</div>
+                <div className="text-[12px] text-[#16A34A]">You are now on the {sub.plan.charAt(0).toUpperCase() + sub.plan.slice(1)} plan.</div>
               </div>
             </div>
           )}

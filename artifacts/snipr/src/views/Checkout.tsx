@@ -284,10 +284,10 @@ function CheckoutForm({ plan, billing, userEmail }: FormProps) {
                 </div>
               </div>
             </div>
-            <label className="flex items-center gap-2.5 cursor-pointer">
-              <input type="checkbox" className="w-4 h-4 rounded border-[#2A2A2E] accent-[#728DA7]" />
-              <span className="text-[12px] text-[#8888A0]">Save payment information for future purchases</span>
-            </label>
+            <div className="flex items-center gap-2.5">
+              <Shield className="w-3.5 h-3.5 text-[#4A9B7F] shrink-0" />
+              <span className="text-[12px] text-[#5A5C60]">Your card is securely saved for subscription renewals</span>
+            </div>
           </div>
         </div>
       </div>
