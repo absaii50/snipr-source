@@ -143,6 +143,110 @@ router.get("/billing/subscription", requireAuth, async (req: Request, res: Respo
   });
 });
 
+router.post("/billing/create-checkout-session", requireAuth, async (req: Request, res: Response): Promise<void> => {
+  const { plan } = req.body as { plan?: string };
+
+  if (!plan || !["pro", "business"].includes(plan)) {
+    res.status(400).json({ error: "Invalid plan. Must be 'pro' or 'business'." });
+    return;
+  }
+
+  const [user] = await db
+    .select()
+    .from(usersTable)
+    .where(eq(usersTable.id, req.session.userId!));
+
+  if (!user) {
+    res.status(401).json({ error: "User not found." });
+    return;
+  }
+
+  try {
+    let customerId = user.stripeCustomerId;
+    if (!customerId) {
+      const customer = await stripeService.createCustomer(user.email, user.id, user.name);
+      customerId = customer.id;
+      await db
+        .update(usersTable)
+        .set({ stripeCustomerId: customerId })
+        .where(eq(usersTable.id, user.id));
+    }
+
+    let priceId: string | null = null;
+
+    const localProducts = await stripeStorage.listProductsWithPrices(true);
+    const localMatch = localProducts.find((p: any) => p.product_metadata?.plan === plan);
+    if (localMatch?.price_id) {
+      priceId = localMatch.price_id;
+    }
+
+    if (!priceId) {
+      const stripe = await getUncachableStripeClient();
+      const apiProducts = await stripe.products.list({ active: true, limit: 100 });
+      const match = apiProducts.data.find((p) => p.metadata?.plan === plan);
+      if (match) {
+        const prices = await stripe.prices.list({ product: match.id, active: true, limit: 1 });
+        priceId = prices.data[0]?.id ?? null;
+      }
+    }
+
+    if (!priceId) {
+      res.status(503).json({ error: `No Stripe product found for plan: ${plan}. Run the seed script first.` });
+      return;
+    }
+
+    const baseUrl = getFrontendBaseUrl();
+    const session = await stripeService.createEmbeddedCheckoutSession(
+      customerId,
+      priceId,
+      `${baseUrl}/checkout/return`
+    );
+
+    res.json({ clientSecret: session.client_secret });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Unknown error";
+    logger.error({ err }, "Failed to create embedded checkout session");
+    res.status(502).json({ error: "Failed to create checkout session.", detail: message });
+  }
+});
+
+router.get("/billing/session-status", requireAuth, async (req: Request, res: Response): Promise<void> => {
+  const sessionId = req.query.session_id as string | undefined;
+
+  if (!sessionId) {
+    res.status(400).json({ error: "Missing session_id parameter." });
+    return;
+  }
+
+  try {
+    const [user] = await db
+      .select()
+      .from(usersTable)
+      .where(eq(usersTable.id, req.session.userId!));
+
+    const stripe = await getUncachableStripeClient();
+    const session = await stripe.checkout.sessions.retrieve(sessionId);
+
+    const sessionCustomer = typeof session.customer === "string"
+      ? session.customer
+      : session.customer?.id;
+    if (
+      user.stripeCustomerId &&
+      sessionCustomer &&
+      sessionCustomer !== user.stripeCustomerId
+    ) {
+      res.status(403).json({ error: "Forbidden." });
+      return;
+    }
+
+    res.json({ status: session.status });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Unknown error";
+    logger.error({ err }, "Failed to get session status");
+    res.status(502).json({ error: "Failed to get session status.", detail: message });
+  }
+});
+
 router.get("/billing/publishable-key", async (_req: Request, res: Response): Promise<void> => {
   try {
     const key = await getStripePublishableKey();

@@ -64,6 +64,8 @@ artifacts-monorepo/
 - `/signup` — Account registration
 - `/forgot-password` — Request password reset email
 - `/reset-password?token=...` — Set new password via emailed token (1-hour expiry)
+- `/checkout?plan=pro|business` — Embedded Stripe checkout (EmbeddedCheckoutProvider); fetches client secret from `/api/billing/create-checkout-session`
+- `/checkout/return?session_id=...` — Post-payment confirmation page; polls `/api/billing/session-status` for result
 
 ### Authenticated App (Sidebar layout)
 - `/live` — Real-Time Intelligence: live SSE-powered feed with expandable visitor detail rows (click any event → full details: location, device, OS, browser, referrer, QR status, timestamp). 5 KPI cards (Active Now, Session Total, Mobile count + %, Desktop count + %, Countries). Right sidebar: Device Breakdown (mobile/desktop/tablet progress bars + browser list + OS list), Realtime Countries (ranked with flags, progress bars, percentages), Top Active Links (ranked with colored progress bars). All panels have icon + explanation empty states. Auto-reconnects on disconnect.

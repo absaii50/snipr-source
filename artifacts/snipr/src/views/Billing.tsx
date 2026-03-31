@@ -78,26 +78,11 @@ export default function Billing() {
       .finally(() => setLoading(false));
   }, []);
 
-  async function handleUpgrade(plan: "pro" | "business") {
+  const router = useRouter();
+
+  function handleUpgrade(plan: "pro" | "business") {
     setUpgrading(plan);
-    try {
-      const res = await fetch("/api/billing/checkout", {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ plan }),
-      });
-      const data = await res.json();
-      if (data.url) {
-        window.location.href = data.url;
-      } else {
-        alert(data.error ?? "Failed to start checkout.");
-      }
-    } catch {
-      alert("Network error. Please try again.");
-    } finally {
-      setUpgrading(null);
-    }
+    router.push(`/checkout?plan=${plan}`);
   }
 
   async function handlePortal() {

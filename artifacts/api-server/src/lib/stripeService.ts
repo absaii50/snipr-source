@@ -23,6 +23,26 @@ export class StripeService {
     });
   }
 
+  async createEmbeddedCheckoutSession(customerId: string, priceId: string, returnUrl: string) {
+    const stripe = await getUncachableStripeClient();
+    return await stripe.checkout.sessions.create({
+      customer: customerId,
+      line_items: [{ price: priceId, quantity: 1 }],
+      mode: 'subscription',
+      ui_mode: 'embedded',
+      return_url: `${returnUrl}?session_id={CHECKOUT_SESSION_ID}`,
+    });
+  }
+
+  async getCheckoutSessionStatus(sessionId: string) {
+    const stripe = await getUncachableStripeClient();
+    const session = await stripe.checkout.sessions.retrieve(sessionId);
+    return {
+      status: session.status,
+      customerEmail: session.customer_details?.email ?? null,
+    };
+  }
+
   async createCustomerPortalSession(customerId: string, returnUrl: string) {
     const stripe = await getUncachableStripeClient();
     return await stripe.billingPortal.sessions.create({

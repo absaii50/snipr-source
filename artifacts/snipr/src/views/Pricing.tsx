@@ -5,35 +5,20 @@ import { PublicFooter } from "@/components/layout/PublicFooter";
 import { Check } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/hooks/use-auth";
+import { useRouter } from "next/navigation";
 
 export default function Pricing() {
   const { user } = useAuth();
+  const router = useRouter();
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
 
-  async function startCheckout(plan: "pro" | "business") {
+  function startCheckout(plan: "pro" | "business") {
     if (!user) {
       window.location.href = "/signup";
       return;
     }
     setLoadingPlan(plan);
-    try {
-      const res = await fetch("/api/billing/checkout", {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ plan }),
-      });
-      const data = await res.json();
-      if (data.url) {
-        window.location.href = data.url;
-      } else {
-        alert(data.error ?? "Could not start checkout.");
-        setLoadingPlan(null);
-      }
-    } catch {
-      alert("Network error. Please try again.");
-      setLoadingPlan(null);
-    }
+    router.push(`/checkout?plan=${plan}`);
   }
 
   const tiers = [
