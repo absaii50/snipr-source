@@ -16,7 +16,9 @@ import {
   Globe, Monitor, Smartphone, Tablet, ExternalLink,
   ArrowUpRight, ArrowDownRight, ChevronDown,
   TrendingUp, TrendingDown, Minus, Calendar,
-  Zap, Eye, Layers,
+  Zap, Eye, Layers, Clock, QrCode, Link2,
+  MapPin, Tag, Megaphone, Filter,
+  Laptop,
 } from "lucide-react";
 import dynamic from "next/dynamic";
 const AnalyticsAreaChart = dynamic(
@@ -202,6 +204,19 @@ export default function Analytics() {
   const topBrowsers = stats?.topBrowsers ?? [];
   const topCountries = stats?.topCountries ?? [];
   const countryTotal = topCountries.reduce((s: number, c: { count: number }) => s + c.count, 0) || 1;
+
+  const topOs = (stats as any)?.topOs ?? [];
+  const osTotal = topOs.reduce((s: number, o: { count: number }) => s + o.count, 0) || 1;
+  const topCities = (stats as any)?.topCities ?? [];
+  const cityTotal = topCities.reduce((s: number, c: { count: number }) => s + c.count, 0) || 1;
+  const topUtmSources = (stats as any)?.topUtmSources ?? [];
+  const topUtmMediums = (stats as any)?.topUtmMediums ?? [];
+  const topUtmCampaigns = (stats as any)?.topUtmCampaigns ?? [];
+  const qrClicks = (stats as any)?.qrClicks ?? 0;
+  const directClicks = (stats as any)?.directClicks ?? 0;
+  const qrTotal = qrClicks + directClicks || 1;
+  const hourOfDay: { hour: number; count: number }[] = (stats as any)?.hourOfDay ?? [];
+  const maxHourCount = Math.max(...hourOfDay.map(h => h.count), 1);
 
   const prevPeriodLabel = `prior ${period.displayLabel}`;
 
@@ -519,6 +534,246 @@ export default function Analytics() {
           </div>
         </div>
 
+        {/* QR vs Direct + Hour of Day */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+          <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+            <div className="px-5 py-3.5 border-b border-slate-100 bg-slate-50/70">
+              <h3 className="font-semibold text-[14px] text-slate-900 flex items-center gap-2">
+                <QrCode className="w-4 h-4 text-pink-500" />
+                QR Code vs Direct Clicks
+              </h3>
+            </div>
+            <div className="p-5">
+              {statsLoading ? (
+                <div className="space-y-3">{[1,2].map(i => <div key={i} className="h-10 bg-slate-100 rounded animate-pulse" />)}</div>
+              ) : qrClicks === 0 && directClicks === 0 ? (
+                <div className="text-center py-8">
+                  <div className="w-10 h-10 rounded-xl bg-pink-50 flex items-center justify-center mx-auto mb-2">
+                    <QrCode className="w-5 h-5 text-pink-400" />
+                  </div>
+                  <p className="text-[12px] text-slate-400">No click data for this period</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {[
+                    { label: "Direct Clicks", count: directClicks, color: "#4F46E5", icon: <Link2 className="w-4 h-4 text-indigo-500" /> },
+                    { label: "QR Code Scans", count: qrClicks, color: "#EC4899", icon: <QrCode className="w-4 h-4 text-pink-500" /> },
+                  ].map(item => {
+                    const pct = Math.round((item.count / qrTotal) * 100);
+                    return (
+                      <div key={item.label} className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-lg bg-slate-50 flex items-center justify-center shrink-0">
+                          {item.icon}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex justify-between items-center mb-1">
+                            <span className="text-[13px] font-semibold text-slate-900">{item.label}</span>
+                            <span className="text-[12px] font-bold text-slate-700">{fmtNum(item.count)} <span className="text-slate-400 font-normal">({pct}%)</span></span>
+                          </div>
+                          <div className="h-2.5 bg-slate-100 rounded-full overflow-hidden">
+                            <div className="h-full rounded-full transition-all duration-700" style={{ width: `${pct}%`, background: item.color }} />
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  <div className="mt-2 pt-3 border-t border-slate-100 flex items-center justify-between">
+                    <span className="text-[11px] text-slate-400">QR Scan Rate</span>
+                    <span className="text-[13px] font-bold text-pink-600">{Math.round((qrClicks / qrTotal) * 100)}%</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+            <div className="px-5 py-3.5 border-b border-slate-100 bg-slate-50/70">
+              <h3 className="font-semibold text-[14px] text-slate-900 flex items-center gap-2">
+                <Clock className="w-4 h-4 text-amber-500" />
+                Clicks by Hour of Day
+              </h3>
+            </div>
+            <div className="p-5">
+              {statsLoading ? (
+                <div className="h-[140px] bg-slate-100 rounded animate-pulse" />
+              ) : hourOfDay.every(h => h.count === 0) ? (
+                <div className="text-center py-8">
+                  <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center mx-auto mb-2">
+                    <Clock className="w-5 h-5 text-amber-400" />
+                  </div>
+                  <p className="text-[12px] text-slate-400">No hourly data for this period</p>
+                </div>
+              ) : (
+                <div>
+                  <div className="flex items-end gap-[3px] h-[120px]">
+                    {hourOfDay.map((h) => {
+                      const heightPct = Math.max((h.count / maxHourCount) * 100, 2);
+                      const intensity = h.count / maxHourCount;
+                      const bg = intensity > 0.75 ? "#4F46E5" : intensity > 0.5 ? "#6366F1" : intensity > 0.25 ? "#A5B4FC" : "#E0E7FF";
+                      return (
+                        <div key={h.hour} className="flex-1 flex flex-col items-center justify-end h-full group relative">
+                          <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-[10px] px-1.5 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10">
+                            {h.hour}:00 — {h.count} clicks
+                          </div>
+                          <div
+                            className="w-full rounded-t-sm transition-all duration-300 hover:opacity-80 cursor-pointer min-h-[2px]"
+                            style={{ height: `${heightPct}%`, background: bg }}
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div className="flex justify-between mt-2">
+                    <span className="text-[10px] text-slate-400">12am</span>
+                    <span className="text-[10px] text-slate-400">6am</span>
+                    <span className="text-[10px] text-slate-400">12pm</span>
+                    <span className="text-[10px] text-slate-400">6pm</span>
+                    <span className="text-[10px] text-slate-400">11pm</span>
+                  </div>
+                  <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-100">
+                    <span className="text-[11px] text-slate-400">Peak Hour</span>
+                    <span className="text-[13px] font-bold text-indigo-600">
+                      {(() => { const peak = hourOfDay.reduce((a, b) => b.count > a.count ? b : a, hourOfDay[0]); return `${peak.hour}:00 (${fmtNum(peak.count)} clicks)`; })()}
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* OS Breakdown + Top Cities */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+          <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+            <div className="px-5 py-3.5 border-b border-slate-100 bg-slate-50/70 flex items-center justify-between">
+              <h3 className="font-semibold text-[14px] text-slate-900 flex items-center gap-2">
+                <Laptop className="w-4 h-4 text-cyan-500" />
+                Operating Systems
+              </h3>
+              {topOs.length > 0 && (
+                <span className="text-[10px] font-bold bg-cyan-50 text-cyan-600 px-2 py-0.5 rounded-full border border-cyan-200">
+                  {topOs.length} OS{topOs.length !== 1 ? "es" : ""}
+                </span>
+              )}
+            </div>
+            <div className="p-5">
+              {statsLoading ? (
+                <div className="space-y-3">{[1,2,3].map(i => <div key={i} className="h-8 bg-slate-100 rounded animate-pulse" />)}</div>
+              ) : topOs.length === 0 ? (
+                <div className="text-center py-8">
+                  <div className="w-10 h-10 rounded-xl bg-cyan-50 flex items-center justify-center mx-auto mb-2">
+                    <Laptop className="w-5 h-5 text-cyan-400" />
+                  </div>
+                  <p className="text-[12px] text-slate-400">No OS data for this period</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {topOs.map((o: { label: string; count: number }, i: number) => {
+                    const pct = Math.round((o.count / osTotal) * 100);
+                    const colors = ["#06B6D4", "#0891B2", "#22D3EE", "#67E8F9", "#A5F3FC"];
+                    return (
+                      <div key={o.label} className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-lg bg-slate-50 flex items-center justify-center shrink-0">
+                          <span className="text-[14px]">{osIcon(o.label)}</span>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex justify-between items-center mb-1">
+                            <span className="text-[13px] font-semibold text-slate-900">{o.label}</span>
+                            <span className="text-[12px] font-bold text-slate-700">{fmtNum(o.count)} <span className="text-slate-400 font-normal">({pct}%)</span></span>
+                          </div>
+                          <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                            <div className="h-full rounded-full transition-all duration-700" style={{ width: `${pct}%`, background: colors[i % colors.length] }} />
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+            <div className="px-5 py-3.5 border-b border-slate-100 bg-slate-50/70 flex items-center justify-between">
+              <h3 className="font-semibold text-[14px] text-slate-900 flex items-center gap-2">
+                <MapPin className="w-4 h-4 text-rose-500" />
+                Top Cities
+              </h3>
+              {topCities.length > 0 && (
+                <span className="text-[10px] font-bold bg-rose-50 text-rose-600 px-2 py-0.5 rounded-full border border-rose-200">
+                  {topCities.length} cities
+                </span>
+              )}
+            </div>
+            <div className="divide-y divide-slate-100">
+              {statsLoading ? (
+                <div className="p-5 space-y-3">{[1,2,3,4].map(i => <div key={i} className="h-6 bg-slate-100 rounded animate-pulse" />)}</div>
+              ) : topCities.length === 0 ? (
+                <div className="text-center py-8">
+                  <div className="w-10 h-10 rounded-xl bg-rose-50 flex items-center justify-center mx-auto mb-2">
+                    <MapPin className="w-5 h-5 text-rose-400" />
+                  </div>
+                  <p className="text-[12px] text-slate-400">No city data for this period</p>
+                </div>
+              ) : (
+                topCities.map((c: { label: string; count: number }, i: number) => {
+                  const maxCount = topCities[0].count;
+                  const pct = Math.round((c.count / cityTotal) * 100);
+                  return (
+                    <div key={c.label} className="flex items-center gap-3 px-5 py-2.5 hover:bg-slate-50/50 transition-colors">
+                      <span className="text-[10px] font-bold text-slate-300 w-4 shrink-0">#{i + 1}</span>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex justify-between items-center mb-1">
+                          <span className="text-[13px] font-semibold text-slate-900">{c.label}</span>
+                          <span className="text-[12px] font-bold text-slate-700">{fmtNum(c.count)} <span className="text-slate-400 font-normal">({pct}%)</span></span>
+                        </div>
+                        <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                          <div
+                            className="h-full rounded-full transition-all duration-700"
+                            style={{ width: `${(c.count / maxCount) * 100}%`, background: `hsl(${350 + i * 12}, 60%, 50%)` }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* UTM Campaign Analytics */}
+        <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+          <div className="px-5 py-3.5 border-b border-slate-100 bg-slate-50/70">
+            <h3 className="font-semibold text-[14px] text-slate-900 flex items-center gap-2">
+              <Megaphone className="w-4 h-4 text-orange-500" />
+              UTM Campaign Analytics
+            </h3>
+            <p className="text-[11px] text-slate-400 mt-0.5">Track your marketing campaigns, sources, and mediums</p>
+          </div>
+          <div className="p-5">
+            {statsLoading ? (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {[1,2,3].map(i => <div key={i} className="space-y-3">{[1,2,3].map(j => <div key={j} className="h-6 bg-slate-100 rounded animate-pulse" />)}</div>)}
+              </div>
+            ) : topUtmSources.length === 0 && topUtmMediums.length === 0 && topUtmCampaigns.length === 0 ? (
+              <div className="text-center py-8">
+                <div className="w-10 h-10 rounded-xl bg-orange-50 flex items-center justify-center mx-auto mb-2">
+                  <Megaphone className="w-5 h-5 text-orange-400" />
+                </div>
+                <p className="text-[12px] text-slate-400">No UTM data for this period</p>
+                <p className="text-[11px] text-slate-300 mt-1">Add utm_source, utm_medium, or utm_campaign parameters to your links</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <UtmColumn title="Sources" icon={<Tag className="w-3.5 h-3.5 text-orange-500" />} data={topUtmSources} color="#F97316" />
+                <UtmColumn title="Mediums" icon={<Filter className="w-3.5 h-3.5 text-amber-500" />} data={topUtmMediums} color="#F59E0B" />
+                <UtmColumn title="Campaigns" icon={<Megaphone className="w-3.5 h-3.5 text-yellow-600" />} data={topUtmCampaigns} color="#CA8A04" />
+              </div>
+            )}
+          </div>
+        </div>
+
       </div>
     </ProtectedLayout>
   );
@@ -649,6 +904,59 @@ function getLinkTrend(current: number, prev?: number): "up" | "down" | "flat" | 
   if (ratio > 1.1) return "up";
   if (ratio < 0.9) return "down";
   return "flat";
+}
+
+function osIcon(os: string): string {
+  const name = os.toLowerCase();
+  if (name.includes("windows")) return "🪟";
+  if (name.includes("mac") || name.includes("os x")) return "🍎";
+  if (name.includes("ios")) return "📱";
+  if (name.includes("android")) return "🤖";
+  if (name.includes("linux")) return "🐧";
+  if (name.includes("chrome")) return "💻";
+  return "💻";
+}
+
+function UtmColumn({
+  title, icon, data, color,
+}: {
+  title: string; icon: React.ReactNode; data: { label: string; count: number }[]; color: string;
+}) {
+  const max = Math.max(...(data?.map(d => d.count) ?? [0]), 1);
+
+  return (
+    <div>
+      <div className="flex items-center gap-1.5 mb-3">
+        {icon}
+        <p className="text-[11px] font-bold text-slate-500 uppercase tracking-[0.1em]">{title}</p>
+      </div>
+      {data.length === 0 ? (
+        <p className="text-[11px] text-slate-300 italic">No data</p>
+      ) : (
+        <div className="space-y-2">
+          {data.map((item, i) => {
+            const pct = Math.max((item.count / max) * 100, 3);
+            return (
+              <div key={item.label} className="flex items-center gap-2">
+                <div className="flex-1 min-w-0 relative h-6 flex items-center">
+                  <div
+                    className="absolute inset-y-0 left-0 rounded-md transition-all duration-700 opacity-15"
+                    style={{ width: `${pct}%`, background: color }}
+                  />
+                  <span className="relative text-[11px] font-semibold text-slate-700 truncate pl-2 pr-1">
+                    {item.label || "Unknown"}
+                  </span>
+                </div>
+                <span className="text-[11px] font-bold tabular-nums shrink-0" style={{ color }}>
+                  {item.count.toLocaleString()}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
 }
 
 function TopList({

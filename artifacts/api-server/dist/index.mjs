@@ -79029,7 +79029,7 @@ function parseDateRange(from, to) {
   return { fromDate, toDate };
 }
 async function topN(workspaceId, column, fromDate, toDate, linkId, limit2 = 10) {
-  const linkFilter = linkId ? eq(linksTable.id, linkId) : eq(linksTable.workspaceId, workspaceId);
+  const linkFilter = linkId ? and(eq(linksTable.workspaceId, workspaceId), eq(linksTable.id, linkId)) : eq(linksTable.workspaceId, workspaceId);
   const rows = await db.select({
     label: column,
     count: count()
@@ -79074,13 +79074,42 @@ router4.get("/analytics/workspace", requireAuth, async (req, res) => {
     totalLinks: count(),
     enabledLinks: sql`cast(sum(case when ${linksTable.enabled} = true then 1 else 0 end) as int)`
   }).from(linksTable).where(eq(linksTable.workspaceId, workspaceId));
-  const [tLinks, tCountries, tReferrers, tBrowsers, tDevices] = await Promise.all([
+  const [tLinks, tCountries, tReferrers, tBrowsers, tDevices, tOs, tCities, tUtmSources, tUtmMediums, tUtmCampaigns] = await Promise.all([
     topLinks(workspaceId, fromDate, toDate),
     topN(workspaceId, clickEventsTable.country, fromDate, toDate, linkId),
     topN(workspaceId, clickEventsTable.referrer, fromDate, toDate, linkId),
     topN(workspaceId, clickEventsTable.browser, fromDate, toDate, linkId),
-    topN(workspaceId, clickEventsTable.device, fromDate, toDate, linkId)
+    topN(workspaceId, clickEventsTable.device, fromDate, toDate, linkId),
+    topN(workspaceId, clickEventsTable.os, fromDate, toDate, linkId),
+    topN(workspaceId, clickEventsTable.city, fromDate, toDate, linkId, 15),
+    topN(workspaceId, clickEventsTable.utmSource, fromDate, toDate, linkId),
+    topN(workspaceId, clickEventsTable.utmMedium, fromDate, toDate, linkId),
+    topN(workspaceId, clickEventsTable.utmCampaign, fromDate, toDate, linkId)
   ]);
+  const [qrStats] = await db.select({
+    qrClicks: sql`cast(sum(case when ${clickEventsTable.isQr} = true then 1 else 0 end) as int)`,
+    directClicks: sql`cast(sum(case when ${clickEventsTable.isQr} = false then 1 else 0 end) as int)`
+  }).from(clickEventsTable).innerJoin(linksTable, eq(clickEventsTable.linkId, linksTable.id)).where(
+    and(
+      linkFilter,
+      gte(clickEventsTable.timestamp, fromDate),
+      lte(clickEventsTable.timestamp, toDate)
+    )
+  );
+  const hourRows = await db.select({
+    hour: sql`extract(hour from ${clickEventsTable.timestamp})::int`,
+    count: count()
+  }).from(clickEventsTable).innerJoin(linksTable, eq(clickEventsTable.linkId, linksTable.id)).where(
+    and(
+      linkFilter,
+      gte(clickEventsTable.timestamp, fromDate),
+      lte(clickEventsTable.timestamp, toDate)
+    )
+  ).groupBy(sql`extract(hour from ${clickEventsTable.timestamp})`).orderBy(sql`extract(hour from ${clickEventsTable.timestamp})`);
+  const hourOfDay = Array.from({ length: 24 }, (_, i) => {
+    const match = hourRows.find((r) => Number(r.hour) === i);
+    return { hour: i, count: match ? Number(match.count) : 0 };
+  });
   res.json({
     totalClicks: Number(clickStats?.totalClicks ?? 0),
     uniqueClicks: Number(clickStats?.uniqueClicks ?? 0),
@@ -79090,7 +79119,15 @@ router4.get("/analytics/workspace", requireAuth, async (req, res) => {
     topCountries: tCountries,
     topReferrers: tReferrers,
     topBrowsers: tBrowsers,
-    topDevices: tDevices
+    topDevices: tDevices,
+    topOs: tOs,
+    topCities: tCities,
+    topUtmSources: tUtmSources,
+    topUtmMediums: tUtmMediums,
+    topUtmCampaigns: tUtmCampaigns,
+    qrClicks: Number(qrStats?.qrClicks ?? 0),
+    directClicks: Number(qrStats?.directClicks ?? 0),
+    hourOfDay
   });
 });
 router4.get("/analytics/workspace/timeseries", requireAuth, async (req, res) => {
