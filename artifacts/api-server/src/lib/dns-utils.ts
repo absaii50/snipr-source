@@ -150,9 +150,8 @@ function buildDiagnosis(resolvers: ResolverResult[], checkType: "cname" | "a-rec
 }
 
 export async function checkDomainDns(domainName: string, token: string): Promise<DnsCheckResult> {
-  const parts = domainName.split(".");
-  const isRootDomain = parts.length <= 2;
-  const checkType: "cname" | "a-record" = isRootDomain ? "a-record" : "cname";
+  // Always check A record — all custom domains (root + subdomain) use A record pointing to SERVER_IP
+  const checkType: "cname" | "a-record" = "a-record";
   const txtName = `_snipr-verify.${domainName}`;
 
   // ── Run all resolver queries in parallel (primary + TXT) ───────────

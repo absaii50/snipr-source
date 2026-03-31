@@ -117,14 +117,16 @@ router.get("/domains/:id/setup-info", requireAuth, async (req, res): Promise<voi
   const cnameHost = isRootDomain ? "@" : parts.slice(0, -2).join(".");
   const purpose = domain.purpose || "links_only";
 
-  // Build purpose-aware DNS records
+  // Build purpose-aware DNS records — always use A record for all domains
   const records: { type: string; name: string; value: string; priority?: string }[] = [];
   const warnings: string[] = [];
   const suggestedSubdomains: string[] = [];
 
-  if (isRootDomain) {
-    records.push({ type: "A", name: "@", value: SERVER_IP, priority: "Required" });
-    if (purpose === "has_website") {
+  // Always A record — works for both root domains and subdomains
+  records.push({ type: "A", name: isRootDomain ? "@" : cnameHost, value: SERVER_IP, priority: "Required" });
+
+  if (purpose === "has_website") {
+    if (isRootDomain) {
       warnings.push("Changing your A record will redirect ALL traffic from your root domain to Snipr. Your existing website will stop working on this domain.");
       warnings.push("We strongly recommend using a subdomain instead.");
       suggestedSubdomains.push(
@@ -133,10 +135,7 @@ router.get("/domains/:id/setup-info", requireAuth, async (req, res): Promise<voi
         `to.${domain.domain}`,
         `s.${domain.domain}`,
       );
-    }
-  } else {
-    records.push({ type: "CNAME", name: cnameHost, value: CNAME_TARGET, priority: "Required" });
-    if (purpose === "has_website") {
+    } else {
       warnings.push("This subdomain will be used for short links. Your main website at " + rootDomain + " will not be affected.");
     }
   }
@@ -210,7 +209,7 @@ router.patch("/domains/:id/verify", requireAuth, async (req, res): Promise<void>
   if (!dnsResult.ready) {
     res.status(422).json({
       error: "dns_not_configured",
-      message: "DNS records not found yet. Add the CNAME or A record and try again.",
+      message: "DNS records not found yet. Add the A record pointing to our server IP and try again.",
       token,
     });
     return;

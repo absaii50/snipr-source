@@ -580,7 +580,7 @@ export default function DomainSetupWizard({
                 <Info className="w-4 h-4 shrink-0 mt-0.5 text-blue-500" />
                 <p className="leading-relaxed">
                   <strong>What is a DNS record?</strong> It tells the internet where to send visitors who click your short links.
-                  Adding a CNAME or A record connects your domain to Snipr.
+                  Adding an A record connects your domain to Snipr.
                 </p>
               </div>
 
@@ -621,7 +621,6 @@ export default function DomainSetupWizard({
                         <div className="flex items-center gap-2">
                           <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
                             rec.type === "A" ? "bg-emerald-400 text-emerald-900" :
-                            rec.type === "CNAME" ? "bg-blue-400 text-blue-900" :
                             "bg-purple-300 text-purple-900"
                           }`}>{rec.type}</span>
                           <span className={`text-[11px] font-semibold ${isRequired ? "text-white" : "text-gray-500"}`}>
@@ -721,7 +720,7 @@ export default function DomainSetupWizard({
               <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-gray-50 border border-gray-200">
                 <HelpCircle className="w-4 h-4 text-gray-400 shrink-0" />
                 <p className="text-xs text-gray-500">
-                  Don't see your registrar? Search "<strong>add CNAME record</strong>" on your registrar's help site — the steps are similar everywhere.
+                  Don't see your registrar? Search "<strong>add A record</strong>" on your registrar's help site — the steps are similar everywhere.
                 </p>
               </div>
 
