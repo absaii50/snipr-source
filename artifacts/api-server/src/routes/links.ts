@@ -189,6 +189,20 @@ router.post("/links", requireAuth, async (req, res): Promise<void> => {
 
   const domainId = domainRecord.id;
 
+  // Prevent duplicate slugs on the same domain (across ALL workspaces).
+  // The DB unique constraint is (workspace_id, slug, domain_id) which allows
+  // different workspaces to create the same slug on shared platform domains.
+  // This check enforces global slug uniqueness per domain.
+  const [existingLink] = await db
+    .select({ id: linksTable.id })
+    .from(linksTable)
+    .where(and(eq(linksTable.slug, slug), eq(linksTable.domainId, domainId)));
+
+  if (existingLink) {
+    res.status(409).json({ error: "Slug already taken", message: `The slug "${slug}" is already in use on this domain.` });
+    return;
+  }
+
   let link;
   try {
     const result = await db
