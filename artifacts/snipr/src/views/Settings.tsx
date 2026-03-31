@@ -8,6 +8,7 @@ import { getGetMeQueryKey } from "@workspace/api-client-react";
 import {
   User, Mail, Lock, Shield, Trash2, Eye, EyeOff,
   Loader2, CheckCircle2, AlertTriangle, Settings as SettingsIcon,
+  KeyRound, UserCircle,
 } from "lucide-react";
 import { format } from "date-fns";
 
@@ -53,16 +54,35 @@ function ProfileSection() {
 
   const hasChanges = name.trim() !== (user?.name ?? "") || email.trim().toLowerCase() !== (user?.email ?? "");
 
+  const initials = user?.name
+    ? user.name.split(" ").map((n: string) => n[0]).slice(0, 2).join("").toUpperCase()
+    : "U";
+
   return (
-    <div className="bg-white rounded-2xl border border-[#E4E8F0] overflow-hidden">
-      <div className="px-6 py-5 border-b border-[#E4E8F0]">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-indigo-50 flex items-center justify-center">
-            <User className="w-4.5 h-4.5 text-[#4F46E5]" />
+    <div className="bg-white rounded-2xl border border-[#E4E8F0] overflow-hidden sf-card-hover">
+      <div className="px-6 py-5 border-b border-[#E4E8F0] bg-gradient-to-r from-[#FAFBFF] to-[#F8F7FF]">
+        <div className="flex items-center gap-4">
+          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#4F46E5] to-[#7C3AED] flex items-center justify-center shadow-[0_4px_12px_rgba(79,70,229,0.3)]">
+            <span className="text-white text-[18px] font-bold">{initials}</span>
           </div>
-          <div>
-            <h2 className="text-[15px] font-semibold text-[#111827]">Profile Information</h2>
-            <p className="text-[12px] text-[#9CA3AF]">Update your name and email address</p>
+          <div className="flex-1 min-w-0">
+            <h2 className="text-[16px] font-bold text-[#111827]">{user?.name || "Your Profile"}</h2>
+            <p className="text-[12px] text-[#9CA3AF] truncate">{user?.email}</p>
+            <div className="flex items-center gap-3 mt-1.5">
+              <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-[#9CA3AF]">
+                <UserCircle className="w-3 h-3" />
+                Member since {user?.createdAt ? format(new Date(user.createdAt), "MMM d, yyyy") : "—"}
+              </span>
+              {user?.emailVerified ? (
+                <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full">
+                  <CheckCircle2 className="w-3 h-3" /> Verified
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded-full">
+                  <AlertTriangle className="w-3 h-3" /> Unverified
+                </span>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -73,7 +93,7 @@ function ProfileSection() {
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="w-full px-3.5 py-2.5 rounded-xl border border-[#E4E8F0] bg-white text-[13px] text-[#111827] focus:outline-none focus:ring-2 focus:ring-[#4F46E5]/20 focus:border-[#4F46E5] transition-all"
+            className="w-full px-3.5 py-2.5 rounded-xl border border-[#E4E8F0] bg-white text-[13px] text-[#111827] focus:outline-none focus:ring-2 focus:ring-[#4F46E5]/20 focus:border-[#4F46E5] transition-all placeholder:text-[#CBD5E1]"
             placeholder="Your full name"
           />
         </div>
@@ -83,7 +103,7 @@ function ProfileSection() {
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="w-full px-3.5 py-2.5 rounded-xl border border-[#E4E8F0] bg-white text-[13px] text-[#111827] focus:outline-none focus:ring-2 focus:ring-[#4F46E5]/20 focus:border-[#4F46E5] transition-all"
+            className="w-full px-3.5 py-2.5 rounded-xl border border-[#E4E8F0] bg-white text-[13px] text-[#111827] focus:outline-none focus:ring-2 focus:ring-[#4F46E5]/20 focus:border-[#4F46E5] transition-all placeholder:text-[#CBD5E1]"
             placeholder="you@example.com"
           />
           {email.trim().toLowerCase() !== (user?.email ?? "") && (
@@ -93,14 +113,11 @@ function ProfileSection() {
             </p>
           )}
         </div>
-        <div className="flex items-center justify-between pt-2">
-          <p className="text-[11px] text-[#9CA3AF]">
-            Member since {user?.createdAt ? format(new Date(user.createdAt), "MMM d, yyyy") : "—"}
-          </p>
+        <div className="flex justify-end pt-2">
           <button
             onClick={handleSave}
             disabled={saving || !hasChanges}
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#4F46E5] text-white text-[13px] font-semibold hover:bg-[#4338CA] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-white text-[13px] font-semibold active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed transition-all sf-btn-primary"
           >
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
             {saving ? "Saving…" : "Save Changes"}
@@ -160,12 +177,16 @@ function PasswordSection() {
 
   const canSubmit = currentPassword && newPassword.length >= 8 && newPassword === confirmPassword;
 
+  const strengthLevel = newPassword.length === 0 ? 0 : newPassword.length < 8 ? 1 : newPassword.length < 12 ? 2 : 3;
+  const strengthColors = ["", "bg-red-400", "bg-amber-400", "bg-emerald-400"];
+  const strengthLabels = ["", "Weak", "Good", "Strong"];
+
   return (
-    <div className="bg-white rounded-2xl border border-[#E4E8F0] overflow-hidden">
+    <div className="bg-white rounded-2xl border border-[#E4E8F0] overflow-hidden sf-card-hover">
       <div className="px-6 py-5 border-b border-[#E4E8F0]">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-amber-50 flex items-center justify-center">
-            <Lock className="w-4.5 h-4.5 text-amber-600" />
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-50 to-orange-50 flex items-center justify-center">
+            <KeyRound className="w-4.5 h-4.5 text-amber-600" />
           </div>
           <div>
             <h2 className="text-[15px] font-semibold text-[#111827]">Change Password</h2>
@@ -181,13 +202,13 @@ function PasswordSection() {
               type={showCurrent ? "text" : "password"}
               value={currentPassword}
               onChange={(e) => setCurrentPassword(e.target.value)}
-              className="w-full px-3.5 py-2.5 pr-10 rounded-xl border border-[#E4E8F0] bg-white text-[13px] text-[#111827] focus:outline-none focus:ring-2 focus:ring-[#4F46E5]/20 focus:border-[#4F46E5] transition-all"
+              className="w-full px-3.5 py-2.5 pr-10 rounded-xl border border-[#E4E8F0] bg-white text-[13px] text-[#111827] focus:outline-none focus:ring-2 focus:ring-[#4F46E5]/20 focus:border-[#4F46E5] transition-all placeholder:text-[#CBD5E1]"
               placeholder="Enter current password"
             />
             <button
               type="button"
               onClick={() => setShowCurrent(!showCurrent)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-[#9CA3AF] hover:text-[#6B7280]"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-[#9CA3AF] hover:text-[#6B7280] transition-colors"
             >
               {showCurrent ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
             </button>
@@ -200,19 +221,28 @@ function PasswordSection() {
               type={showNew ? "text" : "password"}
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
-              className="w-full px-3.5 py-2.5 pr-10 rounded-xl border border-[#E4E8F0] bg-white text-[13px] text-[#111827] focus:outline-none focus:ring-2 focus:ring-[#4F46E5]/20 focus:border-[#4F46E5] transition-all"
+              className="w-full px-3.5 py-2.5 pr-10 rounded-xl border border-[#E4E8F0] bg-white text-[13px] text-[#111827] focus:outline-none focus:ring-2 focus:ring-[#4F46E5]/20 focus:border-[#4F46E5] transition-all placeholder:text-[#CBD5E1]"
               placeholder="Enter new password (min 8 characters)"
             />
             <button
               type="button"
               onClick={() => setShowNew(!showNew)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-[#9CA3AF] hover:text-[#6B7280]"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-[#9CA3AF] hover:text-[#6B7280] transition-colors"
             >
               {showNew ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
             </button>
           </div>
-          {newPassword && newPassword.length < 8 && (
-            <p className="mt-1.5 text-[11px] text-red-500">Password must be at least 8 characters</p>
+          {newPassword && (
+            <div className="mt-2 space-y-1">
+              <div className="flex gap-1">
+                {[1, 2, 3].map((level) => (
+                  <div key={level} className={`h-1 flex-1 rounded-full transition-all duration-300 ${level <= strengthLevel ? strengthColors[strengthLevel] : "bg-[#E2E8F0]"}`} />
+                ))}
+              </div>
+              <p className={`text-[10px] font-medium ${strengthLevel <= 1 ? "text-red-500" : strengthLevel === 2 ? "text-amber-500" : "text-emerald-500"}`}>
+                {strengthLabels[strengthLevel]}
+              </p>
+            </div>
           )}
         </div>
         <div>
@@ -221,11 +251,18 @@ function PasswordSection() {
             type="password"
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
-            className="w-full px-3.5 py-2.5 rounded-xl border border-[#E4E8F0] bg-white text-[13px] text-[#111827] focus:outline-none focus:ring-2 focus:ring-[#4F46E5]/20 focus:border-[#4F46E5] transition-all"
+            className="w-full px-3.5 py-2.5 rounded-xl border border-[#E4E8F0] bg-white text-[13px] text-[#111827] focus:outline-none focus:ring-2 focus:ring-[#4F46E5]/20 focus:border-[#4F46E5] transition-all placeholder:text-[#CBD5E1]"
             placeholder="Confirm new password"
           />
           {confirmPassword && confirmPassword !== newPassword && (
-            <p className="mt-1.5 text-[11px] text-red-500">Passwords don't match</p>
+            <p className="mt-1.5 text-[11px] text-red-500 flex items-center gap-1">
+              <AlertTriangle className="w-3 h-3" /> Passwords don't match
+            </p>
+          )}
+          {confirmPassword && confirmPassword === newPassword && newPassword.length >= 8 && (
+            <p className="mt-1.5 text-[11px] text-emerald-500 flex items-center gap-1">
+              <CheckCircle2 className="w-3 h-3" /> Passwords match
+            </p>
           )}
         </div>
         <div className="flex justify-end pt-2">
@@ -278,8 +315,8 @@ function DangerZone() {
   }
 
   return (
-    <div className="bg-white rounded-2xl border border-red-200 overflow-hidden">
-      <div className="px-6 py-5 border-b border-red-100">
+    <div className="bg-white rounded-2xl border border-red-200/80 overflow-hidden">
+      <div className="px-6 py-5 border-b border-red-100 bg-gradient-to-r from-red-50/50 to-transparent">
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-xl bg-red-50 flex items-center justify-center">
             <Trash2 className="w-4.5 h-4.5 text-red-500" />
@@ -299,13 +336,13 @@ function DangerZone() {
             </div>
             <button
               onClick={() => setShowConfirm(true)}
-              className="px-4 py-2 rounded-xl border border-red-200 text-red-600 text-[12px] font-semibold hover:bg-red-50 transition-colors"
+              className="px-4 py-2 rounded-xl border border-red-200 text-red-600 text-[12px] font-semibold hover:bg-red-50 transition-all hover:border-red-300"
             >
               Delete Account
             </button>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-3 animate-fade-up">
             <div className="p-3 bg-red-50 border border-red-100 rounded-xl">
               <p className="text-[12px] text-red-700 font-medium">This action cannot be undone. All your links, analytics data, and workspace will be permanently deleted.</p>
             </div>
@@ -315,7 +352,7 @@ function DangerZone() {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-red-200 bg-white text-[13px] text-[#111827] focus:outline-none focus:ring-2 focus:ring-red-200 focus:border-red-400 transition-all"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-red-200 bg-white text-[13px] text-[#111827] focus:outline-none focus:ring-2 focus:ring-red-200 focus:border-red-400 transition-all placeholder:text-[#CBD5E1]"
                 placeholder="Your password"
               />
             </div>
@@ -343,13 +380,11 @@ function DangerZone() {
 }
 
 export default function SettingsPage() {
-  const { user } = useAuth();
-
   return (
     <ProtectedLayout>
       <div className="flex-1 px-4 sm:px-8 py-8 max-w-2xl mx-auto w-full">
-        <div className="flex items-center gap-3 mb-8">
-          <div className="w-10 h-10 rounded-xl bg-[#F3F4F9] flex items-center justify-center">
+        <div className="flex items-center gap-3 mb-8 animate-fade-up">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#F3F4F9] to-[#E8E9F3] flex items-center justify-center">
             <SettingsIcon className="w-5 h-5 text-[#6B7280]" />
           </div>
           <div>
@@ -359,21 +394,15 @@ export default function SettingsPage() {
         </div>
 
         <div className="space-y-6">
-          <ProfileSection />
-          <PasswordSection />
-
-          <div className="flex items-center gap-3 px-1">
-            <Mail className="w-4 h-4 text-[#9CA3AF]" />
-            <p className="text-[12px] text-[#9CA3AF]">
-              Email verification: {user?.emailVerified ? (
-                <span className="text-emerald-600 font-medium">Verified</span>
-              ) : (
-                <span className="text-amber-600 font-medium">Not verified — check your inbox</span>
-              )}
-            </p>
+          <div className="animate-fade-up" style={{ animationDelay: "60ms" }}>
+            <ProfileSection />
           </div>
-
-          <DangerZone />
+          <div className="animate-fade-up" style={{ animationDelay: "120ms" }}>
+            <PasswordSection />
+          </div>
+          <div className="animate-fade-up" style={{ animationDelay: "180ms" }}>
+            <DangerZone />
+          </div>
         </div>
       </div>
     </ProtectedLayout>

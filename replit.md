@@ -11,7 +11,7 @@ Snipr is a full-stack URL shortener SaaS built in a pnpm monorepo. Features: sho
 - **Package manager**: pnpm
 - **TypeScript version**: 5.9
 - **Frontend**: React + **Next.js 15** App Router (Tailwind CSS v4, shadcn/ui, react-query, react-hook-form)
-- **Design system**: Short Freely dark palette — `#080708` bg, `#3C3C44` card, `#EFEFF0` text, `#728DA7` accent (steel blue), `#877971` warm accent, `#5A5C60` muted. Fonts: Plus Jakarta Sans (headings) + Inter (body).
+- **Design system**: Short Freely dark palette — `#080708` bg, `#3C3C44` card, `#EFEFF0` text, `#728DA7` accent (steel blue), `#877971` warm accent, `#5A5C60` muted. Fonts: Plus Jakarta Sans (headings) + Inter (body). **UI utilities in globals.css**: `.sf-card-hover` (lift + shadow on hover), `.sf-glass` (frosted glass), `.sf-gradient-text` (indigo→violet gradient text), `.sf-btn-primary` (gradient indigo button with glow shadow), `.animate-fade-up` / `.animate-fade-in` / `.animate-scale-in` (entry animations with `animation-fill-mode: both`), `.sf-progress-animated` (shimmer progress bar). Uses `@media (prefers-reduced-motion: reduce)` to disable all animations/transitions for accessibility.
 - **API framework**: Express 5
 - **Database**: PostgreSQL + Drizzle ORM
 - **Auth**: express-session + bcryptjs (email/password)

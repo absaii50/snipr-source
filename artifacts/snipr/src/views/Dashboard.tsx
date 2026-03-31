@@ -274,7 +274,7 @@ export default function Dashboard() {
         {/* ════════════════════════════════════════════════════════
             B — HERO: split card (metrics + chart)
         ════════════════════════════════════════════════════════ */}
-        <div className="bg-white rounded-2xl border border-[#E2E8F0] shadow-[0_1px_3px_rgba(0,0,0,0.04),0_8px_24px_rgba(0,0,0,0.06)] overflow-hidden">
+        <div className="bg-white rounded-2xl border border-[#E2E8F0] shadow-[0_1px_3px_rgba(0,0,0,0.04),0_8px_24px_rgba(0,0,0,0.06)] overflow-hidden animate-fade-up">
           <div className="flex flex-col lg:flex-row">
             {/* left panel */}
             <div className="lg:w-[252px] shrink-0 bg-[#F8FAFC] border-b lg:border-b-0 lg:border-r border-[#E2E8F0] px-4 sm:px-6 py-4 sm:py-5 flex flex-col gap-3 sm:gap-4">
@@ -329,9 +329,9 @@ export default function Dashboard() {
         {/* ════════════════════════════════════════════════════════
             C — INSIGHT KPI BAND (new KPIs)
         ════════════════════════════════════════════════════════ */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3 [&>*:nth-child(1)]:animate-fade-up [&>*:nth-child(2)]:[animation-delay:60ms] [&>*:nth-child(2)]:animate-fade-up [&>*:nth-child(3)]:[animation-delay:120ms] [&>*:nth-child(3)]:animate-fade-up [&>*:nth-child(4)]:[animation-delay:180ms] [&>*:nth-child(4)]:animate-fade-up">
           {/* Top Link */}
-          <div className="bg-white rounded-2xl border border-[#E2E8F0] shadow-[0_1px_3px_rgba(0,0,0,0.04),0_4px_14px_rgba(0,0,0,0.05)] p-3 sm:p-4">
+          <div className="bg-white rounded-2xl border border-[#E2E8F0] shadow-[0_1px_3px_rgba(0,0,0,0.04),0_4px_14px_rgba(0,0,0,0.05)] p-3 sm:p-4 sf-card-hover">
             <div className="flex items-center justify-between mb-3">
               <p className="text-[9px] font-bold uppercase tracking-[0.12em] text-[#94A3B8]">Top Link</p>
               <div className="w-7 h-7 rounded-lg bg-[#EEF2FF] flex items-center justify-center">
@@ -362,7 +362,7 @@ export default function Dashboard() {
           </div>
 
           {/* Top Country */}
-          <div className="bg-white rounded-2xl border border-[#E2E8F0] shadow-[0_1px_3px_rgba(0,0,0,0.04),0_4px_14px_rgba(0,0,0,0.05)] p-3 sm:p-4">
+          <div className="bg-white rounded-2xl border border-[#E2E8F0] shadow-[0_1px_3px_rgba(0,0,0,0.04),0_4px_14px_rgba(0,0,0,0.05)] p-3 sm:p-4 sf-card-hover">
             <div className="flex items-center justify-between mb-3">
               <p className="text-[9px] font-bold uppercase tracking-[0.12em] text-[#94A3B8]">Top Country</p>
               <div className="w-7 h-7 rounded-lg bg-[#F0FDFA] flex items-center justify-center">
@@ -394,7 +394,7 @@ export default function Dashboard() {
           </div>
 
           {/* Best Device */}
-          <div className="bg-white rounded-2xl border border-[#E2E8F0] shadow-[0_1px_3px_rgba(0,0,0,0.04),0_4px_14px_rgba(0,0,0,0.05)] p-3 sm:p-4">
+          <div className="bg-white rounded-2xl border border-[#E2E8F0] shadow-[0_1px_3px_rgba(0,0,0,0.04),0_4px_14px_rgba(0,0,0,0.05)] p-3 sm:p-4 sf-card-hover">
             <div className="flex items-center justify-between mb-3">
               <p className="text-[9px] font-bold uppercase tracking-[0.12em] text-[#94A3B8]">Best Device</p>
               <div className="w-7 h-7 rounded-lg bg-[#F0F9FF] flex items-center justify-center">
@@ -425,7 +425,7 @@ export default function Dashboard() {
           </div>
 
           {/* Domain Health */}
-          <div className="bg-white rounded-2xl border border-[#E2E8F0] shadow-[0_1px_3px_rgba(0,0,0,0.04),0_4px_14px_rgba(0,0,0,0.05)] p-3 sm:p-4">
+          <div className="bg-white rounded-2xl border border-[#E2E8F0] shadow-[0_1px_3px_rgba(0,0,0,0.04),0_4px_14px_rgba(0,0,0,0.05)] p-3 sm:p-4 sf-card-hover">
             <div className="flex items-center justify-between mb-3">
               <p className="text-[9px] font-bold uppercase tracking-[0.12em] text-[#94A3B8]">Domain Health</p>
               <div className="w-7 h-7 rounded-lg bg-[#FFFBEB] flex items-center justify-center">
@@ -674,7 +674,7 @@ function BentoCard({ title, icon, action, children }: {
   title: string; icon?: React.ReactNode; action?: React.ReactNode; children: React.ReactNode;
 }) {
   return (
-    <div className="bg-white rounded-2xl border border-[#E2E8F0] shadow-[0_1px_3px_rgba(0,0,0,0.04),0_4px_14px_rgba(0,0,0,0.05)] overflow-hidden h-full flex flex-col">
+    <div className="bg-white rounded-2xl border border-[#E2E8F0] shadow-[0_1px_3px_rgba(0,0,0,0.04),0_4px_14px_rgba(0,0,0,0.05)] overflow-hidden h-full flex flex-col sf-card-hover">
       <div className="px-4 py-3 border-b border-[#F1F5F9] flex items-center justify-between shrink-0">
         <div className="flex items-center gap-1.5 text-[#94A3B8]">
           {icon}

@@ -326,9 +326,9 @@ export default function Links() {
     <ProtectedLayout>
       <div className="px-4 sm:px-7 py-6 sm:py-7 max-w-[1200px] mx-auto w-full space-y-5 pt-14 lg:pt-6">
 
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 animate-fade-up">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-2xl bg-[#EEF3F7] flex items-center justify-center shrink-0">
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#EEF3F7] to-[#E0EAF2] flex items-center justify-center shrink-0">
               <LinkIcon className="w-6 h-6 text-[#728DA7]" />
             </div>
             <div>
@@ -339,20 +339,20 @@ export default function Links() {
           </div>
           <button
             onClick={handleCreate}
-            className="inline-flex items-center gap-2 bg-[#0A0A0A] hover:bg-[#1A1A2E] active:scale-[0.97] text-white text-[13px] font-semibold px-5 py-2.5 rounded-xl transition-all shadow-sm shrink-0"
+            className="inline-flex items-center gap-2 text-white text-[13px] font-semibold px-5 py-2.5 rounded-xl transition-all shrink-0 sf-btn-primary"
           >
             <Plus className="w-4 h-4" />
             New Link
           </button>
         </div>
 
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-3 gap-3 [&>*:nth-child(1)]:animate-fade-up [&>*:nth-child(2)]:[animation-delay:60ms] [&>*:nth-child(2)]:animate-fade-up [&>*:nth-child(3)]:[animation-delay:120ms] [&>*:nth-child(3)]:animate-fade-up">
           {[
-            { icon: <LinkIcon className="w-4 h-4 text-[#728DA7]" />, bg: "bg-[#EEF3F7]", label: "Total Links", value: isLoading ? null : totalLinks, accent: "#728DA7" },
-            { icon: <TrendingUp className="w-4 h-4 text-[#2E9A72]" />, bg: "bg-[#E8F7F1]", label: "Active", value: isLoading ? null : activeLinks, accent: "#2E9A72" },
-            { icon: <MousePointerClick className="w-4 h-4 text-[#7C5CC4]" />, bg: "bg-[#F0EBF9]", label: "All-Time Clicks", value: totalClicks, accent: "#7C5CC4" },
+            { icon: <LinkIcon className="w-4 h-4 text-[#728DA7]" />, bg: "bg-gradient-to-br from-[#EEF3F7] to-[#E0EAF2]", label: "Total Links", value: isLoading ? null : totalLinks, accent: "#728DA7" },
+            { icon: <TrendingUp className="w-4 h-4 text-[#2E9A72]" />, bg: "bg-gradient-to-br from-[#E8F7F1] to-[#D4F0E4]", label: "Active", value: isLoading ? null : activeLinks, accent: "#2E9A72" },
+            { icon: <MousePointerClick className="w-4 h-4 text-[#7C5CC4]" />, bg: "bg-gradient-to-br from-[#F0EBF9] to-[#E4DBF4]", label: "All-Time Clicks", value: totalClicks, accent: "#7C5CC4" },
           ].map((s, i) => (
-            <div key={i} className="bg-white border border-[#EBEBF0] rounded-2xl p-3 sm:p-4 flex items-center gap-3 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+            <div key={i} className="bg-white border border-[#EBEBF0] rounded-2xl p-3 sm:p-4 flex items-center gap-3 shadow-[0_1px_3px_rgba(0,0,0,0.04)] sf-card-hover">
               <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${s.bg}`}>
                 {s.icon}
               </div>
@@ -867,7 +867,7 @@ function LinkGridCard({
   const clickPercent = maxClicks > 0 ? (clicks / maxClicks) * 100 : 0;
 
   return (
-    <div className={`relative bg-[#FAFAFE] border rounded-2xl p-4 transition-all hover:shadow-md hover:border-[#D0D0E0] group ${isSelected ? "border-[#728DA7] bg-[#F4F8FF] shadow-sm" : "border-[#EBEBF0]"}`}>
+    <div className={`relative bg-[#FAFAFE] border rounded-2xl p-4 transition-all duration-200 hover:shadow-[0_4px_20px_rgba(0,0,0,0.08)] hover:border-[#C8D0E0] hover:-translate-y-0.5 group ${isSelected ? "border-[#728DA7] bg-[#F4F8FF] shadow-sm" : "border-[#EBEBF0]"}`}>
       <button onClick={onSelect} className="absolute top-3 right-3 text-[#C0C0CC] hover:text-[#728DA7] transition-colors opacity-0 group-hover:opacity-100">
         {isSelected ? <CheckSquare className="w-4 h-4 text-[#728DA7]" /> : <Square className="w-4 h-4" />}
       </button>

@@ -92,9 +92,9 @@ export function ProtectedSidebar() {
 
   const sidebarContent = (
     <>
-      <div className="px-4 pt-5 pb-4 border-b border-[#E4E8F0] flex items-center justify-between">
+      <div className="px-4 pt-5 pb-4 border-b border-[#E4E8F0]/60 flex items-center justify-between">
         <Link href="/" className="flex items-center gap-2.5 w-fit group" onClick={() => setMobileOpen(false)}>
-          <div className="w-8 h-8 rounded-xl bg-[#4F46E5] flex items-center justify-center transition-all group-hover:bg-[#4338CA] shrink-0 shadow-sm shadow-indigo-200">
+          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#4F46E5] to-[#7C3AED] flex items-center justify-center transition-all group-hover:shadow-[0_4px_12px_rgba(79,70,229,0.4)] shrink-0 shadow-sm">
             <Link2 className="w-4 h-4 text-white" />
           </div>
           <span className="font-display font-extrabold text-[19px] tracking-tight text-[#111827]">
@@ -112,7 +112,7 @@ export function ProtectedSidebar() {
       <nav className="flex-1 px-2.5 pt-3 overflow-y-auto custom-scrollbar pb-4 space-y-4">
         {NAV_SECTIONS.map((section) => (
           <div key={section.label}>
-            <p className="px-2.5 mb-1 text-[10px] font-bold tracking-[0.15em] uppercase text-[#AAB3C2]">
+            <p className="px-2.5 mb-1.5 text-[10px] font-bold tracking-[0.15em] uppercase text-[#AAB3C2]">
               {section.label}
             </p>
             <div className="space-y-0.5">
@@ -122,21 +122,24 @@ export function ProtectedSidebar() {
                   <Link key={item.href} href={item.href} className="block" onClick={() => setMobileOpen(false)}>
                     <div
                       className={[
-                        "flex items-center gap-2.5 px-2.5 py-[7px] rounded-xl text-[13px] font-medium transition-all duration-150 cursor-pointer group",
+                        "relative flex items-center gap-2.5 px-2.5 py-[7px] rounded-xl text-[13px] font-medium transition-all duration-200 cursor-pointer group",
                         active
-                          ? "bg-indigo-50 text-[#4338CA] font-semibold"
+                          ? "bg-gradient-to-r from-indigo-50/80 to-violet-50/50 text-[#4338CA] font-semibold shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]"
                           : "text-[#6B7280] hover:text-[#1F2937] hover:bg-[#F3F4F9]",
                       ].join(" ")}
                     >
+                      {active && (
+                        <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-4 rounded-full bg-gradient-to-b from-[#4F46E5] to-[#7C3AED]" />
+                      )}
                       <item.icon
                         className={[
-                          "w-[15px] h-[15px] flex-shrink-0 transition-colors",
+                          "w-[15px] h-[15px] flex-shrink-0 transition-all duration-200",
                           active ? "text-[#4F46E5]" : "text-[#B4BAC8] group-hover:text-[#6B7280]",
                         ].join(" ")}
                       />
                       <span className="flex-1 leading-none">{item.label}</span>
                       {active && (
-                        <span className="w-1.5 h-1.5 rounded-full bg-[#4F46E5] shrink-0" />
+                        <span className="w-1.5 h-1.5 rounded-full bg-gradient-to-br from-[#4F46E5] to-[#7C3AED] shrink-0" />
                       )}
                     </div>
                   </Link>
@@ -147,10 +150,10 @@ export function ProtectedSidebar() {
         ))}
       </nav>
 
-      <div className="relative px-2.5 py-3 border-t border-[#E4E8F0]" ref={profileRef}>
+      <div className="relative px-2.5 py-3 border-t border-[#E4E8F0]/60" ref={profileRef}>
         {profileOpen && (
-          <div className="absolute bottom-full left-2.5 right-2.5 mb-1.5 bg-white rounded-xl border border-[#E4E8F0] shadow-[0_4px_24px_rgba(0,0,0,0.12)] overflow-hidden animate-in slide-in-from-bottom-2 fade-in duration-150 z-10">
-            <div className="px-3.5 py-2.5 border-b border-[#F1F5F9]">
+          <div className="absolute bottom-full left-2.5 right-2.5 mb-1.5 bg-white rounded-xl border border-[#E4E8F0] shadow-[0_4px_24px_rgba(0,0,0,0.12),0_0_0_1px_rgba(0,0,0,0.04)] overflow-hidden animate-scale-in z-10">
+            <div className="px-3.5 py-2.5 border-b border-[#F1F5F9] bg-gradient-to-r from-[#FAFBFF] to-[#F8F7FF]">
               <p className="text-[12px] font-semibold text-[#111827] truncate">{user?.name}</p>
               <p className="text-[10.5px] text-[#9CA3AF] truncate">{user?.email}</p>
             </div>
@@ -183,12 +186,12 @@ export function ProtectedSidebar() {
         <button
           onClick={() => setProfileOpen(!profileOpen)}
           className={[
-            "w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl transition-colors",
-            profileOpen ? "bg-[#F3F4F9]" : "hover:bg-[#F3F4F9]",
+            "w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl transition-all duration-200",
+            profileOpen ? "bg-[#F3F4F9] shadow-inner" : "hover:bg-[#F3F4F9]",
           ].join(" ")}
         >
-          <Avatar className="w-7 h-7 shrink-0">
-            <AvatarFallback className="bg-[#4F46E5] text-white text-[10px] font-bold">
+          <Avatar className="w-7 h-7 shrink-0 ring-2 ring-white shadow-sm">
+            <AvatarFallback className="bg-gradient-to-br from-[#4F46E5] to-[#7C3AED] text-white text-[10px] font-bold">
               {initials}
             </AvatarFallback>
           </Avatar>
@@ -215,7 +218,7 @@ export function ProtectedSidebar() {
     <>
       <button
         onClick={() => setMobileOpen(true)}
-        className="lg:hidden fixed top-4 left-4 z-50 p-2 rounded-xl bg-white border border-[#E4E8F0] shadow-sm hover:bg-[#F3F4F9] transition-colors"
+        className="lg:hidden fixed top-4 left-4 z-50 p-2 rounded-xl bg-white/90 backdrop-blur-md border border-[#E4E8F0] shadow-sm hover:bg-[#F3F4F9] transition-colors"
         aria-label="Open menu"
       >
         <Menu className="w-5 h-5 text-[#6B7280]" />
@@ -223,14 +226,14 @@ export function ProtectedSidebar() {
 
       {mobileOpen && (
         <div
-          className="lg:hidden fixed inset-0 z-40 bg-black/30 backdrop-blur-sm"
+          className="lg:hidden fixed inset-0 z-40 bg-black/30 backdrop-blur-sm animate-fade-in"
           onClick={() => setMobileOpen(false)}
         />
       )}
 
       <aside
         className={[
-          "fixed lg:sticky top-0 left-0 z-50 w-[260px] lg:w-[232px] flex flex-col h-screen shrink-0 bg-white border-r border-[#E4E8F0] transition-transform duration-200 ease-out",
+          "fixed lg:sticky top-0 left-0 z-50 w-[260px] lg:w-[232px] flex flex-col h-screen shrink-0 bg-white/95 backdrop-blur-md border-r border-[#E4E8F0]/60 transition-transform duration-200 ease-out",
           mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
         ].join(" ")}
       >

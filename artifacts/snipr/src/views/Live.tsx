@@ -209,9 +209,9 @@ export default function Live() {
     <ProtectedLayout>
       <div className="px-4 sm:px-6 lg:px-8 py-6 max-w-[1400px] mx-auto w-full space-y-5 pt-14 lg:pt-6">
 
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 animate-fade-up">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-2xl bg-[#E8F7F1] flex items-center justify-center shrink-0 relative">
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#E8F7F1] to-[#D0EFE0] flex items-center justify-center shrink-0 relative">
               <Activity className="w-6 h-6 text-[#2E9A72]" />
               {status === "connected" && (
                 <span className="absolute -top-0.5 -right-0.5 flex h-3 w-3">
@@ -280,7 +280,7 @@ export default function Live() {
               iconColor: "text-[#2E9A72]",
             },
           ].map((kpi) => (
-            <div key={kpi.label} className="bg-white border border-[#EBEBF0] rounded-2xl p-3 sm:p-4 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+            <div key={kpi.label} className="bg-white border border-[#EBEBF0] rounded-2xl p-3 sm:p-4 shadow-[0_1px_3px_rgba(0,0,0,0.04)] sf-card-hover animate-fade-up">
               <div className="flex items-center justify-between mb-2">
                 <p className="text-[10px] font-bold text-[#A0A0AE] uppercase tracking-[0.12em]">{kpi.label}</p>
                 <div className={`w-8 h-8 rounded-xl ${kpi.iconBg} ${kpi.iconColor} flex items-center justify-center`}>

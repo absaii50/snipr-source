@@ -224,7 +224,7 @@ export default function Analytics() {
     <ProtectedLayout>
       <div className="px-5 lg:px-8 py-6 max-w-[1400px] mx-auto w-full space-y-5">
 
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 animate-fade-up">
           <div>
             <p className="text-[10px] font-bold tracking-[0.24em] uppercase text-slate-400 mb-1">In-Depth</p>
             <h1 className="text-[28px] font-display font-black tracking-tight text-slate-900 leading-none">Analytics</h1>
@@ -267,7 +267,7 @@ export default function Analytics() {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 [&>*:nth-child(1)]:animate-fade-up [&>*:nth-child(2)]:[animation-delay:60ms] [&>*:nth-child(2)]:animate-fade-up [&>*:nth-child(3)]:[animation-delay:120ms] [&>*:nth-child(3)]:animate-fade-up [&>*:nth-child(4)]:[animation-delay:180ms] [&>*:nth-child(4)]:animate-fade-up">
           <KpiCard title="Total Clicks" value={stats?.totalClicks} delta={clickDelta} icon={<MousePointerClick className="w-4 h-4" />} color="text-indigo-600" bg="bg-indigo-50" loading={statsLoading} periodLabel={period.displayLabel} />
           <KpiCard title="Unique Visitors" value={stats?.uniqueClicks} delta={uniqueDelta} icon={<Users className="w-4 h-4" />} color="text-violet-600" bg="bg-violet-50" loading={statsLoading} periodLabel={period.displayLabel} />
           <KpiCard title="Total Links" value={stats?.totalLinks} icon={<LinkIcon className="w-4 h-4" />} color="text-amber-600" bg="bg-amber-50" loading={statsLoading} />
@@ -800,7 +800,7 @@ function KpiCard({
   color: string; bg: string; loading: boolean; periodLabel?: string;
 }) {
   return (
-    <div className="bg-white border border-slate-200 rounded-2xl p-4 hover:shadow-sm transition-shadow">
+    <div className="bg-white border border-slate-200 rounded-2xl p-4 sf-card-hover">
       <div className="flex items-center justify-between mb-3">
         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.12em]">{title}</p>
         <div className={`w-7 h-7 rounded-lg ${bg} ${color} flex items-center justify-center`}>{icon}</div>
