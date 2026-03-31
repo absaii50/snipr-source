@@ -17,10 +17,6 @@ export function getStripeClient(): Stripe {
   return cachedStripe;
 }
 
-// Kept for backward compat — same as getStripeClient but always fresh
-export async function getUncachableStripeClient(): Promise<Stripe> {
-  return getStripeClient();
-}
 
 export async function getStripePublishableKey(): Promise<string> {
   const key = process.env.STRIPE_PUBLISHABLE_KEY;

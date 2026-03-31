@@ -58,7 +58,7 @@ export default function EmailTab() {
   const [busy, setBusy] = useState<string | null>(null);
   const [massSubject, setMassSubject] = useState("");
   const [massBody, setMassBody] = useState("");
-  const [massTarget, setMassTarget] = useState<"all" | "free" | "pro" | "business">("all");
+  const [massTarget, setMassTarget] = useState<"all" | "free" | "starter" | "growth" | "pro" | "business" | "enterprise">("all");
   const [massTemplate, setMassTemplate] = useState<"general" | "maintenance" | "feature" | "security">("general");
   const [massSending, setMassSending] = useState(false);
   const [massPreview, setMassPreview] = useState<{ recipientCount: number; subject: string; template: string } | null>(null);
@@ -334,7 +334,7 @@ export default function EmailTab() {
           <div>
             <label className="text-xs font-medium text-[#8888A0] uppercase mb-1.5 block">Target Audience</label>
             <div className="flex gap-2">
-              {(["all", "free", "pro", "business"] as const).map(t => (
+              {(["all", "free", "starter", "growth", "pro", "business", "enterprise"] as const).map(t => (
                 <button key={t} onClick={() => setMassTarget(t)}
                   className={`px-3 py-1.5 rounded-lg text-xs font-medium capitalize transition-all ${
                     massTarget === t ? "bg-[#0A0A0A] text-white" : "bg-[#F4F4F6] text-[#8888A0] hover:bg-[#E8EEF4]"

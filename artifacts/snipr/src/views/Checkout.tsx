@@ -23,19 +23,26 @@ function getStripePromise() {
   return stripePromise;
 }
 
-const PLAN_INFO: Record<string, { name: string; price: string; color: string }> = {
-  pro: { name: "Pro", price: "$19/mo", color: "#728DA7" },
-  business: { name: "Business", price: "$49/mo", color: "#7C5CC4" },
+const VALID_PLANS = ["starter", "growth", "pro", "business", "enterprise"] as const;
+type PlanName = typeof VALID_PLANS[number];
+
+const PLAN_INFO: Record<PlanName, { name: string; monthlyPrice: string; annualPrice: string; color: string }> = {
+  starter:    { name: "Starter",    monthlyPrice: "$4/mo",   annualPrice: "$38/yr",    color: "#728DA7" },
+  growth:     { name: "Growth",     monthlyPrice: "$12/mo",  annualPrice: "$115/yr",   color: "#4A9B7F" },
+  pro:        { name: "Pro",        monthlyPrice: "$29/mo",  annualPrice: "$278/yr",   color: "#7C5CC4" },
+  business:   { name: "Business",   monthlyPrice: "$79/mo",  annualPrice: "$758/yr",   color: "#C45C5C" },
+  enterprise: { name: "Enterprise", monthlyPrice: "$149/mo", annualPrice: "$1,430/yr", color: "#C4945C" },
 };
 
 export default function Checkout() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const plan = searchParams.get("plan") as "pro" | "business" | null;
+  const plan = searchParams.get("plan") as PlanName | null;
+  const billing = searchParams.get("billing") as "monthly" | "annual" | null;
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!plan || !["pro", "business"].includes(plan)) {
+    if (!plan || !VALID_PLANS.includes(plan)) {
       router.replace("/pricing");
     }
   }, [plan, router]);
@@ -45,7 +52,7 @@ export default function Checkout() {
       method: "POST",
       credentials: "include",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ plan }),
+      body: JSON.stringify({ plan, billing: billing ?? "monthly" }),
     });
 
     if (!res.ok) {
@@ -62,11 +69,12 @@ export default function Checkout() {
     return data.clientSecret;
   }, [plan]);
 
-  if (!plan || !["pro", "business"].includes(plan)) {
+  if (!plan || !VALID_PLANS.includes(plan)) {
     return null;
   }
 
   const info = PLAN_INFO[plan];
+  const displayPrice = billing === "annual" ? info.annualPrice : info.monthlyPrice;
 
   return (
     <div className="min-h-screen bg-[#F8F8FA] font-sans">
@@ -98,7 +106,7 @@ export default function Checkout() {
             Complete your subscription
           </h1>
           <p className="text-[14px] text-[#8888A0]">
-            You&apos;re subscribing to the {info.name} plan at {info.price}. Cancel anytime.
+            You&apos;re subscribing to the {info.name} plan at {displayPrice}. Cancel anytime.
           </p>
         </div>
 

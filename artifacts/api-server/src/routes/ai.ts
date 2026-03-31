@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, and, gte, lte, sql, sum, count, desc, lt, inArray } from "drizzle-orm";
+import { eq, and, gte, sum, count, desc, lt, inArray } from "drizzle-orm";
 import { db, linksTable, clickEventsTable, conversionsTable, aiInsightsTable } from "@workspace/db";
 import OpenAI from "openai";
 import { requireAuth } from "../lib/auth";
@@ -7,8 +7,10 @@ import { requireAuth } from "../lib/auth";
 let deepseek: OpenAI | null = null;
 function getDeepseek() {
   if (!deepseek) {
+    const apiKey = process.env.DEEPSEEK_API_KEY;
+    if (!apiKey) throw new Error("DEEPSEEK_API_KEY environment variable is not set");
     deepseek = new OpenAI({
-      apiKey: process.env.DEEPSEEK_API_KEY || "placeholder",
+      apiKey,
       baseURL: "https://api.deepseek.com",
     });
   }
@@ -147,9 +149,10 @@ async function gatherAnalyticsContext(workspaceId: string, days = 7) {
 router.post("/ai/insights/weekly", requireAuth, async (req, res): Promise<void> => {
   const workspaceId = req.session.workspaceId!;
 
-  const ctx = await gatherAnalyticsContext(workspaceId, 7);
+  try {
+    const ctx = await gatherAnalyticsContext(workspaceId, 7);
 
-  const systemPrompt = `You are an analytics assistant for a URL shortener SaaS called Snipr.
+    const systemPrompt = `You are an analytics assistant for a URL shortener SaaS called Snipr.
 Generate a concise weekly performance summary based ONLY on the provided data.
 Be direct, specific, and actionable. Keep it under 200 words.
 If data is empty or zero, acknowledge that honestly rather than inventing insights.
@@ -161,7 +164,7 @@ FORMAT RULES:
 - End with a clear "**Recommendation:**" section with one actionable step
 - Do NOT use raw dash-prefixed bullet lists. Write in short paragraph style under each heading.`;
 
-  const userPrompt = `Here is the real analytics data for the past 7 days:
+    const userPrompt = `Here is the real analytics data for the past 7 days:
 ${JSON.stringify(ctx, null, 2)}
 
 Write a weekly summary covering:
@@ -171,28 +174,31 @@ Write a weekly summary covering:
 4. Conversion/revenue highlights (if any)
 5. One actionable recommendation`;
 
-  const response = await getDeepseek().chat.completions.create({
-    model: "deepseek-chat",
-    max_tokens: 512,
-    messages: [
-      { role: "system", content: systemPrompt },
-      { role: "user", content: userPrompt },
-    ],
-  });
+    const response = await getDeepseek().chat.completions.create({
+      model: "deepseek-chat",
+      max_tokens: 512,
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt },
+      ],
+    });
 
-  const content = response.choices[0]?.message?.content ?? "Unable to generate summary.";
+    const content = response.choices[0]?.message?.content ?? "Unable to generate summary.";
 
-  const [insight] = await db
-    .insert(aiInsightsTable)
-    .values({
-      workspaceId,
-      type: "weekly_summary",
-      content,
-      metadata: ctx as Record<string, unknown>,
-    })
-    .returning();
+    const [insight] = await db
+      .insert(aiInsightsTable)
+      .values({
+        workspaceId,
+        type: "weekly_summary",
+        content,
+        metadata: ctx as Record<string, unknown>,
+      })
+      .returning();
 
-  res.json(insight);
+    res.json(insight);
+  } catch (err: any) {
+    res.status(502).json({ error: "Failed to generate weekly insights.", detail: err.message ?? "Unknown error" });
+  }
 });
 
 router.get("/ai/insights", requireAuth, async (req, res): Promise<void> => {
@@ -230,9 +236,10 @@ router.post("/ai/ask", requireAuth, async (req, res): Promise<void> => {
     return;
   }
 
-  const ctx = await gatherAnalyticsContext(workspaceId, 30);
+  try {
+    const ctx = await gatherAnalyticsContext(workspaceId, 30);
 
-  const systemPrompt = `You are an analytics assistant for a URL shortener SaaS called Snipr.
+    const systemPrompt = `You are an analytics assistant for a URL shortener SaaS called Snipr.
 Answer the user's question about their analytics using ONLY the provided real data.
 Be concise and direct. If the answer cannot be determined from the data, say so clearly.
 Never invent numbers. If data shows zeros, say so honestly.
@@ -245,33 +252,36 @@ FORMAT RULES:
 - Keep answers 2-5 sentences. Never dump raw data.
 - End with a brief actionable insight when relevant.`;
 
-  const userPrompt = `Analytics data (last 30 days):
+    const userPrompt = `Analytics data (last 30 days):
 ${JSON.stringify(ctx, null, 2)}
 
 Question: ${question}`;
 
-  const response = await getDeepseek().chat.completions.create({
-    model: "deepseek-chat",
-    max_tokens: 400,
-    messages: [
-      { role: "system", content: systemPrompt },
-      { role: "user", content: userPrompt },
-    ],
-  });
+    const response = await getDeepseek().chat.completions.create({
+      model: "deepseek-chat",
+      max_tokens: 400,
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt },
+      ],
+    });
 
-  const answer = response.choices[0]?.message?.content ?? "Unable to generate answer.";
+    const answer = response.choices[0]?.message?.content ?? "Unable to generate answer.";
 
-  const [insight] = await db
-    .insert(aiInsightsTable)
-    .values({
-      workspaceId,
-      type: "qa_response",
-      content: answer,
-      metadata: { question, dataContext: ctx as Record<string, unknown> },
-    })
-    .returning();
+    const [insight] = await db
+      .insert(aiInsightsTable)
+      .values({
+        workspaceId,
+        type: "qa_response",
+        content: answer,
+        metadata: { question, dataContext: ctx as Record<string, unknown> },
+      })
+      .returning();
 
-  res.json({ question, answer, id: insight.id });
+    res.json({ question, answer, id: insight.id });
+  } catch (err: any) {
+    res.status(502).json({ error: "Failed to generate answer.", detail: err.message ?? "Unknown error" });
+  }
 });
 
 // POST /api/ai/ask/stream — streaming SSE version of Ask AI

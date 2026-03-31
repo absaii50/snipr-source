@@ -3,11 +3,22 @@ import { ReactNode, useEffect, useState } from "react";
 import { ProtectedSidebar } from "./ProtectedSidebar";
 import { useAuth } from "@/hooks/use-auth";
 import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
+import { getGetMeQueryKey } from "@workspace/api-client-react";
 import { Loader2, Mail, ArrowRight, RefreshCw } from "lucide-react";
 
 function VerifyEmailGate() {
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
+  const queryClient = useQueryClient();
+
+  // Poll every 10 seconds to detect verification from another tab/device
+  useEffect(() => {
+    const interval = setInterval(() => {
+      queryClient.invalidateQueries({ queryKey: getGetMeQueryKey() });
+    }, 10_000);
+    return () => clearInterval(interval);
+  }, [queryClient]);
 
   async function resend() {
     setSending(true);

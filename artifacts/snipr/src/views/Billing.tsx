@@ -8,7 +8,7 @@ import {
 import { useRouter, usePathname } from "next/navigation";
 
 interface Subscription {
-  plan: "free" | "pro" | "business";
+  plan: "free" | "starter" | "growth" | "pro" | "business" | "enterprise";
   status: string | null;
   subscriptionId: string | null;
   renewsAt: string | null;
@@ -22,23 +22,47 @@ const PLAN_META = {
     icon: Zap,
     color: "#8888A0",
     bg: "#F4F4F6",
-    features: ["Up to 10 links", "Basic analytics", "snipr.sh domain"],
+    features: ["10K clicks/month", "Basic short links", "snipr.sh domain"],
   },
-  pro: {
-    label: "Pro",
-    price: "$19/mo",
+  starter: {
+    label: "Starter",
+    price: "$4/mo",
+    icon: Zap,
+    color: "#4A9B7F",
+    bg: "#EDFAF5",
+    features: ["1M clicks/month", "Custom slugs", "Advanced analytics", "1 custom domain"],
+  },
+  growth: {
+    label: "Growth",
+    price: "$12/mo",
     icon: Star,
     color: "#728DA7",
     bg: "#EEF3F7",
-    features: ["Unlimited links", "Advanced analytics", "Custom domains", "AI insights", "Priority support"],
+    features: ["5M clicks/month", "3 custom domains", "Smart routing", "AI insights"],
+  },
+  pro: {
+    label: "Pro",
+    price: "$29/mo",
+    icon: Star,
+    color: "#7C5CC4",
+    bg: "#F0EBF9",
+    features: ["25M clicks/month", "10 custom domains", "Conversion tracking", "Priority support"],
   },
   business: {
     label: "Business",
-    price: "$49/mo",
+    price: "$79/mo",
     icon: Crown,
-    color: "#7C5CC4",
-    bg: "#F0EBF9",
-    features: ["Everything in Pro", "Team workspaces", "Conversion tracking", "API access", "Dedicated support"],
+    color: "#C45C5C",
+    bg: "#FDF0F0",
+    features: ["100M clicks/month", "Unlimited domains", "Team management", "API access"],
+  },
+  enterprise: {
+    label: "Enterprise",
+    price: "$149/mo",
+    icon: Crown,
+    color: "#C4945C",
+    bg: "#FDF5ED",
+    features: ["Unlimited clicks", "SLA guarantee", "Custom onboarding", "24/7 dedicated support"],
   },
 };
 
@@ -64,7 +88,7 @@ function StatusBadge({ status }: { status: string | null }) {
 export default function Billing() {
   const [sub, setSub] = useState<Subscription | null>(null);
   const [loading, setLoading] = useState(true);
-  const [upgrading, setUpgrading] = useState<string | null>(null);
+  const [upgrading, setUpgrading] = useState<"starter" | "growth" | "pro" | "business" | "enterprise" | null>(null);
   const [portalLoading, setPortalLoading] = useState(false);
   const location = usePathname();
 
@@ -80,7 +104,7 @@ export default function Billing() {
 
   const router = useRouter();
 
-  function handleUpgrade(plan: "pro" | "business") {
+  function handleUpgrade(plan: "starter" | "growth" | "pro" | "business" | "enterprise") {
     setUpgrading(plan);
     router.push(`/checkout?plan=${plan}`);
   }
@@ -102,8 +126,8 @@ export default function Billing() {
     }
   }
 
-  const currentPlan = sub?.plan ?? "free";
-  const meta = PLAN_META[currentPlan];
+  const currentPlan = (sub?.plan ?? "free") as keyof typeof PLAN_META;
+  const meta = PLAN_META[currentPlan] ?? PLAN_META.free;
   const PlanIcon = meta.icon;
 
   return (
@@ -189,12 +213,15 @@ export default function Billing() {
               )}
             </div>
 
-            {currentPlan !== "business" && (
+            {currentPlan !== "enterprise" && (
               <div className="bg-white rounded-2xl border border-[#E4E4EC] p-6">
                 <h2 className="text-[15px] font-bold text-[#0A0A0A] mb-4">Upgrade your plan</h2>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {(["pro", "business"] as const)
-                    .filter((p) => p !== currentPlan)
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {(["starter", "growth", "pro", "business", "enterprise"] as const)
+                    .filter((p) => {
+                      const order = ["free", "starter", "growth", "pro", "business", "enterprise"];
+                      return order.indexOf(p) > order.indexOf(currentPlan);
+                    })
                     .map((planKey) => {
                       const m = PLAN_META[planKey];
                       const Icon = m.icon;

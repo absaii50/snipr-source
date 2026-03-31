@@ -89,7 +89,7 @@ function classifyError(found: string | null, expected: string, rrtype: string): 
   if (rrtype === "CNAME" || rrtype === "A") {
     const lc = found.toLowerCase().replace(/\.$/, "");
     const expectedLc = expected.toLowerCase();
-    if (lc !== expectedLc && !lc.endsWith(".replit.app") && !lc.endsWith(".replit.dev")) {
+    if (lc !== expectedLc) {
       return "WRONG_TARGET";
     }
   }
@@ -98,7 +98,7 @@ function classifyError(found: string | null, expected: string, rrtype: string): 
 
 function isCnameOk(cname: string): boolean {
   const lc = cname.toLowerCase().replace(/\.$/, "");
-  return lc === CNAME_TARGET.toLowerCase() || lc.endsWith(".replit.app") || lc.endsWith(".replit.dev");
+  return lc === CNAME_TARGET.toLowerCase();
 }
 
 function buildDiagnosis(resolvers: ResolverResult[], checkType: "cname" | "a-record"): { diagnosis: string | null; suggestions: string[] } {

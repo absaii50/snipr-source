@@ -24,7 +24,7 @@ const pgPool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
 
 const app: Express = express();
 
-// Trust the first proxy hop (Replit's reverse proxy) so req.ip reflects real client IP
+// Trust the first proxy hop (Nginx/Cloudflare reverse proxy) so req.ip reflects real client IP
 app.set("trust proxy", 1);
 
 app.use(
@@ -81,18 +81,12 @@ const allowedOrigins = [
   "https://snipr.sh",
 ];
 
-// Replit dev domain patterns (*.replit.dev, *.riker.replit.dev, *.picard.replit.dev, *.sisko.replit.dev, etc.)
-const replitDevPattern = /^https:\/\/.+\.replit\.dev(:\d+)?$/;
-
 app.use(cors({
   origin: (origin, callback) => {
     if (!origin) {
       // Same-origin or server-to-server requests — allow
       callback(null, true);
     } else if (allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else if (replitDevPattern.test(origin)) {
-      // Allow all Replit dev preview domains
       callback(null, true);
     } else {
       callback(new Error("Not allowed by CORS policy"));
@@ -122,6 +116,7 @@ app.use(
     cookie: {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
+      sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
       maxAge: 7 * 24 * 60 * 60 * 1000,
     },
   }),
@@ -161,7 +156,7 @@ const passwordResetLimiter = rateLimit({
     recordRateLimitEvent(req.path, req.ip || "unknown");
     res.status(429).json({ error: "Too many password reset requests. Please try again later." });
   },
-  skip: (req) => isIpWhitelisted(req.ip || "") || req.method !== "POST" || (req.path !== "/auth/forgot-password" && req.path !== "/auth/reset-password"),
+  skip: (req) => isIpWhitelisted(req.ip || "") || req.method !== "POST" || (req.path !== "/auth/forgot-password" && req.path !== "/auth/reset-password" && req.path !== "/auth/resend-verification"),
 });
 
 const adminLoginLimiter = rateLimit({

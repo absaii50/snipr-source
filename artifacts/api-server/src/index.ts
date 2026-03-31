@@ -26,11 +26,6 @@ if (!process.env.STRIPE_WEBHOOK_SECRET) {
   logger.warn("STRIPE_WEBHOOK_SECRET not set — webhooks will not be verified");
 }
 
-app.listen(port, (err) => {
-  if (err) {
-    logger.error({ err }, "Error listening on port");
-    process.exit(1);
-  }
-
+app.listen(port, () => {
   logger.info({ port }, "Server listening");
 });

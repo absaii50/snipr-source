@@ -3,6 +3,8 @@ import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { CheckCircle2, XCircle, Loader2, ArrowRight } from "lucide-react";
 import Link from "next/link";
+import { useQueryClient } from "@tanstack/react-query";
+import { getGetMeQueryKey } from "@workspace/api-client-react";
 
 export default function VerifyEmail() {
   return (
@@ -19,6 +21,7 @@ export default function VerifyEmail() {
 function VerifyEmailInner() {
   const searchParams = useSearchParams();
   const token = searchParams.get("token");
+  const queryClient = useQueryClient();
   const [status, setStatus] = useState<"loading" | "success" | "error">("loading");
   const [message, setMessage] = useState("");
 
@@ -29,12 +32,19 @@ function VerifyEmailInner() {
       return;
     }
 
-    fetch(`/api/auth/verify-email?token=${token}`, { credentials: "include" })
+    fetch(`/api/auth/verify-email`, {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token }),
+    })
       .then(async (r) => {
         const data = await r.json();
         if (data.ok) {
           setStatus("success");
           setMessage(data.message || "Your email has been verified!");
+          // Invalidate the auth cache so ProtectedLayout sees emailVerified: true
+          queryClient.invalidateQueries({ queryKey: getGetMeQueryKey() });
         } else {
           setStatus("error");
           setMessage(data.error || "Verification failed. The link may have expired.");
@@ -44,7 +54,7 @@ function VerifyEmailInner() {
         setStatus("error");
         setMessage("Something went wrong. Please try again.");
       });
-  }, [token]);
+  }, [token, queryClient]);
 
   return (
     <div className="min-h-screen bg-[#080708] flex items-center justify-center px-4">

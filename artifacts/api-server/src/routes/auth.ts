@@ -237,8 +237,8 @@ router.get("/auth/context", requireAuth, async (req, res): Promise<void> => {
 });
 
 /* ── Email Verification ──────────────────────────────────────────── */
-router.get("/auth/verify-email", async (req, res): Promise<void> => {
-  const token = req.query.token as string;
+router.post("/auth/verify-email", async (req, res): Promise<void> => {
+  const token = (req.body?.token || req.query.token) as string;
   if (!token) {
     res.status(400).json({ error: "Token is required" });
     return;
@@ -256,6 +256,14 @@ router.get("/auth/verify-email", async (req, res): Promise<void> => {
 
   if (user.emailVerified) {
     res.json({ ok: true, message: "Email already verified" });
+    return;
+  }
+
+  // Verification tokens expire after 24 hours (based on when token was last set via updatedAt)
+  const tokenAge = Date.now() - new Date(user.updatedAt).getTime();
+  const TOKEN_EXPIRY_MS = 24 * 60 * 60 * 1000; // 24 hours
+  if (tokenAge > TOKEN_EXPIRY_MS) {
+    res.status(410).json({ error: "Verification link has expired. Please request a new one from the dashboard." });
     return;
   }
 

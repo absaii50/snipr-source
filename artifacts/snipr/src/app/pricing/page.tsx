@@ -11,7 +11,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Pricing | Snipr",
     description:
-      "Free forever plan. Pro at $19/mo. Business at $49/mo. No hidden fees.",
+      "Click-based pricing from $4/mo. Starter, Growth, Pro, Business, Enterprise. Up to 50% cheaper than Bitly and Short.io. No hidden fees.",
     url: "https://snipr.sh/pricing",
   },
 };

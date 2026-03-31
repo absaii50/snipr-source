@@ -31,7 +31,7 @@ interface PerformanceUser {
 }
 
 type SortKey = "clicks" | "links" | "avg" | "name";
-type PlanFilter = "all" | "free" | "pro" | "business";
+type PlanFilter = "all" | "free" | "starter" | "growth" | "pro" | "business" | "enterprise";
 type StatusFilter = "all" | "active" | "suspended";
 
 function PlanBadge({ plan }: { plan: string }) {
@@ -70,7 +70,7 @@ function MiniBar({ value, max }: { value: number; max: number }) {
   );
 }
 
-const PLAN_OPTIONS = ["free", "pro", "business"] as const;
+const PLAN_OPTIONS = ["free", "starter", "growth", "pro", "business", "enterprise"] as const;
 
 interface WorkspaceDetail {
   user: { id: string; name: string; email: string; plan: string; createdAt: string; suspendedAt: string | null; emailVerified: boolean };
@@ -265,7 +265,7 @@ export default function UsersTab() {
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex items-center gap-1 bg-white border border-[#E4E4EC] rounded-xl p-1">
-            {(["all", "free", "pro", "business"] as PlanFilter[]).map((p) => (
+            {(["all", "free", "starter", "growth", "pro", "business", "enterprise"] as PlanFilter[]).map((p) => (
               <button key={p} onClick={() => setPlan(p)}
                 className={`px-2.5 py-1.5 rounded-lg text-xs font-medium capitalize transition-all ${plan === p ? "bg-[#E8EEF4] text-[#4A7A94]" : "text-[#8888A0] hover:text-[#3A3A3E]"}`}>
                 {p}
@@ -324,7 +324,7 @@ export default function UsersTab() {
               className="px-2.5 py-1 rounded-lg text-xs font-medium bg-purple-50 text-purple-700 hover:bg-purple-100 disabled:opacity-40">Change Plan ▾</button>
             {bulkPlanOpen && (
               <div className="absolute right-0 top-full mt-1 w-32 bg-white border border-[#E4E4EC] rounded-xl shadow-xl z-20 overflow-hidden">
-                {["free", "pro", "business"].map((p) => (
+                {["free", "starter", "growth", "pro", "business", "enterprise"].map((p) => (
                   <button key={p} onClick={() => doBulkAction("change_plan", p)}
                     className="w-full text-left px-3 py-2 text-xs text-[#3A3A3E] hover:bg-[#F8F8FC] capitalize">{p}</button>
                 ))}

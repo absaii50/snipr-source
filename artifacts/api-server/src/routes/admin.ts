@@ -192,8 +192,8 @@ router.get("/admin/users", requireAdmin, async (req, res): Promise<void> => {
 
 router.patch("/admin/users/:id/plan", requireAdmin, async (req, res): Promise<void> => {
   const { plan } = req.body as { plan?: string };
-  if (!plan || !["free", "pro", "business"].includes(plan)) {
-    res.status(400).json({ error: "Invalid plan. Must be free, pro, or business." });
+  if (!plan || !["free", "starter", "growth", "pro", "business", "enterprise"].includes(plan)) {
+    res.status(400).json({ error: "Invalid plan. Must be free, starter, growth, pro, business, or enterprise." });
     return;
   }
 
@@ -1314,7 +1314,7 @@ router.post("/admin/users/bulk", requireAdmin, async (req, res): Promise<void> =
       break;
 
     case "change_plan":
-      if (!plan || !["free", "pro", "business"].includes(plan)) {
+      if (!plan || !["free", "starter", "growth", "pro", "business", "enterprise"].includes(plan)) {
         res.status(400).json({ error: "Invalid plan" });
         return;
       }
