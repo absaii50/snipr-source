@@ -50,27 +50,36 @@ async function logAuditAction(action: string, targetType: string | null, targetI
 router.post("/admin/login", async (req, res): Promise<void> => {
   const { username, password } = req.body ?? {};
 
-  // Validate inputs exist
   if (!username || !password || typeof username !== "string" || typeof password !== "string") {
     res.status(400).json({ error: "Username and password are required" });
     return;
   }
 
-  // Check if admin credentials are configured
-  if (!ADMIN_USERNAME || !ADMIN_PASSWORD_HASH) {
+  let effectiveUsername = ADMIN_USERNAME;
+  let effectiveHash = ADMIN_PASSWORD_HASH;
+
+  try {
+    const [cfgRow] = await db.select().from(platformSettingsTable).where(eq(platformSettingsTable.key, "platform_config"));
+    if (cfgRow) {
+      const cfg = JSON.parse(cfgRow.value);
+      if (cfg.admin_username) effectiveUsername = cfg.admin_username;
+    }
+    const [hashRow] = await db.select().from(platformSettingsTable).where(eq(platformSettingsTable.key, "admin_password_hash"));
+    if (hashRow?.value) effectiveHash = hashRow.value;
+  } catch {}
+
+  if (!effectiveUsername || !effectiveHash) {
     res.status(503).json({ error: "Admin authentication is not configured" });
     return;
   }
 
-  // Verify username matches
-  if (username !== ADMIN_USERNAME) {
+  if (username !== effectiveUsername) {
     res.status(401).json({ error: "Invalid credentials" });
     return;
   }
 
-  // Verify password using bcrypt
   try {
-    const isValid = await bcrypt.compare(password, ADMIN_PASSWORD_HASH);
+    const isValid = await bcrypt.compare(password, effectiveHash);
     if (!isValid) {
       res.status(401).json({ error: "Invalid credentials" });
       return;
@@ -1980,6 +1989,68 @@ router.post("/admin/notifications/send", requireAdmin, async (req, res): Promise
   }, req.ip);
 
   res.json({ ok: true, sent, failed, total: users.length });
+});
+
+// --- Platform Settings ---
+
+const PLATFORM_SETTINGS_KEY = "platform_config";
+
+interface PlatformConfig {
+  platform_name?: string;
+  support_email?: string;
+  default_domain?: string;
+  max_links_per_user?: string;
+  feature_user_registration?: boolean;
+  feature_custom_domains?: boolean;
+  feature_ai_insights?: boolean;
+  feature_api_access?: boolean;
+  feature_team_workspaces?: boolean;
+  feature_qr_codes?: boolean;
+  feature_link_expiry?: boolean;
+  limit_rate_per_min?: string;
+  limit_max_custom_domains?: string;
+  limit_click_retention_days?: string;
+  limit_max_team_members?: string;
+  admin_username?: string;
+  access_enforce_2fa?: boolean;
+  access_ip_allowlist?: boolean;
+}
+
+router.get("/admin/platform-settings", requireAdmin, async (_req, res): Promise<void> => {
+  const [row] = await db.select().from(platformSettingsTable).where(eq(platformSettingsTable.key, PLATFORM_SETTINGS_KEY));
+  if (!row) {
+    res.json({});
+    return;
+  }
+  try {
+    res.json(JSON.parse(row.value));
+  } catch {
+    res.json({});
+  }
+});
+
+router.post("/admin/platform-settings", requireAdmin, async (req, res): Promise<void> => {
+  const settings = req.body as PlatformConfig;
+  const value = JSON.stringify(settings);
+  await db.insert(platformSettingsTable)
+    .values({ key: PLATFORM_SETTINGS_KEY, value })
+    .onConflictDoUpdate({ target: platformSettingsTable.key, set: { value } });
+  await logAuditAction("update_platform_settings", "platform", null, { changedKeys: Object.keys(settings) }, req.ip);
+  res.json({ ok: true });
+});
+
+router.post("/admin/change-password", requireAdmin, async (req, res): Promise<void> => {
+  const { password } = req.body as { password: string };
+  if (!password || password.length < 4) {
+    res.status(400).json({ error: "Password must be at least 4 characters" });
+    return;
+  }
+  const hash = await bcrypt.hash(password, 12);
+  await db.insert(platformSettingsTable)
+    .values({ key: "admin_password_hash", value: hash })
+    .onConflictDoUpdate({ target: platformSettingsTable.key, set: { value: hash } });
+  await logAuditAction("change_admin_password", "platform", null, {}, req.ip);
+  res.json({ ok: true });
 });
 
 export default router;

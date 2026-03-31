@@ -22,8 +22,9 @@ function Section({ icon: Icon, title, children, badge }: {
   );
 }
 
-function FieldRow({ label, placeholder, type = "text", sub }: {
+function FieldRow({ label, placeholder, type = "text", sub, value, onChange }: {
   label: string; placeholder: string; type?: string; sub?: string;
+  value: string; onChange: (v: string) => void;
 }) {
   return (
     <div className="flex flex-col sm:flex-row sm:items-center gap-2 py-3 border-b border-[#F4F4F6] last:border-0">
@@ -31,22 +32,25 @@ function FieldRow({ label, placeholder, type = "text", sub }: {
         <div className="text-sm font-medium text-[#0A0A0A]">{label}</div>
         {sub && <div className="text-xs text-[#8888A0] mt-0.5">{sub}</div>}
       </div>
-      <input type={type} placeholder={placeholder} disabled
-        className="flex-1 px-3 py-2 rounded-xl border border-[#E4E4EC] bg-[#F8F8FC] text-sm text-[#8888A0] cursor-not-allowed" />
+      <input type={type} placeholder={placeholder} value={value} onChange={e => onChange(e.target.value)}
+        className="flex-1 px-3 py-2 rounded-xl border border-[#E4E4EC] bg-white text-sm text-[#0A0A0A] outline-none focus:border-[#728DA7] focus:ring-2 focus:ring-[#728DA7]/15 transition-all" />
     </div>
   );
 }
 
-function ToggleRow({ label, sub, defaultOn = false }: { label: string; sub?: string; defaultOn?: boolean }) {
+function ToggleRow({ label, sub, checked, onChange }: {
+  label: string; sub?: string; checked: boolean; onChange: (v: boolean) => void;
+}) {
   return (
     <div className="flex items-center justify-between py-3 border-b border-[#F4F4F6] last:border-0">
       <div>
         <div className="text-sm font-medium text-[#0A0A0A]">{label}</div>
         {sub && <div className="text-xs text-[#8888A0] mt-0.5">{sub}</div>}
       </div>
-      <div className={`w-10 h-[22px] rounded-full relative cursor-not-allowed opacity-60 ${defaultOn ? "bg-[#728DA7]" : "bg-[#C8C8D8]"}`}>
-        <div className={`absolute top-0.5 w-[18px] h-[18px] bg-white rounded-full shadow-sm transition-all ${defaultOn ? "left-[22px]" : "left-0.5"}`} />
-      </div>
+      <button onClick={() => onChange(!checked)}
+        className={`w-10 h-[22px] rounded-full relative transition-colors ${checked ? "bg-[#728DA7]" : "bg-[#C8C8D8]"}`}>
+        <div className={`absolute top-0.5 w-[18px] h-[18px] bg-white rounded-full shadow-sm transition-all ${checked ? "left-[22px]" : "left-0.5"}`} />
+      </button>
     </div>
   );
 }
@@ -144,6 +148,18 @@ export default function SettingsTab() {
   const [webhookUrl, setWebhookUrl] = useState("");
   const [announcement, setAnnouncement] = useState({ text: "", type: "info" as "info" | "warning" | "success" | "error", enabled: false });
   const [announcementSaving, setAnnouncementSaving] = useState(false);
+  const [platformCfg, setPlatformCfg] = useState({
+    platform_name: "", support_email: "", default_domain: "", max_links_per_user: "",
+    feature_user_registration: true, feature_custom_domains: true, feature_ai_insights: false,
+    feature_api_access: true, feature_team_workspaces: true, feature_qr_codes: true, feature_link_expiry: true,
+    limit_rate_per_min: "", limit_max_custom_domains: "", limit_click_retention_days: "", limit_max_team_members: "",
+    admin_username: "", access_enforce_2fa: false, access_ip_allowlist: false,
+  });
+  const [platformLoaded, setPlatformLoaded] = useState(false);
+  const [platformSaving, setPlatformSaving] = useState(false);
+  const [platformSaved, setPlatformSaved] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
+  const [passwordSaving, setPasswordSaving] = useState(false);
   const [rateLimits, setRateLimits] = useState<{ name: string; path: string; windowMs: number; max: number; effectiveMax: number; overridden: boolean; description: string }[]>([]);
   const [recentBlocked, setRecentBlocked] = useState<{ total: number; byPath: Record<string, number>; lastEvents: { path: string; ip: string; timestamp: string }[] } | null>(null);
   const [whitelist, setWhitelist] = useState<string[]>([]);
@@ -167,13 +183,48 @@ export default function SettingsTab() {
     finally { setLoadingStatus(false); }
   }, []);
 
-  useEffect(() => { loadBillingStatus(); loadAnnouncement(); loadRateLimits(); }, [loadBillingStatus]);
+  useEffect(() => { loadBillingStatus(); loadAnnouncement(); loadRateLimits(); loadPlatformSettings(); }, [loadBillingStatus]);
 
   async function loadAnnouncement() {
     try {
       const data = await apiFetch("/admin/announcement");
       if (data) setAnnouncement({ text: data.text || "", type: data.type || "info", enabled: data.enabled ?? false });
     } catch {}
+  }
+
+  async function loadPlatformSettings() {
+    try {
+      const data = await apiFetch("/admin/platform-settings");
+      if (data && Object.keys(data).length > 0) {
+        setPlatformCfg(prev => ({ ...prev, ...data }));
+      }
+      setPlatformLoaded(true);
+    } catch { setPlatformLoaded(true); }
+  }
+
+  async function savePlatformSettings() {
+    setPlatformSaving(true); setPlatformSaved(false);
+    try {
+      await apiFetch("/admin/platform-settings", { method: "POST", body: JSON.stringify(platformCfg) });
+      setPlatformSaved(true);
+      setTimeout(() => setPlatformSaved(false), 2000);
+    } catch { alert("Failed to save settings"); }
+    finally { setPlatformSaving(false); }
+  }
+
+  async function changePassword() {
+    if (!newPassword || newPassword.length < 4) { alert("Password must be at least 4 characters"); return; }
+    setPasswordSaving(true);
+    try {
+      await apiFetch("/admin/change-password", { method: "POST", body: JSON.stringify({ password: newPassword }) });
+      setNewPassword("");
+      alert("Password changed successfully. Use the new password on next login.");
+    } catch { alert("Failed to change password"); }
+    finally { setPasswordSaving(false); }
+  }
+
+  function setCfg<K extends keyof typeof platformCfg>(key: K, val: typeof platformCfg[K]) {
+    setPlatformCfg(prev => ({ ...prev, [key]: val }));
   }
 
   async function saveAnnouncement() {
@@ -254,16 +305,12 @@ export default function SettingsTab() {
 
   return (
     <div className="space-y-5 max-w-3xl">
-      {/* Notice */}
-      <div className="bg-[#FEF9E7] border border-[#F9E4A0] rounded-2xl px-5 py-4 flex items-start gap-3">
-        <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
-        <div>
-          <div className="text-sm font-semibold text-amber-700">Lemon Squeezy section is live — other settings are read-only</div>
-          <div className="text-xs text-amber-600 mt-0.5">
-            Billing credentials are fully configurable and saved to the database. General platform settings will be activated in a future update.
-          </div>
+      {platformSaved && (
+        <div className="bg-green-50 border border-green-200 rounded-2xl px-5 py-3 flex items-center gap-3">
+          <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0" />
+          <div className="text-sm font-medium text-green-700">Settings saved successfully</div>
         </div>
-      </div>
+      )}
 
       {/* ─── Lemon Squeezy ─────────────────────────────────────────── */}
       <Section icon={CreditCard} title="Lemon Squeezy Billing" badge="Live">
@@ -392,45 +439,89 @@ export default function SettingsTab() {
       {/* ─── General ─────────────────────────────────────────────── */}
       <Section icon={Globe} title="General Platform Settings">
         <div>
-          <FieldRow label="Platform name"    placeholder="Snipr"               sub="Shown in emails and UI" />
-          <FieldRow label="Support email"    placeholder="support@snipr.sh"    type="email" />
-          <FieldRow label="Default domain"   placeholder="snipr.sh"            sub="Base domain for short links" />
-          <FieldRow label="Max links / user" placeholder="10" type="number"    sub="Free tier limit" />
+          <FieldRow label="Platform name"    placeholder="Snipr"               sub="Shown in emails and UI"
+            value={platformCfg.platform_name} onChange={v => setCfg("platform_name", v)} />
+          <FieldRow label="Support email"    placeholder="support@snipr.sh"    type="email"
+            value={platformCfg.support_email} onChange={v => setCfg("support_email", v)} />
+          <FieldRow label="Default domain"   placeholder="snipr.sh"            sub="Base domain for short links"
+            value={platformCfg.default_domain} onChange={v => setCfg("default_domain", v)} />
+          <FieldRow label="Max links / user" placeholder="10" type="number"    sub="Free tier limit"
+            value={platformCfg.max_links_per_user} onChange={v => setCfg("max_links_per_user", v)} />
         </div>
       </Section>
 
       {/* ─── Feature Toggles ─────────────────────────────────────── */}
       <Section icon={ToggleLeft} title="Feature Toggles">
         <div>
-          <ToggleRow label="User registration"  sub="Allow new users to sign up"                          defaultOn />
-          <ToggleRow label="Custom domains"     sub="Allow users to connect their own domains"             defaultOn />
-          <ToggleRow label="AI Insights"        sub="Enable AI analysis for user workspaces" />
-          <ToggleRow label="API access"         sub="Allow users to generate API keys"                     defaultOn />
-          <ToggleRow label="Team workspaces"    sub="Allow users to invite team members"                   defaultOn />
-          <ToggleRow label="QR code downloads"  sub="Enable QR code generation on links"                   defaultOn />
-          <ToggleRow label="Link expiry"        sub="Allow setting expiration dates on links"               defaultOn />
+          <ToggleRow label="User registration"  sub="Allow new users to sign up"
+            checked={platformCfg.feature_user_registration} onChange={v => setCfg("feature_user_registration", v)} />
+          <ToggleRow label="Custom domains"     sub="Allow users to connect their own domains"
+            checked={platformCfg.feature_custom_domains} onChange={v => setCfg("feature_custom_domains", v)} />
+          <ToggleRow label="AI Insights"        sub="Enable AI analysis for user workspaces"
+            checked={platformCfg.feature_ai_insights} onChange={v => setCfg("feature_ai_insights", v)} />
+          <ToggleRow label="API access"         sub="Allow users to generate API keys"
+            checked={platformCfg.feature_api_access} onChange={v => setCfg("feature_api_access", v)} />
+          <ToggleRow label="Team workspaces"    sub="Allow users to invite team members"
+            checked={platformCfg.feature_team_workspaces} onChange={v => setCfg("feature_team_workspaces", v)} />
+          <ToggleRow label="QR code downloads"  sub="Enable QR code generation on links"
+            checked={platformCfg.feature_qr_codes} onChange={v => setCfg("feature_qr_codes", v)} />
+          <ToggleRow label="Link expiry"        sub="Allow setting expiration dates on links"
+            checked={platformCfg.feature_link_expiry} onChange={v => setCfg("feature_link_expiry", v)} />
         </div>
       </Section>
 
       {/* ─── Platform Limits ─────────────────────────────────────── */}
       <Section icon={Sliders} title="Platform Limits">
         <div>
-          <FieldRow label="Rate limit (req/min)"  placeholder="60"  type="number" sub="Per user API rate limit" />
-          <FieldRow label="Max custom domains"    placeholder="3"   type="number" sub="Per workspace (free tier)" />
-          <FieldRow label="Click data retention"  placeholder="365" type="number" sub="Days to retain click logs" />
-          <FieldRow label="Max team members"      placeholder="5"   type="number" sub="Per workspace (free tier)" />
+          <FieldRow label="Rate limit (req/min)"  placeholder="60"  type="number" sub="Per user API rate limit"
+            value={platformCfg.limit_rate_per_min} onChange={v => setCfg("limit_rate_per_min", v)} />
+          <FieldRow label="Max custom domains"    placeholder="3"   type="number" sub="Per workspace (free tier)"
+            value={platformCfg.limit_max_custom_domains} onChange={v => setCfg("limit_max_custom_domains", v)} />
+          <FieldRow label="Click data retention"  placeholder="365" type="number" sub="Days to retain click logs"
+            value={platformCfg.limit_click_retention_days} onChange={v => setCfg("limit_click_retention_days", v)} />
+          <FieldRow label="Max team members"      placeholder="5"   type="number" sub="Per workspace (free tier)"
+            value={platformCfg.limit_max_team_members} onChange={v => setCfg("limit_max_team_members", v)} />
         </div>
       </Section>
 
       {/* ─── Access Control ──────────────────────────────────────── */}
       <Section icon={ShieldCheck} title="Access Control">
         <div>
-          <FieldRow label="Admin username" placeholder="admin"    sub="Admin panel login username" />
-          <FieldRow label="Admin password" placeholder="••••••••" type="password" sub="Change admin password" />
-          <ToggleRow label="Enforce 2FA for admin" sub="Require TOTP on admin login" />
-          <ToggleRow label="IP allowlist"          sub="Restrict admin panel to specific IP ranges" />
+          <FieldRow label="Admin username" placeholder="admin" sub="Admin panel login username"
+            value={platformCfg.admin_username} onChange={v => setCfg("admin_username", v)} />
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 py-3 border-b border-[#F4F4F6]">
+            <div className="sm:w-48 shrink-0">
+              <div className="text-sm font-medium text-[#0A0A0A]">Admin password</div>
+              <div className="text-xs text-[#8888A0] mt-0.5">Change admin login password</div>
+            </div>
+            <div className="flex-1 flex gap-2">
+              <input type="password" placeholder="New password (min 4 chars)" value={newPassword}
+                onChange={e => setNewPassword(e.target.value)}
+                className="flex-1 px-3 py-2 rounded-xl border border-[#E4E4EC] bg-white text-sm text-[#0A0A0A] outline-none focus:border-[#728DA7] focus:ring-2 focus:ring-[#728DA7]/15 transition-all" />
+              <button onClick={changePassword} disabled={passwordSaving || newPassword.length < 4}
+                className="px-3 py-2 rounded-xl bg-[#0A0A0A] text-white text-xs font-semibold hover:bg-[#1A1A2E] disabled:opacity-40 disabled:cursor-not-allowed transition-all whitespace-nowrap">
+                {passwordSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Update"}
+              </button>
+            </div>
+          </div>
+          <ToggleRow label="Enforce 2FA for admin" sub="Require TOTP on admin login"
+            checked={platformCfg.access_enforce_2fa} onChange={v => setCfg("access_enforce_2fa", v)} />
+          <ToggleRow label="IP allowlist"          sub="Restrict admin panel to specific IP ranges"
+            checked={platformCfg.access_ip_allowlist} onChange={v => setCfg("access_ip_allowlist", v)} />
         </div>
       </Section>
+
+      {/* ─── Save All Settings ──────────────────────────────────── */}
+      <div className="flex items-center gap-3">
+        <button onClick={savePlatformSettings} disabled={platformSaving || !platformLoaded}
+          className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#0A0A0A] text-white text-sm font-semibold hover:bg-[#1A1A2E] disabled:opacity-40 disabled:cursor-not-allowed transition-all">
+          {platformSaving ? <Loader2 className="w-4 h-4 animate-spin" />
+            : platformSaved ? <CheckCircle2 className="w-4 h-4 text-green-400" />
+            : <Save className="w-4 h-4" />}
+          {platformSaving ? "Saving…" : platformSaved ? "Saved!" : "Save All Settings"}
+        </button>
+        {platformSaved && <span className="text-xs text-green-600 font-medium">Changes saved to database</span>}
+      </div>
 
       {/* ─── Announcement Banner ───────────────────────────────── */}
       <Section icon={Megaphone} title="Announcement Banner">
