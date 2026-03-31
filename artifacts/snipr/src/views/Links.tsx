@@ -6,17 +6,20 @@ import { LinkModal } from "@/components/LinkModal";
 import { QrModal } from "@/components/QrModal";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
-import { format } from "date-fns";
+import { format, formatDistanceToNow } from "date-fns";
 import type { Link } from "@workspace/api-client-react";
 import {
   Plus, Edit2, Trash2, QrCode, ExternalLink, LinkIcon,
   Search, Copy, Check, ToggleLeft, ToggleRight, Loader2,
   TrendingUp, MousePointerClick, ChevronDown, Globe, Layers,
   CheckSquare, Square, XCircle, FolderInput, FolderOpen, Tag, X,
+  LayoutList, LayoutGrid, ArrowUpRight, MoreHorizontal,
+  BarChart3, Filter,
 } from "lucide-react";
 
 type FilterType = "all" | "active" | "disabled";
 type SortType = "newest" | "oldest" | "name" | "clicks";
+type ViewMode = "list" | "grid";
 
 async function fetchLinkClicks({ signal }: { signal: AbortSignal }): Promise<Record<string, number>> {
   try {
@@ -42,9 +45,9 @@ function getDomain(url: string) {
   catch { return url; }
 }
 
-function Sparkline({ data }: { data: number[] }) {
+function Sparkline({ data, color = "#728DA7" }: { data: number[]; color?: string }) {
   const max = Math.max(...data, 1);
-  const w = 56, h = 24;
+  const w = 64, h = 28;
   const pts = data.map((v, i) => {
     const x = (i / (data.length - 1)) * w;
     const y = h - (v / max) * h;
@@ -53,24 +56,25 @@ function Sparkline({ data }: { data: number[] }) {
   const hasData = data.some((v) => v > 0);
   if (!hasData) {
     return (
-      <svg width={w} height={h} className="opacity-30">
+      <svg width={w} height={h} className="opacity-20">
         <polyline points={pts.join(" ")} fill="none" stroke="#CCCCDA" strokeWidth={1.5} strokeLinejoin="round" strokeLinecap="round" />
       </svg>
     );
   }
+  const gradId = `spk-${color.replace('#', '')}`;
   return (
     <svg width={w} height={h}>
       <defs>
-        <linearGradient id="spkGrad" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#728DA7" stopOpacity={0.3} />
-          <stop offset="100%" stopColor="#728DA7" stopOpacity={0} />
+        <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={color} stopOpacity={0.25} />
+          <stop offset="100%" stopColor={color} stopOpacity={0} />
         </linearGradient>
       </defs>
       <polygon
         points={`0,${h} ${pts.join(" ")} ${w},${h}`}
-        fill="url(#spkGrad)"
+        fill={`url(#${gradId})`}
       />
-      <polyline points={pts.join(" ")} fill="none" stroke="#728DA7" strokeWidth={1.5} strokeLinejoin="round" strokeLinecap="round" />
+      <polyline points={pts.join(" ")} fill="none" stroke={color} strokeWidth={1.5} strokeLinejoin="round" strokeLinecap="round" />
     </svg>
   );
 }
@@ -80,6 +84,8 @@ const COUNTRY_FLAGS: Record<string, string> = {
   JP: "🇯🇵", KR: "🇰🇷", CN: "🇨🇳", MX: "🇲🇽", IT: "🇮🇹", ES: "🇪🇸", NL: "🇳🇱", RU: "🇷🇺",
   PL: "🇵🇱", SE: "🇸🇪", NO: "🇳🇴", DK: "🇩🇰", FI: "🇫🇮", TR: "🇹🇷", ID: "🇮🇩", TH: "🇹🇭",
   SG: "🇸🇬", ZA: "🇿🇦", NG: "🇳🇬", EG: "🇪🇬", AR: "🇦🇷", CL: "🇨🇱", CO: "🇨🇴", PT: "🇵🇹",
+  PK: "🇵🇰", BD: "🇧🇩", VN: "🇻🇳", PH: "🇵🇭", MY: "🇲🇾", AE: "🇦🇪", SA: "🇸🇦", IE: "🇮🇪",
+  CH: "🇨🇭", AT: "🇦🇹", BE: "🇧🇪", NZ: "🇳🇿", IL: "🇮🇱", KE: "🇰🇪", GH: "🇬🇭", TZ: "🇹🇿",
 };
 
 export default function Links() {
@@ -127,6 +133,8 @@ export default function Links() {
   const [baseUrl, setBaseUrl] = useState("");
   const [folderFilter, setFolderFilter] = useState<string>("");
   const [tagFilter, setTagFilter] = useState<string>("");
+  const [viewMode, setViewMode] = useState<ViewMode>("list");
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 
   useEffect(() => {
     setBaseUrl(window.location.origin);
@@ -147,6 +155,13 @@ export default function Links() {
       window.history.replaceState({}, "", url.toString());
     }
   }, []);
+
+  useEffect(() => {
+    if (!openMenuId) return;
+    const handler = () => setOpenMenuId(null);
+    document.addEventListener("click", handler);
+    return () => document.removeEventListener("click", handler);
+  }, [openMenuId]);
 
   const filteredLinks = useMemo(() => {
     if (!links) return [];
@@ -182,6 +197,11 @@ export default function Links() {
     (tags as any[]).forEach((t) => { map[t.id] = { name: t.name, color: t.color }; });
     return map;
   }, [tags]);
+
+  const maxClicks = useMemo(() => {
+    if (!links) return 1;
+    return Math.max(...links.map((l) => clickCounts[l.id] ?? 0), 1);
+  }, [links, clickCounts]);
 
   const handleCreate = () => { setEditingLink(null); setIsModalOpen(true); };
   const handleEdit = (link: Link) => { setEditingLink(link); setIsModalOpen(true); };
@@ -300,41 +320,45 @@ export default function Links() {
   const totalLinks = links?.length ?? 0;
   const activeLinks = links?.filter((l) => l.enabled).length ?? 0;
   const totalClicks = Object.values(clickCounts).reduce((a, b) => a + b, 0);
+  const hasActiveFilters = folderFilter || tagFilter || search || filter !== "all";
 
   return (
     <ProtectedLayout>
-      <div className="px-7 py-7 max-w-[1200px] mx-auto w-full space-y-5">
+      <div className="px-4 sm:px-7 py-6 sm:py-7 max-w-[1200px] mx-auto w-full space-y-5 pt-14 lg:pt-6">
 
-        {/* ── Header ───────────────────────────────────────────────── */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <p className="text-[11px] font-semibold tracking-[0.2em] uppercase text-[#728DA7] mb-1">Manage</p>
-            <h1 className="text-[22px] font-bold tracking-tight text-[#0A0A0A]">Links</h1>
-            <p className="text-[13px] text-[#9090A0] mt-0.5">Shorten, track, and manage all your URLs.</p>
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-2xl bg-[#EEF3F7] flex items-center justify-center shrink-0">
+              <LinkIcon className="w-6 h-6 text-[#728DA7]" />
+            </div>
+            <div>
+              <p className="text-[10px] font-bold tracking-[0.22em] uppercase text-[#728DA7] mb-1">Manage</p>
+              <h1 className="text-[26px] font-display font-black tracking-tight text-[#0A0A0A] leading-none">Links</h1>
+              <p className="text-[13px] text-[#8888A0] mt-1">Shorten, track, and manage all your URLs</p>
+            </div>
           </div>
           <button
             onClick={handleCreate}
-            className="inline-flex items-center gap-2 bg-[#0A0A0A] hover:bg-[#1A1A2E] active:scale-[0.97] text-white text-[13px] font-semibold px-4 py-2.5 rounded-xl transition-all shadow-sm shrink-0"
+            className="inline-flex items-center gap-2 bg-[#0A0A0A] hover:bg-[#1A1A2E] active:scale-[0.97] text-white text-[13px] font-semibold px-5 py-2.5 rounded-xl transition-all shadow-sm shrink-0"
           >
-            <Plus className="w-3.5 h-3.5" />
+            <Plus className="w-4 h-4" />
             New Link
           </button>
         </div>
 
-        {/* ── KPI strip ─────────────────────────────────────────────── */}
-        <div className="grid grid-cols-3 gap-3.5">
+        <div className="grid grid-cols-3 gap-3">
           {[
-            { icon: <LinkIcon className="w-4 h-4 text-[#728DA7]" />, bg: "#EEF3F7", label: "Total Links", value: isLoading ? null : totalLinks },
-            { icon: <TrendingUp className="w-4 h-4 text-[#2E9A72]" />, bg: "#E8F7F1", label: "Active", value: isLoading ? null : activeLinks },
-            { icon: <MousePointerClick className="w-4 h-4 text-[#728DA7]" />, bg: "#EEF3F7", label: "All-Time Clicks", value: totalClicks },
+            { icon: <LinkIcon className="w-4 h-4 text-[#728DA7]" />, bg: "bg-[#EEF3F7]", label: "Total Links", value: isLoading ? null : totalLinks, accent: "#728DA7" },
+            { icon: <TrendingUp className="w-4 h-4 text-[#2E9A72]" />, bg: "bg-[#E8F7F1]", label: "Active", value: isLoading ? null : activeLinks, accent: "#2E9A72" },
+            { icon: <MousePointerClick className="w-4 h-4 text-[#7C5CC4]" />, bg: "bg-[#F0EBF9]", label: "All-Time Clicks", value: totalClicks, accent: "#7C5CC4" },
           ].map((s, i) => (
-            <div key={i} className="bg-white border border-[#EBEBF0] rounded-2xl p-4 flex items-center gap-3 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
-              <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: s.bg }}>
+            <div key={i} className="bg-white border border-[#EBEBF0] rounded-2xl p-3 sm:p-4 flex items-center gap-3 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+              <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${s.bg}`}>
                 {s.icon}
               </div>
-              <div>
-                <p className="text-[11px] text-[#A0A0AE] font-semibold tracking-wide">{s.label}</p>
-                <p className="text-[20px] font-bold text-[#0A0A0A] leading-tight tabular-nums">
+              <div className="min-w-0">
+                <p className="text-[10px] sm:text-[11px] text-[#A0A0AE] font-semibold tracking-wide truncate">{s.label}</p>
+                <p className="text-[18px] sm:text-[22px] font-bold text-[#0A0A0A] leading-tight tabular-nums">
                   {s.value === null ? <span className="inline-block w-8 h-5 bg-[#F2F2F6] animate-pulse rounded" /> : s.value.toLocaleString()}
                 </p>
               </div>
@@ -342,9 +366,8 @@ export default function Links() {
           ))}
         </div>
 
-        {/* ── Bulk action bar ─────────────────────────────────────────── */}
         {selectedIds.size > 0 && (
-          <div className="sticky top-4 z-20 bg-[#0A0A0A] text-white rounded-2xl px-5 py-3 flex items-center gap-4 shadow-lg animate-in slide-in-from-top-2 fade-in duration-200 flex-wrap">
+          <div className="sticky top-4 z-20 bg-[#0A0A0A] text-white rounded-2xl px-4 sm:px-5 py-3 flex items-center gap-3 sm:gap-4 shadow-lg animate-in slide-in-from-top-2 fade-in duration-200 flex-wrap">
             <span className="text-[13px] font-semibold shrink-0">{selectedIds.size} selected</span>
             <div className="flex-1 flex items-center gap-2 flex-wrap">
               <BulkBtn onClick={() => handleBulkAction("enable")} disabled={isBulkLoading} color="green">
@@ -401,63 +424,84 @@ export default function Links() {
           </div>
         )}
 
-        {/* ── Table card ────────────────────────────────────────────── */}
         <div className="bg-white border border-[#EBEBF0] rounded-2xl overflow-hidden shadow-[0_1px_4px_rgba(0,0,0,0.04)]">
 
-          {/* Toolbar */}
-          <div className="px-4 py-3 border-b border-[#F2F2F6] flex flex-col gap-2 bg-white">
+          <div className="px-4 sm:px-5 py-3.5 border-b border-[#F0F0F6] bg-[#FAFAFE]">
             <div className="flex flex-col sm:flex-row gap-2.5 items-start sm:items-center">
-              <div className="relative flex-1 min-w-0">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#CCCCDA] pointer-events-none" />
+              <div className="relative flex-1 min-w-0 w-full sm:w-auto">
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#C0C0CC] pointer-events-none" />
                 <input
                   type="text"
-                  placeholder="Search slug, title, or URL…"
+                  placeholder="Search by slug, title, or URL…"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="w-full pl-8.5 pr-4 py-2 text-[13px] bg-[#F6F6F9] border border-transparent rounded-xl outline-none focus:border-[#728DA7] focus:bg-white focus:ring-2 focus:ring-[#728DA7]/10 transition-all placeholder:text-[#C0C0CC]"
-                  style={{ paddingLeft: "2.25rem" }}
+                  className="w-full pl-10 pr-4 py-2.5 text-[13px] bg-white border border-[#E4E4EC] rounded-xl outline-none focus:border-[#728DA7] focus:ring-2 focus:ring-[#728DA7]/10 transition-all placeholder:text-[#C0C0CC]"
                 />
-              </div>
-
-              <div className="flex gap-0.5 bg-[#F2F2F6] rounded-xl p-1 shrink-0">
-                {(["all", "active", "disabled"] as FilterType[]).map((f) => (
-                  <button
-                    key={f}
-                    onClick={() => setFilter(f)}
-                    className={`px-3 py-1.5 text-[12px] font-semibold rounded-lg transition-all capitalize ${
-                      filter === f ? "bg-white text-[#0A0A0A] shadow-sm" : "text-[#9090A0] hover:text-[#0A0A0A]"
-                    }`}
-                  >
-                    {f === "all" ? `All (${totalLinks})` : f === "active" ? `Active (${activeLinks})` : `Off (${totalLinks - activeLinks})`}
+                {search && (
+                  <button onClick={() => setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#C0C0CC] hover:text-[#0A0A0A] transition-colors">
+                    <X className="w-3.5 h-3.5" />
                   </button>
-                ))}
+                )}
               </div>
 
-              <div className="relative shrink-0">
-                <select
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value as SortType)}
-                  className="pl-3 pr-8 py-2 text-[12px] font-medium bg-[#F2F2F6] border border-transparent rounded-xl outline-none cursor-pointer appearance-none text-[#3A3A3E] hover:bg-[#EAEAF0] transition-colors"
-                >
-                  <option value="newest">Newest first</option>
-                  <option value="oldest">Oldest first</option>
-                  <option value="name">Name A–Z</option>
-                  <option value="clicks">Most clicks</option>
-                </select>
-                <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-[#B0B0BA] pointer-events-none" />
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <div className="flex gap-0.5 bg-[#F0F0F6] rounded-xl p-1 flex-1 sm:flex-initial">
+                  {(["all", "active", "disabled"] as FilterType[]).map((f) => (
+                    <button
+                      key={f}
+                      onClick={() => setFilter(f)}
+                      className={`px-3 py-1.5 text-[12px] font-semibold rounded-lg transition-all capitalize flex-1 sm:flex-initial ${
+                        filter === f ? "bg-white text-[#0A0A0A] shadow-sm" : "text-[#9090A0] hover:text-[#0A0A0A]"
+                      }`}
+                    >
+                      {f === "all" ? `All (${totalLinks})` : f === "active" ? `Active (${activeLinks})` : `Off (${totalLinks - activeLinks})`}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="relative shrink-0">
+                  <select
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value as SortType)}
+                    className="pl-3 pr-7 py-2 text-[12px] font-medium bg-[#F0F0F6] border border-transparent rounded-xl outline-none cursor-pointer appearance-none text-[#3A3A3E] hover:bg-[#E6E6EE] transition-colors"
+                  >
+                    <option value="newest">Newest</option>
+                    <option value="oldest">Oldest</option>
+                    <option value="name">A–Z</option>
+                    <option value="clicks">Clicks</option>
+                  </select>
+                  <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-[#B0B0BA] pointer-events-none" />
+                </div>
+
+                <div className="hidden sm:flex gap-0.5 bg-[#F0F0F6] rounded-xl p-1 shrink-0">
+                  <button
+                    onClick={() => setViewMode("list")}
+                    className={`p-1.5 rounded-lg transition-all ${viewMode === "list" ? "bg-white text-[#0A0A0A] shadow-sm" : "text-[#B0B0BA] hover:text-[#0A0A0A]"}`}
+                    title="List view"
+                  >
+                    <LayoutList className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    onClick={() => setViewMode("grid")}
+                    className={`p-1.5 rounded-lg transition-all ${viewMode === "grid" ? "bg-white text-[#0A0A0A] shadow-sm" : "text-[#B0B0BA] hover:text-[#0A0A0A]"}`}
+                    title="Grid view"
+                  >
+                    <LayoutGrid className="w-3.5 h-3.5" />
+                  </button>
+                </div>
               </div>
             </div>
 
-            {/* Folder + Tag filter row */}
             {((folders as any[]).length > 0 || (tags as any[]).length > 0) && (
-              <div className="flex flex-wrap gap-2 items-center">
+              <div className="flex flex-wrap gap-2 items-center mt-2.5 pt-2.5 border-t border-[#F0F0F6]">
+                <Filter className="w-3.5 h-3.5 text-[#C0C0CC] shrink-0" />
                 {(folders as any[]).length > 0 && (
                   <div className="relative shrink-0">
                     <FolderOpen className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#728DA7] pointer-events-none" />
                     <select
                       value={folderFilter}
                       onChange={(e) => setFolderFilter(e.target.value)}
-                      className="pl-8 pr-7 py-1.5 text-[12px] font-medium bg-[#F6F6F9] border border-transparent rounded-xl outline-none cursor-pointer appearance-none text-[#3A3A3E] hover:bg-[#EAEAF0] transition-colors"
+                      className="pl-8 pr-7 py-1.5 text-[12px] font-medium bg-white border border-[#E4E4EC] rounded-xl outline-none cursor-pointer appearance-none text-[#3A3A3E] hover:border-[#728DA7] transition-colors"
                     >
                       <option value="">All folders</option>
                       {(folders as any[]).map((f) => (
@@ -473,7 +517,7 @@ export default function Links() {
                     <select
                       value={tagFilter}
                       onChange={(e) => setTagFilter(e.target.value)}
-                      className="pl-8 pr-7 py-1.5 text-[12px] font-medium bg-[#F6F6F9] border border-transparent rounded-xl outline-none cursor-pointer appearance-none text-[#3A3A3E] hover:bg-[#EAEAF0] transition-colors"
+                      className="pl-8 pr-7 py-1.5 text-[12px] font-medium bg-white border border-[#E4E4EC] rounded-xl outline-none cursor-pointer appearance-none text-[#3A3A3E] hover:border-[#728DA7] transition-colors"
                     >
                       <option value="">All tags</option>
                       {(tags as any[]).map((t) => (
@@ -483,50 +527,77 @@ export default function Links() {
                     <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-[#B0B0BA] pointer-events-none" />
                   </div>
                 )}
-                {(folderFilter || tagFilter) && (
+                {hasActiveFilters && (
                   <button
-                    onClick={() => { setFolderFilter(""); setTagFilter(""); }}
-                    className="flex items-center gap-1 text-[11px] font-medium text-[#9090A0] hover:text-[#E05050] transition-colors"
+                    onClick={() => { setFolderFilter(""); setTagFilter(""); setSearch(""); setFilter("all"); }}
+                    className="flex items-center gap-1 text-[11px] font-semibold text-[#9090A0] hover:text-[#E05050] transition-colors ml-1"
                   >
-                    <X className="w-3 h-3" /> Clear filters
+                    <X className="w-3 h-3" /> Clear all
                   </button>
                 )}
               </div>
             )}
           </div>
 
-          {/* Table body */}
           {isLoading ? (
-            <div className="h-52 flex items-center justify-center">
-              <Loader2 className="w-5 h-5 animate-spin text-[#728DA7]/30" />
+            <div className="py-20 flex flex-col items-center justify-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-[#F2F2F6] flex items-center justify-center">
+                <Loader2 className="w-5 h-5 animate-spin text-[#728DA7]" />
+              </div>
+              <p className="text-[13px] text-[#9090A0]">Loading links…</p>
             </div>
           ) : filteredLinks.length === 0 ? (
             <div className="py-20 flex flex-col items-center justify-center gap-4 text-center px-6">
-              <div className="w-14 h-14 rounded-2xl bg-[#F2F2F6] flex items-center justify-center">
-                <LinkIcon className="w-6 h-6 text-[#CCCCDA]" />
+              <div className="w-16 h-16 rounded-2xl bg-[#F2F2F6] flex items-center justify-center">
+                <LinkIcon className="w-7 h-7 text-[#CCCCDA]" />
               </div>
               <div>
-                <p className="text-[14px] font-semibold text-[#0A0A0A]">
+                <p className="text-[15px] font-semibold text-[#0A0A0A]">
                   {search ? "No links match your search" : "No links yet"}
                 </p>
-                <p className="text-[12px] text-[#9090A0] mt-1">
-                  {search ? "Try a different keyword or clear the search." : "Create your first short link to get started."}
+                <p className="text-[13px] text-[#9090A0] mt-1 max-w-[300px]">
+                  {search ? "Try a different keyword or clear the search." : "Create your first short link to start tracking clicks and conversions."}
                 </p>
               </div>
               {!search && (
                 <button
                   onClick={handleCreate}
-                  className="inline-flex items-center gap-2 bg-[#0A0A0A] hover:bg-[#1A1A2E] text-white text-[12px] font-semibold px-4 py-2 rounded-xl transition-all active:scale-[0.97]"
+                  className="inline-flex items-center gap-2 bg-[#0A0A0A] hover:bg-[#1A1A2E] text-white text-[13px] font-semibold px-5 py-2.5 rounded-xl transition-all active:scale-[0.97]"
                 >
-                  <Plus className="w-3.5 h-3.5" />
-                  Create first link
+                  <Plus className="w-4 h-4" />
+                  Create your first link
                 </button>
               )}
             </div>
+          ) : viewMode === "grid" ? (
+            <div className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {filteredLinks.map((link) => (
+                <LinkGridCard
+                  key={link.id}
+                  link={link}
+                  clicks={clickCounts[link.id] ?? 0}
+                  maxClicks={maxClicks}
+                  sparkline={sparklines[link.id]?.sparkline ?? [0, 0, 0, 0, 0, 0, 0]}
+                  topCountry={sparklines[link.id]?.topCountry ?? null}
+                  shortUrl={getShortUrl(link)}
+                  isCopied={copiedId === link.id}
+                  isSelected={selectedIds.has(link.id)}
+                  folderMap={folderMap}
+                  onCopy={() => handleCopy(link)}
+                  onEdit={() => handleEdit(link)}
+                  onDelete={() => handleDelete(link.id)}
+                  onToggle={() => handleToggle(link)}
+                  onQr={() => setQrLink(link)}
+                  onDuplicate={() => handleDuplicate(link)}
+                  onSelect={() => toggleSelect(link.id)}
+                  isToggling={togglingId === link.id}
+                  isDuplicating={duplicatingId === link.id}
+                />
+              ))}
+            </div>
           ) : (
             <div>
-              {/* Table header */}
-              <div className="hidden md:grid grid-cols-[28px_1fr_1fr_56px_80px_90px_90px_168px] gap-2 px-5 py-2.5 bg-[#FAFAFA] border-b border-[#F2F2F6] items-center">
+              <div className="hidden md:grid grid-cols-[32px_1fr_1fr_72px_80px_80px_90px_140px] gap-2 px-5 py-2.5 bg-[#FAFAFE] border-b border-[#F0F0F6] items-center">
                 <button
                   onClick={toggleSelectAll}
                   className="text-[#B0B0BA] hover:text-[#728DA7] transition-colors"
@@ -536,173 +607,42 @@ export default function Links() {
                     ? <CheckSquare className="w-4 h-4 text-[#728DA7]" />
                     : <Square className="w-4 h-4" />}
                 </button>
-                {["Short Link", "Destination", "7d", "Clicks", "Status", "Created", "Actions"].map((h) => (
-                  <span key={h} className="text-[11px] font-semibold text-[#B0B0BA] uppercase tracking-wider last:text-right">
+                {["Link", "Destination", "7 day", "Clicks", "Status", "Created", ""].map((h) => (
+                  <span key={h} className="text-[10px] font-bold text-[#B0B0BA] uppercase tracking-wider last:text-right">
                     {h}
                   </span>
                 ))}
               </div>
 
-              {/* Rows */}
               <div className="divide-y divide-[#F5F5F8]">
-                {filteredLinks.map((link) => {
-                  const shortUrl = getShortUrl(link);
-                  const clicks = clickCounts[link.id] ?? 0;
-                  const isCopied = copiedId === link.id;
-                  const isToggling = togglingId === link.id;
-                  const isDuplicating = duplicatingId === link.id;
-                  const isSelected = selectedIds.has(link.id);
-                  const domain = getDomain(link.destinationUrl);
-                  const spData = sparklines[link.id];
-                  const sparkline = spData?.sparkline ?? [0, 0, 0, 0, 0, 0, 0];
-                  const topCountry = spData?.topCountry ?? null;
-                  const countryFlag = topCountry ? (COUNTRY_FLAGS[topCountry] ?? topCountry) : null;
-
-                  return (
-                    <div
-                      key={link.id}
-                      className={`grid grid-cols-1 md:grid-cols-[28px_1fr_1fr_56px_80px_90px_90px_168px] gap-2 px-5 py-3.5 hover:bg-[#FAFAFA] transition-colors group items-center ${isSelected ? "bg-[#F4F8FF]" : ""}`}
-                    >
-                      {/* Checkbox */}
-                      <button
-                        onClick={() => toggleSelect(link.id)}
-                        className="hidden md:flex text-[#C0C0CC] hover:text-[#728DA7] transition-colors"
-                      >
-                        {isSelected
-                          ? <CheckSquare className="w-4 h-4 text-[#728DA7]" />
-                          : <Square className="w-4 h-4" />}
-                      </button>
-
-                      {/* Short link */}
-                      <div className="flex flex-col min-w-0">
-                        <span className="text-[13px] font-semibold text-[#2D6A8A] truncate">
-                          /{link.slug}
-                        </span>
-                        {link.title && (
-                          <span className="text-[11px] text-[#B0B0BA] truncate mt-0.5">{link.title}</span>
-                        )}
-                        {/* Folder + tag badges */}
-                        {(() => {
-                          const linkFolderId = (link as any).folderId;
-                          const linkTags: Array<{ id: string; name: string; color: string }> = (link as any).tags ?? [];
-                          if (!linkFolderId && linkTags.length === 0) return null;
-                          const folder = linkFolderId ? folderMap[linkFolderId] : null;
-                          return (
-                            <div className="flex flex-wrap gap-1 mt-1">
-                              {folder && (
-                                <span
-                                  className="inline-flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-md"
-                                  style={{ backgroundColor: `${folder.color}18`, color: folder.color }}
-                                >
-                                  <FolderOpen className="w-2.5 h-2.5" />
-                                  {folder.name}
-                                </span>
-                              )}
-                              {linkTags.map((t) => (
-                                <span
-                                  key={t.id}
-                                  className="inline-flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-md"
-                                  style={{ backgroundColor: `${t.color}18`, color: t.color }}
-                                >
-                                  <Tag className="w-2.5 h-2.5" />
-                                  {t.name}
-                                </span>
-                              ))}
-                            </div>
-                          );
-                        })()}
-                      </div>
-
-                      {/* Destination */}
-                      <div className="min-w-0 hidden md:flex items-center gap-1.5">
-                        <img
-                          src={`https://www.google.com/s2/favicons?domain=${domain}&sz=16`}
-                          alt=""
-                          className="w-3.5 h-3.5 rounded shrink-0 opacity-70"
-                          onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
-                        />
-                        <span className="text-[12px] text-[#9090A0] truncate" title={link.destinationUrl}>
-                          {link.destinationUrl}
-                        </span>
-                      </div>
-
-                      {/* 7d Sparkline + country */}
-                      <div className="hidden md:flex flex-col items-center gap-0.5">
-                        <Sparkline data={sparkline} />
-                        {countryFlag && (
-                          <span className="text-[10px]" title={topCountry ?? ""}>{countryFlag}</span>
-                        )}
-                      </div>
-
-                      {/* Clicks */}
-                      <div className="hidden md:flex items-center justify-end">
-                        <span className="text-[13px] font-semibold text-[#0A0A0A] tabular-nums">{clicks.toLocaleString()}</span>
-                      </div>
-
-                      {/* Status toggle */}
-                      <div className="hidden md:flex items-center">
-                        <button
-                          onClick={() => handleToggle(link)}
-                          disabled={isToggling}
-                          className={`inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1.5 rounded-full transition-all ${
-                            link.enabled
-                              ? "bg-[#E8F7F1] text-[#2E9A72] hover:bg-[#D4F0E4]"
-                              : "bg-[#F2F2F6] text-[#9090A0] hover:bg-[#EAEAF0]"
-                          } disabled:opacity-50`}
-                          title={link.enabled ? "Click to disable" : "Click to enable"}
-                        >
-                          {isToggling ? (
-                            <Loader2 className="w-3 h-3 animate-spin" />
-                          ) : link.enabled ? (
-                            <ToggleRight className="w-3.5 h-3.5" />
-                          ) : (
-                            <ToggleLeft className="w-3.5 h-3.5" />
-                          )}
-                          {link.enabled ? "Live" : "Off"}
-                        </button>
-                      </div>
-
-                      {/* Created */}
-                      <div className="hidden md:block">
-                        <span className="text-[12px] text-[#B0B0BA]">
-                          {format(new Date(link.createdAt), "MMM d, yyyy")}
-                        </span>
-                      </div>
-
-                      {/* Actions */}
-                      <div className="flex items-center justify-end gap-0.5">
-                        <ActionBtn onClick={() => handleCopy(link)} title="Copy link" active={isCopied} variant="copy">
-                          {isCopied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                        </ActionBtn>
-                        <a
-                          href={shortUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="w-8 h-8 flex items-center justify-center rounded-xl text-[#C0C0CC] hover:text-[#728DA7] hover:bg-[#EEF3F7] transition-all"
-                          title="Open link"
-                        >
-                          <ExternalLink className="w-3.5 h-3.5" />
-                        </a>
-                        <ActionBtn onClick={() => setQrLink(link)} title="QR Code">
-                          <QrCode className="w-3.5 h-3.5" />
-                        </ActionBtn>
-                        <ActionBtn onClick={() => handleDuplicate(link)} title="Duplicate link" disabled={isDuplicating}>
-                          {isDuplicating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Layers className="w-3.5 h-3.5" />}
-                        </ActionBtn>
-                        <ActionBtn onClick={() => handleEdit(link)} title="Edit">
-                          <Edit2 className="w-3.5 h-3.5" />
-                        </ActionBtn>
-                        <ActionBtn onClick={() => handleDelete(link.id)} title="Delete" variant="danger">
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </ActionBtn>
-                      </div>
-                    </div>
-                  );
-                })}
+                {filteredLinks.map((link) => (
+                  <LinkListRow
+                    key={link.id}
+                    link={link}
+                    clicks={clickCounts[link.id] ?? 0}
+                    maxClicks={maxClicks}
+                    sparkline={sparklines[link.id]?.sparkline ?? [0, 0, 0, 0, 0, 0, 0]}
+                    topCountry={sparklines[link.id]?.topCountry ?? null}
+                    shortUrl={getShortUrl(link)}
+                    isCopied={copiedId === link.id}
+                    isSelected={selectedIds.has(link.id)}
+                    folderMap={folderMap}
+                    onCopy={() => handleCopy(link)}
+                    onEdit={() => handleEdit(link)}
+                    onDelete={() => handleDelete(link.id)}
+                    onToggle={() => handleToggle(link)}
+                    onQr={() => setQrLink(link)}
+                    onDuplicate={() => handleDuplicate(link)}
+                    onSelect={() => toggleSelect(link.id)}
+                    isToggling={togglingId === link.id}
+                    isDuplicating={duplicatingId === link.id}
+                    openMenuId={openMenuId}
+                    setOpenMenuId={setOpenMenuId}
+                  />
+                ))}
               </div>
 
-              {/* Footer count */}
-              <div className="px-5 py-3 border-t border-[#F2F2F6] bg-[#FAFAFA] flex items-center justify-between">
+              <div className="px-5 py-3 border-t border-[#F0F0F6] bg-[#FAFAFE] flex items-center justify-between">
                 <p className="text-[11px] text-[#B0B0BA]">
                   Showing <span className="font-semibold text-[#0A0A0A]">{filteredLinks.length}</span> of{" "}
                   <span className="font-semibold text-[#0A0A0A]">{totalLinks}</span> links
@@ -727,26 +667,294 @@ export default function Links() {
   );
 }
 
-function ActionBtn({
-  children, onClick, title, variant, active, disabled,
+function LinkListRow({
+  link, clicks, maxClicks, sparkline, topCountry, shortUrl, isCopied, isSelected, folderMap,
+  onCopy, onEdit, onDelete, onToggle, onQr, onDuplicate, onSelect, isToggling, isDuplicating,
+  openMenuId, setOpenMenuId,
 }: {
-  children: React.ReactNode;
-  onClick?: () => void;
-  title?: string;
-  variant?: "default" | "danger" | "copy";
-  active?: boolean;
-  disabled?: boolean;
+  link: Link; clicks: number; maxClicks: number; sparkline: number[]; topCountry: string | null;
+  shortUrl: string; isCopied: boolean; isSelected: boolean;
+  folderMap: Record<string, { name: string; color: string }>;
+  onCopy: () => void; onEdit: () => void; onDelete: () => void; onToggle: () => void;
+  onQr: () => void; onDuplicate: () => void; onSelect: () => void;
+  isToggling: boolean; isDuplicating: boolean;
+  openMenuId: string | null; setOpenMenuId: (id: string | null) => void;
 }) {
-  const base = "w-8 h-8 flex items-center justify-center rounded-xl transition-all shrink-0 disabled:opacity-50 disabled:cursor-not-allowed";
-  const styles = {
-    default: "text-[#C0C0CC] hover:text-[#728DA7] hover:bg-[#EEF3F7]",
-    danger: "text-[#C0C0CC] hover:text-[#E05050] hover:bg-[#FFF0F0]",
-    copy: active
-      ? "text-[#2E9A72] bg-[#E8F7F1]"
-      : "text-[#C0C0CC] hover:text-[#728DA7] hover:bg-[#EEF3F7]",
-  };
+  const domain = getDomain(link.destinationUrl);
+  const countryFlag = topCountry ? (COUNTRY_FLAGS[topCountry] ?? topCountry) : null;
+  const linkFolderId = (link as any).folderId;
+  const linkTags: Array<{ id: string; name: string; color: string }> = (link as any).tags ?? [];
+  const folder = linkFolderId ? folderMap[linkFolderId] : null;
+  const clickPercent = maxClicks > 0 ? (clicks / maxClicks) * 100 : 0;
+
   return (
-    <button onClick={onClick} title={title} disabled={disabled} className={`${base} ${styles[variant ?? "default"]}`}>
+    <div className={`group transition-colors ${isSelected ? "bg-[#F4F8FF]" : "hover:bg-[#FAFAFE]"}`}>
+      <div className="hidden md:grid grid-cols-[32px_1fr_1fr_72px_80px_80px_90px_140px] gap-2 px-5 py-3.5 items-center">
+        <button onClick={onSelect} className="text-[#C0C0CC] hover:text-[#728DA7] transition-colors">
+          {isSelected ? <CheckSquare className="w-4 h-4 text-[#728DA7]" /> : <Square className="w-4 h-4" />}
+        </button>
+
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-8 h-8 rounded-lg bg-[#F2F2F6] flex items-center justify-center shrink-0 overflow-hidden">
+            <img
+              src={`https://www.google.com/s2/favicons?domain=${domain}&sz=32`}
+              alt=""
+              className="w-5 h-5 rounded"
+              onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; (e.target as HTMLImageElement).parentElement!.innerHTML = '<svg class="w-4 h-4 text-[#C0C0CC]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>'; }}
+            />
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-1.5">
+              <span className="text-[13px] font-semibold text-[#0A0A0A] truncate">/{link.slug}</span>
+              {!link.enabled && (
+                <span className="shrink-0 text-[9px] font-bold uppercase tracking-wider text-[#E05050] bg-[#FFF0F0] px-1.5 py-0.5 rounded">off</span>
+              )}
+            </div>
+            {link.title && <span className="text-[11px] text-[#9090A0] truncate block">{link.title}</span>}
+            {(folder || linkTags.length > 0) && (
+              <div className="flex flex-wrap gap-1 mt-1">
+                {folder && (
+                  <span className="inline-flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-md" style={{ backgroundColor: `${folder.color}15`, color: folder.color }}>
+                    <FolderOpen className="w-2.5 h-2.5" />{folder.name}
+                  </span>
+                )}
+                {linkTags.map((t) => (
+                  <span key={t.id} className="inline-flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-md" style={{ backgroundColor: `${t.color}15`, color: t.color }}>
+                    <Tag className="w-2.5 h-2.5" />{t.name}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="min-w-0 flex items-center gap-2">
+          <span className="text-[12px] text-[#9090A0] truncate" title={link.destinationUrl}>
+            {link.destinationUrl}
+          </span>
+        </div>
+
+        <div className="flex flex-col items-center gap-0.5">
+          <Sparkline data={sparkline} color={clicks > 0 ? "#728DA7" : "#CCCCDA"} />
+          {countryFlag && <span className="text-[10px]" title={topCountry ?? ""}>{countryFlag}</span>}
+        </div>
+
+        <div className="flex flex-col items-end gap-0.5">
+          <span className="text-[13px] font-bold text-[#0A0A0A] tabular-nums">{clicks.toLocaleString()}</span>
+          <div className="w-full h-1 bg-[#F2F2F6] rounded-full overflow-hidden">
+            <div className="h-full rounded-full transition-all duration-500" style={{ width: `${clickPercent}%`, backgroundColor: clickPercent > 60 ? "#2E9A72" : clickPercent > 20 ? "#728DA7" : "#C0C0CC" }} />
+          </div>
+        </div>
+
+        <div>
+          <button
+            onClick={onToggle}
+            disabled={isToggling}
+            className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1.5 rounded-full transition-all ${
+              link.enabled
+                ? "bg-[#E8F7F1] text-[#2E9A72] hover:bg-[#D4F0E4]"
+                : "bg-[#F2F2F6] text-[#9090A0] hover:bg-[#EAEAF0]"
+            } disabled:opacity-50`}
+          >
+            {isToggling ? <Loader2 className="w-3 h-3 animate-spin" /> : link.enabled ? <ToggleRight className="w-3.5 h-3.5" /> : <ToggleLeft className="w-3.5 h-3.5" />}
+            {link.enabled ? "Live" : "Off"}
+          </button>
+        </div>
+
+        <div className="text-[11px] text-[#B0B0BA]" title={format(new Date(link.createdAt), "MMM d, yyyy h:mm a")}>
+          {formatDistanceToNow(new Date(link.createdAt), { addSuffix: true })}
+        </div>
+
+        <div className="flex items-center justify-end gap-0.5">
+          <button
+            onClick={onCopy}
+            className={`w-8 h-8 flex items-center justify-center rounded-xl transition-all shrink-0 ${isCopied ? "text-[#2E9A72] bg-[#E8F7F1]" : "text-[#C0C0CC] hover:text-[#728DA7] hover:bg-[#EEF3F7]"}`}
+            title="Copy short URL"
+          >
+            {isCopied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+          </button>
+          <a
+            href={shortUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="w-8 h-8 flex items-center justify-center rounded-xl text-[#C0C0CC] hover:text-[#728DA7] hover:bg-[#EEF3F7] transition-all"
+            title="Open link"
+          >
+            <ArrowUpRight className="w-3.5 h-3.5" />
+          </a>
+          <div className="relative">
+            <button
+              onClick={(e) => { e.stopPropagation(); setOpenMenuId(openMenuId === link.id ? null : link.id); }}
+              className="w-8 h-8 flex items-center justify-center rounded-xl text-[#C0C0CC] hover:text-[#728DA7] hover:bg-[#EEF3F7] transition-all"
+              title="More actions"
+            >
+              <MoreHorizontal className="w-4 h-4" />
+            </button>
+            {openMenuId === link.id && (
+              <div className="absolute right-0 top-full mt-1 w-44 bg-white border border-[#E4E4EC] rounded-xl shadow-lg z-30 py-1 animate-in fade-in slide-in-from-top-1 duration-150">
+                <MenuBtn onClick={() => { onQr(); setOpenMenuId(null); }} icon={<QrCode className="w-3.5 h-3.5" />}>QR Code</MenuBtn>
+                <MenuBtn onClick={() => { onDuplicate(); setOpenMenuId(null); }} icon={isDuplicating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Layers className="w-3.5 h-3.5" />}>Duplicate</MenuBtn>
+                <MenuBtn onClick={() => { onEdit(); setOpenMenuId(null); }} icon={<Edit2 className="w-3.5 h-3.5" />}>Edit</MenuBtn>
+                <MenuBtn onClick={() => { window.open(`/analytics/${link.id}`, "_self"); setOpenMenuId(null); }} icon={<BarChart3 className="w-3.5 h-3.5" />}>Analytics</MenuBtn>
+                <div className="border-t border-[#F0F0F6] my-1" />
+                <MenuBtn onClick={() => { onDelete(); setOpenMenuId(null); }} icon={<Trash2 className="w-3.5 h-3.5" />} danger>Delete</MenuBtn>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="md:hidden px-4 py-3.5">
+        <div className="flex items-start gap-3">
+          <button onClick={onSelect} className="mt-0.5 text-[#C0C0CC] hover:text-[#728DA7] transition-colors shrink-0">
+            {isSelected ? <CheckSquare className="w-4 h-4 text-[#728DA7]" /> : <Square className="w-4 h-4" />}
+          </button>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 min-w-0">
+                <div className="w-7 h-7 rounded-lg bg-[#F2F2F6] flex items-center justify-center shrink-0 overflow-hidden">
+                  <img
+                    src={`https://www.google.com/s2/favicons?domain=${domain}&sz=32`}
+                    alt=""
+                    className="w-4 h-4 rounded"
+                    onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                  />
+                </div>
+                <span className="text-[14px] font-semibold text-[#0A0A0A] truncate">/{link.slug}</span>
+                {!link.enabled && (
+                  <span className="shrink-0 text-[9px] font-bold uppercase tracking-wider text-[#E05050] bg-[#FFF0F0] px-1.5 py-0.5 rounded">off</span>
+                )}
+              </div>
+              <div className="flex items-center gap-1 shrink-0">
+                <button onClick={onCopy} className={`w-7 h-7 flex items-center justify-center rounded-lg transition-all ${isCopied ? "text-[#2E9A72] bg-[#E8F7F1]" : "text-[#C0C0CC] hover:text-[#728DA7]"}`}>
+                  {isCopied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                </button>
+                <button onClick={onEdit} className="w-7 h-7 flex items-center justify-center rounded-lg text-[#C0C0CC] hover:text-[#728DA7]">
+                  <Edit2 className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+            {link.title && <p className="text-[11px] text-[#9090A0] truncate mt-0.5">{link.title}</p>}
+            <p className="text-[11px] text-[#C0C0CC] truncate mt-1">{link.destinationUrl}</p>
+            <div className="flex items-center gap-3 mt-2">
+              <span className="text-[12px] font-semibold text-[#0A0A0A] tabular-nums">{clicks.toLocaleString()} clicks</span>
+              {countryFlag && <span className="text-[11px]">{countryFlag}</span>}
+              <span className="text-[11px] text-[#B0B0BA]">{formatDistanceToNow(new Date(link.createdAt), { addSuffix: true })}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function LinkGridCard({
+  link, clicks, maxClicks, sparkline, topCountry, shortUrl, isCopied, isSelected, folderMap,
+  onCopy, onEdit, onDelete, onToggle, onQr, onDuplicate, onSelect, isToggling, isDuplicating,
+}: {
+  link: Link; clicks: number; maxClicks: number; sparkline: number[]; topCountry: string | null;
+  shortUrl: string; isCopied: boolean; isSelected: boolean;
+  folderMap: Record<string, { name: string; color: string }>;
+  onCopy: () => void; onEdit: () => void; onDelete: () => void; onToggle: () => void;
+  onQr: () => void; onDuplicate: () => void; onSelect: () => void;
+  isToggling: boolean; isDuplicating: boolean;
+}) {
+  const domain = getDomain(link.destinationUrl);
+  const countryFlag = topCountry ? (COUNTRY_FLAGS[topCountry] ?? topCountry) : null;
+  const linkFolderId = (link as any).folderId;
+  const linkTags: Array<{ id: string; name: string; color: string }> = (link as any).tags ?? [];
+  const folder = linkFolderId ? folderMap[linkFolderId] : null;
+  const clickPercent = maxClicks > 0 ? (clicks / maxClicks) * 100 : 0;
+
+  return (
+    <div className={`relative bg-[#FAFAFE] border rounded-2xl p-4 transition-all hover:shadow-md hover:border-[#D0D0E0] group ${isSelected ? "border-[#728DA7] bg-[#F4F8FF] shadow-sm" : "border-[#EBEBF0]"}`}>
+      <button onClick={onSelect} className="absolute top-3 right-3 text-[#C0C0CC] hover:text-[#728DA7] transition-colors opacity-0 group-hover:opacity-100">
+        {isSelected ? <CheckSquare className="w-4 h-4 text-[#728DA7]" /> : <Square className="w-4 h-4" />}
+      </button>
+
+      <div className="flex items-center gap-2.5 mb-3">
+        <div className="w-9 h-9 rounded-xl bg-[#F2F2F6] flex items-center justify-center shrink-0 overflow-hidden">
+          <img
+            src={`https://www.google.com/s2/favicons?domain=${domain}&sz=32`}
+            alt=""
+            className="w-5 h-5 rounded"
+            onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+          />
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-1.5">
+            <span className="text-[14px] font-bold text-[#0A0A0A] truncate">/{link.slug}</span>
+          </div>
+          {link.title && <span className="text-[11px] text-[#9090A0] truncate block">{link.title}</span>}
+        </div>
+      </div>
+
+      <p className="text-[11px] text-[#B0B0BA] truncate mb-3" title={link.destinationUrl}>{link.destinationUrl}</p>
+
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <span className="text-[18px] font-bold text-[#0A0A0A] tabular-nums">{clicks.toLocaleString()}</span>
+          <span className="text-[11px] text-[#B0B0BA]">clicks</span>
+          {countryFlag && <span className="text-[12px] ml-1">{countryFlag}</span>}
+        </div>
+        <Sparkline data={sparkline} color={clicks > 0 ? "#728DA7" : "#CCCCDA"} />
+      </div>
+
+      <div className="w-full h-1 bg-[#F0F0F6] rounded-full overflow-hidden mb-3">
+        <div className="h-full rounded-full transition-all duration-500" style={{ width: `${clickPercent}%`, backgroundColor: clickPercent > 60 ? "#2E9A72" : clickPercent > 20 ? "#728DA7" : "#C0C0CC" }} />
+      </div>
+
+      {(folder || linkTags.length > 0) && (
+        <div className="flex flex-wrap gap-1 mb-3">
+          {folder && (
+            <span className="inline-flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-md" style={{ backgroundColor: `${folder.color}15`, color: folder.color }}>
+              <FolderOpen className="w-2.5 h-2.5" />{folder.name}
+            </span>
+          )}
+          {linkTags.map((t) => (
+            <span key={t.id} className="inline-flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-md" style={{ backgroundColor: `${t.color}15`, color: t.color }}>
+              <Tag className="w-2.5 h-2.5" />{t.name}
+            </span>
+          ))}
+        </div>
+      )}
+
+      <div className="flex items-center justify-between pt-3 border-t border-[#F0F0F6]">
+        <div className="flex items-center gap-1.5">
+          <button onClick={onToggle} disabled={isToggling} className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-full transition-all ${link.enabled ? "bg-[#E8F7F1] text-[#2E9A72]" : "bg-[#F2F2F6] text-[#9090A0]"} disabled:opacity-50`}>
+            {isToggling ? <Loader2 className="w-3 h-3 animate-spin" /> : link.enabled ? <ToggleRight className="w-3 h-3" /> : <ToggleLeft className="w-3 h-3" />}
+            {link.enabled ? "Live" : "Off"}
+          </button>
+          <span className="text-[10px] text-[#C0C0CC]">{formatDistanceToNow(new Date(link.createdAt), { addSuffix: true })}</span>
+        </div>
+        <div className="flex items-center gap-0.5">
+          <button onClick={onCopy} className={`w-7 h-7 flex items-center justify-center rounded-lg transition-all ${isCopied ? "text-[#2E9A72] bg-[#E8F7F1]" : "text-[#C0C0CC] hover:text-[#728DA7] hover:bg-[#EEF3F7]"}`} title="Copy">
+            {isCopied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+          </button>
+          <button onClick={onQr} className="w-7 h-7 flex items-center justify-center rounded-lg text-[#C0C0CC] hover:text-[#728DA7] hover:bg-[#EEF3F7] transition-all" title="QR Code">
+            <QrCode className="w-3 h-3" />
+          </button>
+          <button onClick={onEdit} className="w-7 h-7 flex items-center justify-center rounded-lg text-[#C0C0CC] hover:text-[#728DA7] hover:bg-[#EEF3F7] transition-all" title="Edit">
+            <Edit2 className="w-3 h-3" />
+          </button>
+          <button onClick={onDelete} className="w-7 h-7 flex items-center justify-center rounded-lg text-[#C0C0CC] hover:text-[#E05050] hover:bg-[#FFF0F0] transition-all" title="Delete">
+            <Trash2 className="w-3 h-3" />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function MenuBtn({ children, onClick, icon, danger }: { children: React.ReactNode; onClick: () => void; icon: React.ReactNode; danger?: boolean }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`w-full flex items-center gap-2.5 px-3.5 py-2 text-[12px] font-medium transition-colors ${
+        danger ? "text-[#E05050] hover:bg-[#FFF0F0]" : "text-[#3A3A3E] hover:bg-[#F6F6F9]"
+      }`}
+    >
+      <span className={danger ? "text-[#E05050]" : "text-[#B0B0BA]"}>{icon}</span>
       {children}
     </button>
   );
