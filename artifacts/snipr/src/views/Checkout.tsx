@@ -1,27 +1,13 @@
 "use client";
 import { useState, useCallback, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { loadStripe } from "@stripe/stripe-js";
+import { loadStripe, type Stripe } from "@stripe/stripe-js";
 import {
   EmbeddedCheckoutProvider,
   EmbeddedCheckout,
 } from "@stripe/react-stripe-js";
 import { ArrowLeft, Shield, Lock } from "lucide-react";
 import Link from "next/link";
-
-let stripePromise: ReturnType<typeof loadStripe> | null = null;
-
-function getStripePromise() {
-  if (!stripePromise) {
-    if (typeof window === "undefined") {
-      return null as any;
-    }
-    stripePromise = fetch("/api/billing/publishable-key")
-      .then((r) => r.json())
-      .then((data) => loadStripe(data.publishableKey));
-  }
-  return stripePromise;
-}
 
 const VALID_PLANS = ["starter", "growth", "pro", "business", "enterprise"] as const;
 type PlanName = typeof VALID_PLANS[number];
@@ -40,11 +26,26 @@ export default function Checkout() {
   const plan = searchParams.get("plan") as PlanName | null;
   const billing = searchParams.get("billing") as "monthly" | "annual" | null;
   const [error, setError] = useState<string | null>(null);
+  const [stripePromise, setStripePromise] = useState<Promise<Stripe | null> | null>(null);
 
   useEffect(() => {
     if (!plan || !VALID_PLANS.includes(plan)) {
       router.replace("/pricing");
+      return;
     }
+    // Fetch publishable key; show error immediately if misconfigured
+    fetch("/api/billing/publishable-key")
+      .then(async (r) => {
+        const data = await r.json();
+        if (!r.ok || !data.publishableKey) {
+          setError(data.error || "Billing is not configured. Please contact support.");
+          return;
+        }
+        setStripePromise(loadStripe(data.publishableKey));
+      })
+      .catch(() => {
+        setError("Could not connect to billing service. Please try again.");
+      });
   }, [plan, router]);
 
   const fetchClientSecret = useCallback(async () => {
@@ -67,7 +68,7 @@ export default function Checkout() {
       throw new Error("No client secret returned");
     }
     return data.clientSecret;
-  }, [plan]);
+  }, [plan, billing]);
 
   if (!plan || !VALID_PLANS.includes(plan)) {
     return null;
@@ -124,10 +125,14 @@ export default function Checkout() {
               Return to pricing
             </Link>
           </div>
+        ) : !stripePromise ? (
+          <div className="bg-white rounded-2xl border border-[#E4E4EC] overflow-hidden shadow-sm min-h-[400px] flex items-center justify-center">
+            <div className="text-[14px] text-[#8888A0]">Loading payment form…</div>
+          </div>
         ) : (
           <div className="bg-white rounded-2xl border border-[#E4E4EC] overflow-hidden shadow-sm">
             <EmbeddedCheckoutProvider
-              stripe={getStripePromise()}
+              stripe={stripePromise}
               options={{ fetchClientSecret }}
             >
               <EmbeddedCheckout className="min-h-[400px]" />
