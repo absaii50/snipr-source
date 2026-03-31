@@ -225,6 +225,11 @@ function DomainRow({ d, onDelete, onRefresh, onShowWizard }: {
                 Wildcard
               </span>
             )}
+            {d.isPlatformDomain && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-purple-50 text-purple-700">
+                Platform
+              </span>
+            )}
           </div>
         </td>
         <td className="px-5 py-3.5 text-xs text-[#8888A0]">{fmtDate(d.createdAt)}</td>
@@ -358,6 +363,7 @@ function AddDomainModal({ onClose, onAdded }: { onClose: () => void; onAdded: (c
   const [workspaceId, setWorkspaceId] = useState("");
   const [supportsSubdomains, setSupportsSubdomains] = useState(false);
   const [autoVerify, setAutoVerify] = useState(false);
+  const [isPlatformDomain, setIsPlatformDomain] = useState(false);
   const [workspaces, setWorkspaces] = useState<WorkspaceOption[]>([]);
   const [loading, setLoading] = useState(false);
   const [wsLoading, setWsLoading] = useState(true);
@@ -372,13 +378,14 @@ function AddDomainModal({ onClose, onAdded }: { onClose: () => void; onAdded: (c
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!domain.trim() || !workspaceId) return;
+    if (!domain.trim()) return;
+    if (!isPlatformDomain && !workspaceId) return;
     setError("");
     setLoading(true);
     try {
       const created = await apiFetch("/admin/domains", {
         method: "POST",
-        body: JSON.stringify({ domain: domain.trim(), workspaceId, supportsSubdomains, autoVerify }),
+        body: JSON.stringify({ domain: domain.trim(), workspaceId: isPlatformDomain ? undefined : workspaceId, supportsSubdomains, autoVerify, isPlatformDomain }),
       });
       onAdded(created);
       onClose();
@@ -418,26 +425,43 @@ function AddDomainModal({ onClose, onAdded }: { onClose: () => void; onAdded: (c
             <p className="text-xs text-[#8888A0] mt-1">Enter the domain without protocol (e.g., example.com or go.example.com)</p>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-[#3A3A3E] mb-1.5">Assign to Workspace</label>
-            {wsLoading ? (
-              <div className="flex items-center gap-2 text-sm text-[#8888A0]">
-                <Loader2 className="w-4 h-4 animate-spin" /> Loading workspaces...
+          <div className="space-y-3">
+            <label className="flex items-start gap-3 cursor-pointer group p-3 rounded-xl border border-[#728DA7]/40 bg-[#728DA7]/5">
+              <input
+                type="checkbox"
+                checked={isPlatformDomain}
+                onChange={(e) => setIsPlatformDomain(e.target.checked)}
+                className="mt-0.5 w-4 h-4 rounded border-[#E4E4EC] text-[#728DA7] focus:ring-[#728DA7]/30"
+              />
+              <div>
+                <p className="text-sm font-semibold text-[#0A0A0A]">Platform Domain (visible to all users)</p>
+                <p className="text-xs text-[#8888A0] mt-0.5">All users will see this domain as an option when creating short links. No workspace required.</p>
               </div>
-            ) : (
-              <select
-                value={workspaceId}
-                onChange={(e) => setWorkspaceId(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-[#E4E4EC] bg-[#F8F8FC] text-[#0A0A0A] text-sm outline-none focus:border-[#728DA7] focus:ring-2 focus:ring-[#728DA7]/15 transition-all"
-              >
-                {workspaces.map((ws) => (
-                  <option key={ws.id} value={ws.id}>
-                    {ws.name} ({ws.ownerEmail})
-                  </option>
-                ))}
-              </select>
-            )}
+            </label>
           </div>
+
+          {!isPlatformDomain && (
+            <div>
+              <label className="block text-sm font-medium text-[#3A3A3E] mb-1.5">Assign to Workspace</label>
+              {wsLoading ? (
+                <div className="flex items-center gap-2 text-sm text-[#8888A0]">
+                  <Loader2 className="w-4 h-4 animate-spin" /> Loading workspaces...
+                </div>
+              ) : (
+                <select
+                  value={workspaceId}
+                  onChange={(e) => setWorkspaceId(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-[#E4E4EC] bg-[#F8F8FC] text-[#0A0A0A] text-sm outline-none focus:border-[#728DA7] focus:ring-2 focus:ring-[#728DA7]/15 transition-all"
+                >
+                  {workspaces.map((ws) => (
+                    <option key={ws.id} value={ws.id}>
+                      {ws.name} ({ws.ownerEmail})
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
+          )}
 
           <div className="space-y-3">
             <label className="flex items-start gap-3 cursor-pointer group">

@@ -72836,6 +72836,7 @@ var domainsTable = pgTable("domains", {
   isParentDomain: boolean("is_parent_domain").notNull().default(false),
   supportsSubdomains: boolean("supports_subdomains").notNull().default(false),
   purpose: text("purpose").default("links_only"),
+  isPlatformDomain: boolean("is_platform_domain").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => /* @__PURE__ */ new Date())
 }, (table) => [
@@ -79590,7 +79591,10 @@ var SERVER_IP2 = process.env.SERVER_IP || "163.245.216.153";
 var router5 = (0, import_express5.Router)();
 router5.get("/domains", requireAuth, async (req, res) => {
   const workspaceId = req.session.workspaceId;
-  const domains = await db.select().from(domainsTable).where(eq(domainsTable.workspaceId, workspaceId)).orderBy(domainsTable.createdAt);
+  const domains = await db.select().from(domainsTable).where(or(
+    eq(domainsTable.workspaceId, workspaceId),
+    eq(domainsTable.isPlatformDomain, true)
+  )).orderBy(domainsTable.createdAt);
   res.json(domains);
 });
 router5.post("/domains", requireAuth, async (req, res) => {
@@ -88199,16 +88203,26 @@ router14.get("/admin/domains", requireAdmin, async (req, res) => {
   res.json(result);
 });
 router14.post("/admin/domains", requireAdmin, async (req, res) => {
-  const { domain: domain2, workspaceId, supportsSubdomains, autoVerify } = req.body;
+  const { domain: domain2, workspaceId, supportsSubdomains, autoVerify, isPlatformDomain } = req.body;
   if (!domain2 || typeof domain2 !== "string") {
     res.status(422).json({ error: "domain is required" });
     return;
   }
-  if (!workspaceId || typeof workspaceId !== "string") {
-    res.status(422).json({ error: "workspaceId is required" });
-    return;
+  let resolvedWorkspaceId = workspaceId;
+  if (!resolvedWorkspaceId || typeof resolvedWorkspaceId !== "string") {
+    if (isPlatformDomain) {
+      const [firstWs] = await db.select({ id: workspacesTable.id }).from(workspacesTable).limit(1);
+      if (!firstWs) {
+        res.status(422).json({ error: "No workspaces found. Create a user first." });
+        return;
+      }
+      resolvedWorkspaceId = firstWs.id;
+    } else {
+      res.status(422).json({ error: "workspaceId is required" });
+      return;
+    }
   }
-  const [ws] = await db.select({ id: workspacesTable.id }).from(workspacesTable).where(eq(workspacesTable.id, workspaceId));
+  const [ws] = await db.select({ id: workspacesTable.id }).from(workspacesTable).where(eq(workspacesTable.id, resolvedWorkspaceId));
   if (!ws) {
     res.status(404).json({ error: "Workspace not found" });
     return;
@@ -88220,18 +88234,24 @@ router14.post("/admin/domains", requireAdmin, async (req, res) => {
   }
   const [existing] = await db.select().from(domainsTable).where(eq(domainsTable.domain, normalized));
   if (existing) {
+    if (isPlatformDomain && !existing.isPlatformDomain) {
+      const [updated] = await db.update(domainsTable).set({ isPlatformDomain: true, verified: autoVerify === true || existing.verified }).where(eq(domainsTable.id, existing.id)).returning();
+      res.status(200).json(updated);
+      return;
+    }
     res.status(409).json({ error: "This domain is already registered" });
     return;
   }
   const isParent = supportsSubdomains === true;
   const [created] = await db.insert(domainsTable).values({
-    workspaceId,
+    workspaceId: resolvedWorkspaceId,
     domain: normalized,
     isParentDomain: isParent,
     supportsSubdomains: isParent,
-    verified: autoVerify === true
+    verified: autoVerify === true,
+    isPlatformDomain: isPlatformDomain === true
   }).returning();
-  await logAuditAction("create_domain", "domain", created.id, { domain: normalized, workspaceId }, req.ip);
+  await logAuditAction("create_domain", "domain", created.id, { domain: normalized, workspaceId: resolvedWorkspaceId, isPlatformDomain }, req.ip);
   res.status(201).json(created);
 });
 router14.get("/admin/workspaces-list", requireAdmin, async (req, res) => {

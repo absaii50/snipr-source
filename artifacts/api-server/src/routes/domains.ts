@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, and } from "drizzle-orm";
+import { eq, and, or } from "drizzle-orm";
 import { db, domainsTable } from "@workspace/db";
 import { requireAuth } from "../lib/auth";
 import { getDomainVerifyToken, checkDomainDns, CNAME_TARGET } from "../lib/dns-utils";
@@ -10,10 +10,14 @@ const router: IRouter = Router();
 
 router.get("/domains", requireAuth, async (req, res): Promise<void> => {
   const workspaceId = req.session.workspaceId!;
+  // Return workspace-specific domains + platform domains (shared across all users)
   const domains = await db
     .select()
     .from(domainsTable)
-    .where(eq(domainsTable.workspaceId, workspaceId))
+    .where(or(
+      eq(domainsTable.workspaceId, workspaceId),
+      eq(domainsTable.isPlatformDomain, true),
+    ))
     .orderBy(domainsTable.createdAt);
   res.json(domains);
 });

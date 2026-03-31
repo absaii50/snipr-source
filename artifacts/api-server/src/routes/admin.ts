@@ -417,29 +417,39 @@ router.get("/admin/domains", requireAdmin, async (req, res): Promise<void> => {
   res.json(result);
 });
 
-/* ── Admin: Create Domain for any workspace ───────────────────────── */
+/* ── Admin: Create Domain for any workspace (or platform-wide) ─────── */
 router.post("/admin/domains", requireAdmin, async (req, res): Promise<void> => {
-  const { domain, workspaceId, supportsSubdomains, autoVerify } = req.body as {
+  const { domain, workspaceId, supportsSubdomains, autoVerify, isPlatformDomain } = req.body as {
     domain?: string;
     workspaceId?: string;
     supportsSubdomains?: boolean;
     autoVerify?: boolean;
+    isPlatformDomain?: boolean;
   };
 
   if (!domain || typeof domain !== "string") {
     res.status(422).json({ error: "domain is required" });
     return;
   }
-  if (!workspaceId || typeof workspaceId !== "string") {
-    res.status(422).json({ error: "workspaceId is required" });
-    return;
+
+  // Platform domains don't need a workspaceId — use first workspace as owner
+  let resolvedWorkspaceId = workspaceId;
+  if (!resolvedWorkspaceId || typeof resolvedWorkspaceId !== "string") {
+    if (isPlatformDomain) {
+      const [firstWs] = await db.select({ id: workspacesTable.id }).from(workspacesTable).limit(1);
+      if (!firstWs) { res.status(422).json({ error: "No workspaces found. Create a user first." }); return; }
+      resolvedWorkspaceId = firstWs.id;
+    } else {
+      res.status(422).json({ error: "workspaceId is required" });
+      return;
+    }
   }
 
   // Verify workspace exists
   const [ws] = await db
     .select({ id: workspacesTable.id })
     .from(workspacesTable)
-    .where(eq(workspacesTable.id, workspaceId));
+    .where(eq(workspacesTable.id, resolvedWorkspaceId));
   if (!ws) {
     res.status(404).json({ error: "Workspace not found" });
     return;
@@ -460,6 +470,15 @@ router.post("/admin/domains", requireAdmin, async (req, res): Promise<void> => {
     .from(domainsTable)
     .where(eq(domainsTable.domain, normalized));
   if (existing) {
+    // If already exists and they want platform, just update the flag
+    if (isPlatformDomain && !existing.isPlatformDomain) {
+      const [updated] = await db.update(domainsTable)
+        .set({ isPlatformDomain: true, verified: autoVerify === true || existing.verified })
+        .where(eq(domainsTable.id, existing.id))
+        .returning();
+      res.status(200).json(updated);
+      return;
+    }
     res.status(409).json({ error: "This domain is already registered" });
     return;
   }
@@ -469,15 +488,16 @@ router.post("/admin/domains", requireAdmin, async (req, res): Promise<void> => {
   const [created] = await db
     .insert(domainsTable)
     .values({
-      workspaceId,
+      workspaceId: resolvedWorkspaceId,
       domain: normalized,
       isParentDomain: isParent,
       supportsSubdomains: isParent,
       verified: autoVerify === true,
+      isPlatformDomain: isPlatformDomain === true,
     })
     .returning();
 
-  await logAuditAction("create_domain", "domain", created.id, { domain: normalized, workspaceId }, req.ip);
+  await logAuditAction("create_domain", "domain", created.id, { domain: normalized, workspaceId: resolvedWorkspaceId, isPlatformDomain }, req.ip);
   res.status(201).json(created);
 });
 
