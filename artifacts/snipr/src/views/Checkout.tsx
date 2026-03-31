@@ -142,6 +142,7 @@ function CheckoutForm({ plan, billing, userEmail }: FormProps) {
             },
           },
         },
+        return_url: `${window.location.origin}/billing?upgraded=1`,
       });
 
       if (stripeError) {

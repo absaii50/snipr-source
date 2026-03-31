@@ -72802,7 +72802,9 @@ var usersTable = pgTable("users", {
   planExpiresAt: timestamp("plan_expires_at", { withTimezone: true }),
   stripeCustomerId: text("stripe_customer_id"),
   stripeSubscriptionId: text("stripe_subscription_id"),
-  stripeSubscriptionStatus: text("stripe_subscription_status")
+  stripeSubscriptionStatus: text("stripe_subscription_status"),
+  // Billing address collected at checkout
+  billingDetails: jsonb("billing_details").$type()
 });
 var insertUserSchema = createInsertSchema(usersTable).omit({
   id: true,
@@ -88590,6 +88592,8 @@ router14.get("/admin/users/:id/analytics", requireAdmin, async (req, res) => {
   const [userRows, linkRows] = await Promise.all([
     db.execute(sql`
       SELECT u.id, u.name, u.email, u.plan, u.suspended_at, u.created_at,
+             u.billing_details,
+             u.stripe_customer_id, u.stripe_subscription_id, u.stripe_subscription_status,
              w.name AS workspace_name, w.slug AS workspace_slug, w.id AS workspace_id
       FROM users u
       LEFT JOIN workspaces w ON w.user_id = u.id
@@ -104754,6 +104758,113 @@ router16.get("/billing/publishable-key", async (_req, res) => {
     res.status(500).json({ error: "Billing not configured." });
   }
 });
+router16.post("/billing/create-subscription-intent", requireAuth, async (req, res) => {
+  const { plan, billing, billingDetails } = req.body;
+  if (!plan || !isValidPlan(plan)) {
+    res.status(400).json({ error: `Invalid plan. Must be one of: ${VALID_PLANS.join(", ")}` });
+    return;
+  }
+  if (!billingDetails?.firstName || !billingDetails?.lastName || !billingDetails?.email || !billingDetails?.address) {
+    res.status(400).json({ error: "Billing details are required." });
+    return;
+  }
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.id, req.session.userId));
+  if (!user) {
+    res.status(401).json({ error: "User not found." });
+    return;
+  }
+  try {
+    const stripe = getStripeClient();
+    let customerId = user.stripeCustomerId;
+    const customerData = {
+      email: billingDetails.email,
+      name: `${billingDetails.firstName} ${billingDetails.lastName}`,
+      phone: billingDetails.phone,
+      address: {
+        line1: billingDetails.address,
+        city: billingDetails.city,
+        state: billingDetails.state,
+        postal_code: billingDetails.postalCode,
+        country: billingDetails.country
+      },
+      metadata: { userId: user.id }
+    };
+    if (customerId) {
+      await stripe.customers.update(customerId, customerData);
+    } else {
+      const customer = await stripe.customers.create(customerData);
+      customerId = customer.id;
+    }
+    const priceId = await findMonthlyPriceForPlan(plan, billing);
+    if (!priceId) {
+      res.status(503).json({ error: `No Stripe product found for plan: ${plan}.` });
+      return;
+    }
+    let subscription = null;
+    const existingSubs = await stripe.subscriptions.list({
+      customer: customerId,
+      status: "incomplete",
+      limit: 10,
+      expand: ["data.latest_invoice.payment_intent"]
+    });
+    for (const sub of existingSubs.data) {
+      if (sub.items.data.some((item) => item.price.id === priceId)) {
+        subscription = sub;
+        break;
+      }
+    }
+    if (!subscription) {
+      subscription = await stripe.subscriptions.create({
+        customer: customerId,
+        items: [{ price: priceId }],
+        payment_behavior: "default_incomplete",
+        payment_settings: { save_default_payment_method: "on_subscription" },
+        expand: ["latest_invoice.payment_intent"]
+      });
+    }
+    let clientSecret = null;
+    const latestInvoice = subscription.latest_invoice;
+    if (latestInvoice && typeof latestInvoice === "object") {
+      const pi = latestInvoice.payment_intent;
+      if (pi && typeof pi === "object" && pi.client_secret) {
+        clientSecret = pi.client_secret;
+      } else if (pi && typeof pi === "string") {
+        const paymentIntent = await stripe.paymentIntents.retrieve(pi);
+        clientSecret = paymentIntent.client_secret ?? null;
+      }
+    } else if (latestInvoice && typeof latestInvoice === "string") {
+      const inv = await stripe.invoices.retrieve(latestInvoice, {
+        expand: ["payment_intent"]
+      });
+      const pi = inv.payment_intent;
+      if (pi && typeof pi === "object") {
+        clientSecret = pi.client_secret ?? null;
+      } else if (pi && typeof pi === "string") {
+        const paymentIntent = await stripe.paymentIntents.retrieve(pi);
+        clientSecret = paymentIntent.client_secret ?? null;
+      }
+    }
+    if (!clientSecret) {
+      logger.error({ subscriptionId: subscription.id, latestInvoice }, "Could not resolve client_secret");
+      res.status(502).json({ error: "Could not initialize payment. Please try again." });
+      return;
+    }
+    await db.update(usersTable).set({
+      stripeCustomerId: customerId,
+      stripeSubscriptionId: subscription.id,
+      stripeSubscriptionStatus: subscription.status,
+      billingDetails
+    }).where(eq(usersTable.id, user.id));
+    res.json({
+      clientSecret,
+      subscriptionId: subscription.id
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Unknown error";
+    logger.error({ err }, "Failed to create subscription intent");
+    res.status(502).json({ error: "Failed to start checkout.", detail: message });
+  }
+});
 router16.get("/billing/plans", async (_req, res) => {
   try {
     const products = await stripeStorage.listProductsWithPrices(true);
@@ -105491,7 +105602,15 @@ var WebhookHandlers = class _WebhookHandlers {
   }
   static async handleUserPlanUpdates(event) {
     const type = event.type;
-    if (!type?.startsWith("customer.subscription.") && type !== "checkout.session.completed") {
+    const handledTypes = [
+      "customer.subscription.created",
+      "customer.subscription.updated",
+      "customer.subscription.deleted",
+      "checkout.session.completed",
+      "invoice.payment_succeeded",
+      "invoice.payment_failed"
+    ];
+    if (!handledTypes.includes(type)) {
       return;
     }
     if (type === "checkout.session.completed") {
@@ -105512,6 +105631,45 @@ var WebhookHandlers = class _WebhookHandlers {
         stripeSubscriptionStatus: sub.status
       }).where(eq(usersTable.id, user2.id));
       logger.info({ userId: user2.id, plan, subscriptionId }, "User plan updated from checkout");
+      return;
+    }
+    if (type === "invoice.payment_succeeded") {
+      const invoice = event.data?.object;
+      if (!invoice?.customer || !invoice?.subscription) return;
+      const reason = invoice.billing_reason;
+      if (reason !== "subscription_create" && reason !== "subscription_cycle" && reason !== "subscription_update") return;
+      const [invUser] = await db.select().from(usersTable).where(eq(usersTable.stripeCustomerId, invoice.customer));
+      if (!invUser) return;
+      const stripe = getStripeClient();
+      const sub = await stripe.subscriptions.retrieve(invoice.subscription);
+      if (sub.status !== "active" && sub.status !== "trialing") return;
+      const priceId = sub.items?.data[0]?.price?.id;
+      const plan = priceId ? await _WebhookHandlers.planFromPriceId(priceId) : null;
+      if (!plan || plan === "free") return;
+      await db.update(usersTable).set({
+        plan,
+        stripeSubscriptionId: sub.id,
+        stripeSubscriptionStatus: sub.status,
+        planRenewsAt: sub.current_period_end ? new Date(sub.current_period_end * 1e3) : null
+      }).where(eq(usersTable.id, invUser.id));
+      logger.info({ userId: invUser.id, plan, reason }, "Plan activated via invoice.payment_succeeded");
+      return;
+    }
+    if (type === "invoice.payment_failed") {
+      const invoice = event.data?.object;
+      if (!invoice?.customer || !invoice?.subscription) return;
+      const [failUser] = await db.select().from(usersTable).where(eq(usersTable.stripeCustomerId, invoice.customer));
+      if (!failUser) return;
+      const stripe = getStripeClient();
+      const sub = await stripe.subscriptions.retrieve(invoice.subscription);
+      const realStatus = sub.status;
+      await db.update(usersTable).set({
+        stripeSubscriptionStatus: realStatus,
+        // If subscription is now past_due, keep the plan but flag it
+        // If subscription is incomplete (first payment failed), revert plan to free
+        ...realStatus === "incomplete" ? { plan: "free" } : {}
+      }).where(eq(usersTable.id, failUser.id));
+      logger.warn({ userId: failUser.id, status: realStatus, invoiceId: invoice.id }, "Payment failed");
       return;
     }
     const subscription = event.data?.object;
