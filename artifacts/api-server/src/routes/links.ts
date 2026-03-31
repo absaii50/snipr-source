@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, and, count, inArray, gte, sql, desc } from "drizzle-orm";
+import { eq, and, or, count, inArray, gte, sql, desc } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import QRCode from "qrcode";
 import bcrypt from "bcryptjs";
@@ -172,8 +172,11 @@ router.post("/links", requireAuth, async (req, res): Promise<void> => {
     .from(domainsTable)
     .where(and(
       eq(domainsTable.id, body.domainId),
-      eq(domainsTable.workspaceId, workspaceId),
-      eq(domainsTable.verified, true)
+      eq(domainsTable.verified, true),
+      or(
+        eq(domainsTable.workspaceId, workspaceId),
+        eq(domainsTable.isPlatformDomain, true)
+      )
     ));
 
   if (!domainRecord) {
@@ -557,14 +560,17 @@ router.put("/links/:id", requireAuth, async (req, res): Promise<void> => {
       });
       return;
     } else if (typeof body.domainId === "string") {
-      // Validate that new domain belongs to this workspace and is verified
+      // Validate that new domain belongs to this workspace (or is a platform domain) and is verified
       const [newDomain] = await db
         .select({ id: domainsTable.id })
         .from(domainsTable)
         .where(and(
           eq(domainsTable.id, body.domainId),
-          eq(domainsTable.workspaceId, workspaceId),
-          eq(domainsTable.verified, true)
+          eq(domainsTable.verified, true),
+          or(
+            eq(domainsTable.workspaceId, workspaceId),
+            eq(domainsTable.isPlatformDomain, true)
+          )
         ));
 
       if (!newDomain) {

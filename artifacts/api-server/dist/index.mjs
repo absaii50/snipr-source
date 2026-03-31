@@ -78770,8 +78770,11 @@ router3.post("/links", requireAuth, async (req, res) => {
   }
   const [domainRecord] = await db.select({ id: domainsTable.id }).from(domainsTable).where(and(
     eq(domainsTable.id, body.domainId),
-    eq(domainsTable.workspaceId, workspaceId),
-    eq(domainsTable.verified, true)
+    eq(domainsTable.verified, true),
+    or(
+      eq(domainsTable.workspaceId, workspaceId),
+      eq(domainsTable.isPlatformDomain, true)
+    )
   ));
   if (!domainRecord) {
     res.status(400).json({
@@ -79048,8 +79051,11 @@ router3.put("/links/:id", requireAuth, async (req, res) => {
     } else if (typeof body.domainId === "string") {
       const [newDomain] = await db.select({ id: domainsTable.id }).from(domainsTable).where(and(
         eq(domainsTable.id, body.domainId),
-        eq(domainsTable.workspaceId, workspaceId),
-        eq(domainsTable.verified, true)
+        eq(domainsTable.verified, true),
+        or(
+          eq(domainsTable.workspaceId, workspaceId),
+          eq(domainsTable.isPlatformDomain, true)
+        )
       ));
       if (!newDomain) {
         res.status(400).json({
