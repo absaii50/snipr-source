@@ -61,6 +61,7 @@ export default function EmailTab() {
   const [massTarget, setMassTarget] = useState<"all" | "free" | "pro" | "business">("all");
   const [massTemplate, setMassTemplate] = useState<"general" | "maintenance" | "feature" | "security">("general");
   const [massSending, setMassSending] = useState(false);
+  const [massPreview, setMassPreview] = useState<{ recipientCount: number; subject: string; template: string } | null>(null);
 
   async function loadAll() {
     setLoading(true);
@@ -72,7 +73,7 @@ export default function EmailTab() {
       ]);
       setStats(s);
       setLogs(l.logs || []);
-      setUnverified((u || []).filter((u: any) => !u.emailVerified));
+      setUnverified((u || []).filter((usr: Record<string, unknown>) => !usr.emailVerified));
     } catch (err) {
       console.error("Failed to load email data", err);
     } finally {
@@ -109,9 +110,20 @@ export default function EmailTab() {
     } catch { alert("Export failed."); }
   }
 
-  async function sendMassEmail() {
+  async function previewMassEmail() {
     if (!massSubject.trim() || !massBody.trim()) { alert("Subject and body are required."); return; }
-    if (!confirm(`Send mass email to ${massTarget === "all" ? "ALL" : massTarget} users? This cannot be undone.`)) return;
+    try {
+      const data = await apiFetch("/admin/notifications/preview", {
+        method: "POST",
+        body: JSON.stringify({ subject: massSubject, body: massBody, planFilter: massTarget, template: massTemplate }),
+      });
+      setMassPreview(data);
+    } catch { alert("Failed to load preview."); }
+  }
+
+  async function confirmSendMassEmail() {
+    if (!massPreview) return;
+    if (!confirm(`Send email to ${massPreview.recipientCount} ${massTarget === "all" ? "" : massTarget + " "}user(s)? This cannot be undone.`)) return;
     setMassSending(true);
     try {
       const res = await apiFetch("/admin/notifications/send", {
@@ -119,7 +131,7 @@ export default function EmailTab() {
         body: JSON.stringify({ subject: massSubject, body: massBody, planFilter: massTarget, template: massTemplate }),
       });
       alert(`Mass email sent! ${res.sent} delivered, ${res.failed} failed out of ${res.total} recipients.`);
-      setMassSubject(""); setMassBody("");
+      setMassSubject(""); setMassBody(""); setMassPreview(null);
       loadAll();
     } catch { alert("Failed to send mass email."); }
     finally { setMassSending(false); }
@@ -364,13 +376,40 @@ export default function EmailTab() {
               className="w-full px-3 py-2.5 rounded-xl border border-[#E4E4EC] bg-white text-sm outline-none focus:border-[#728DA7] focus:ring-2 focus:ring-[#728DA7]/15 transition-all font-mono resize-none"
             />
           </div>
+          {massPreview && (
+            <div className="p-3 bg-[#EEF3F7] rounded-xl border border-[#728DA7]/20">
+              <div className="flex items-center gap-2 mb-2">
+                <AlertCircle className="w-4 h-4 text-[#4A7A94]" />
+                <span className="text-sm font-semibold text-[#0A0A0A]">Preview</span>
+              </div>
+              <div className="text-xs text-[#3A3A3E] space-y-1">
+                <p><strong>Recipients:</strong> {massPreview.recipientCount} user(s)</p>
+                <p><strong>Subject:</strong> {massPreview.subject}</p>
+                <p><strong>Template:</strong> {massPreview.template}</p>
+              </div>
+            </div>
+          )}
           <div className="flex items-center gap-3 pt-2">
-            <button onClick={sendMassEmail} disabled={massSending || !massSubject.trim() || !massBody.trim()}
-              className="px-5 py-2.5 rounded-xl bg-[#0A0A0A] text-white text-sm font-semibold hover:bg-[#1A1A2E] disabled:opacity-40 transition-all flex items-center gap-2">
-              {massSending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-              Send Mass Email
-            </button>
-            <p className="text-[10px] text-[#8888A0]">This will send to all verified users in the selected audience.</p>
+            {!massPreview ? (
+              <button onClick={previewMassEmail} disabled={!massSubject.trim() || !massBody.trim()}
+                className="px-5 py-2.5 rounded-xl bg-[#728DA7] text-white text-sm font-semibold hover:bg-[#5A7590] disabled:opacity-40 transition-all flex items-center gap-2">
+                <AlertCircle className="w-4 h-4" />
+                Preview &amp; Review
+              </button>
+            ) : (
+              <>
+                <button onClick={confirmSendMassEmail} disabled={massSending}
+                  className="px-5 py-2.5 rounded-xl bg-[#0A0A0A] text-white text-sm font-semibold hover:bg-[#1A1A2E] disabled:opacity-40 transition-all flex items-center gap-2">
+                  {massSending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                  Confirm &amp; Send ({massPreview.recipientCount})
+                </button>
+                <button onClick={() => setMassPreview(null)}
+                  className="px-3 py-2.5 rounded-xl text-sm text-[#8888A0] hover:text-[#3A3A3E] hover:bg-[#F4F4F6] transition-all">
+                  Edit
+                </button>
+              </>
+            )}
+            <p className="text-[10px] text-[#8888A0]">Preview before sending to all verified users in the selected audience.</p>
           </div>
         </div>
       )}

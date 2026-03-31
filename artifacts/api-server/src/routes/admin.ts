@@ -199,6 +199,7 @@ router.patch("/admin/users/:id/plan", requireAdmin, async (req, res): Promise<vo
   }
 
   await db.update(usersTable).set(updates).where(eq(usersTable.id, req.params.id));
+  await logAuditAction("change_plan", "user", req.params.id, { plan }, req.ip);
   res.json({ ok: true, plan });
 });
 
@@ -1907,8 +1908,12 @@ router.post("/admin/notifications/send", requireAdmin, async (req, res): Promise
 
   for (const user of users) {
     try {
-      await sendEmail({ to: user.email, subject, html: htmlTemplate, userId: user.id, type: `mass_${template}` });
-      sent++;
+      const result = await sendEmail({ to: user.email, subject, html: htmlTemplate, userId: user.id, type: `mass_${template}` });
+      if (result.error) {
+        failed++;
+      } else {
+        sent++;
+      }
     } catch {
       failed++;
     }
