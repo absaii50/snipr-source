@@ -1043,7 +1043,7 @@ router.get("/admin/users/:id/analytics", requireAdmin, async (req, res): Promise
   }
 
   const user = userRows.rows[0];
-  const links = linkRows.rows as any[];
+  const links = linkRows.rows as Record<string, unknown>[];
 
   const topLinks = [...links].sort((a, b) => Number(b.total_clicks) - Number(a.total_clicks)).slice(0, 10);
   const zeroClickLinks = links.filter((l) => Number(l.total_clicks) === 0);
@@ -1312,6 +1312,8 @@ router.post("/admin/settings/billing/webhook-test", requireAdmin, async (req, re
 router.get("/admin/audit-log", requireAdmin, async (req, res): Promise<void> => {
   const action = (req.query.action as string) ?? "";
   const search = (req.query.search as string) ?? "";
+  const from = (req.query.from as string) ?? "";
+  const to = (req.query.to as string) ?? "";
   const page = Math.max(1, parseInt(req.query.page as string) || 1);
   const limit = Math.min(parseInt(req.query.limit as string) || 50, 100);
   const offset = (page - 1) * limit;
@@ -1319,22 +1321,20 @@ router.get("/admin/audit-log", requireAdmin, async (req, res): Promise<void> => 
   const conditions = [];
   if (action) conditions.push(eq(adminAuditLogTable.action, action));
   if (search) conditions.push(sql`(${adminAuditLogTable.targetType}::text ILIKE ${"%" + search + "%"} OR ${adminAuditLogTable.targetId}::text ILIKE ${"%" + search + "%"} OR ${adminAuditLogTable.details}::text ILIKE ${"%" + search + "%"})`);
+  if (from) conditions.push(sql`${adminAuditLogTable.createdAt} >= ${from}::timestamp`);
+  if (to) conditions.push(sql`${adminAuditLogTable.createdAt} <= ${to}::timestamp`);
 
-  let query = db
+  const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+
+  const logs = await db
     .select()
     .from(adminAuditLogTable)
+    .where(whereClause)
     .orderBy(desc(adminAuditLogTable.createdAt))
     .limit(limit)
     .offset(offset);
 
-  if (conditions.length > 0) {
-    query = query.where(and(...conditions)) as any;
-  }
-
-  const logs = await query;
-  const [[{ total }]] = await Promise.all([
-    db.select({ total: count() }).from(adminAuditLogTable),
-  ]);
+  const [{ total }] = await db.select({ total: count() }).from(adminAuditLogTable).where(whereClause);
 
   res.json({ logs, total, page, limit });
 });
@@ -1367,11 +1367,11 @@ router.get("/admin/health-detail", requireAdmin, async (req, res): Promise<void>
       heapTotal: Math.round(mem.heapTotal / 1024 / 1024),
       external: Math.round(mem.external / 1024 / 1024),
     },
-    activeSessions: (sessionCount as any).count,
-    dbSizeBytes: Number((dbSize as any).size),
-    dbSizeMb: Math.round(Number((dbSize as any).size) / 1024 / 1024),
-    clicksToday: (clicksToday as any).count,
-    usersToday: (usersToday as any).count,
+    activeSessions: sessionCount?.count ?? 0,
+    dbSizeBytes: Number((dbSize as Record<string, unknown>)?.size ?? 0),
+    dbSizeMb: Math.round(Number((dbSize as Record<string, unknown>)?.size ?? 0) / 1024 / 1024),
+    clicksToday: clicksToday?.count ?? 0,
+    usersToday: usersToday?.count ?? 0,
     nodeVersion: process.version,
     platform: process.platform,
     status: "healthy",
@@ -1381,6 +1381,16 @@ router.get("/admin/health-detail", requireAdmin, async (req, res): Promise<void>
 /* ══════════════════════════════════════════════════════════════════════
    FEATURE 3: User Impersonation
    ══════════════════════════════════════════════════════════════════════ */
+
+interface ImpersonationData {
+  userId: string;
+  userName: string;
+  userEmail: string;
+  workspaceId: string | null;
+  workspaceSlug: string | null;
+  originalUserId: string | null;
+  originalWorkspaceId: string | null;
+}
 
 router.post("/admin/users/:id/impersonate", requireAdmin, async (req, res): Promise<void> => {
   const userId = req.params.id;
@@ -1392,29 +1402,39 @@ router.post("/admin/users/:id/impersonate", requireAdmin, async (req, res): Prom
   const [ws] = await db.select({ id: workspacesTable.id, slug: workspacesTable.slug })
     .from(workspacesTable).where(eq(workspacesTable.userId, userId));
 
-  (req.session as any).impersonating = {
+  const session = req.session as Record<string, unknown>;
+  const impData: ImpersonationData = {
     userId: user.id,
     userName: user.name,
     userEmail: user.email,
     workspaceId: ws?.id ?? null,
     workspaceSlug: ws?.slug ?? null,
+    originalUserId: (session.userId as string) ?? null,
+    originalWorkspaceId: (session.workspaceId as string) ?? null,
   };
+
+  session.impersonating = impData;
+  session.userId = user.id;
+  session.workspaceId = ws?.id ?? null;
 
   await logAuditAction("impersonate_user", "user", userId, { userName: user.name }, req.ip);
   res.json({ ok: true, user: { id: user.id, name: user.name, email: user.email } });
 });
 
 router.post("/admin/stop-impersonate", requireAdmin, async (req, res): Promise<void> => {
-  const imp = (req.session as any).impersonating;
+  const session = req.session as Record<string, unknown>;
+  const imp = session.impersonating as ImpersonationData | undefined;
   if (imp) {
+    session.userId = imp.originalUserId;
+    session.workspaceId = imp.originalWorkspaceId;
     await logAuditAction("stop_impersonate", "user", imp.userId, { userName: imp.userName }, req.ip);
   }
-  delete (req.session as any).impersonating;
+  delete session.impersonating;
   res.json({ ok: true });
 });
 
 router.get("/admin/impersonation-status", requireAdmin, (req, res): void => {
-  const imp = (req.session as any).impersonating;
+  const imp = (req.session as Record<string, unknown>).impersonating as ImpersonationData | undefined;
   res.json({ impersonating: imp ?? null });
 });
 
@@ -1499,9 +1519,34 @@ router.post("/admin/links/health-check", requireAdmin, async (req, res): Promise
       .from(linksTable).where(eq(linksTable.enabled, true)).limit(50);
   }
 
+  function isPrivateUrl(urlStr: string): boolean {
+    try {
+      const parsed = new URL(urlStr);
+      const hostname = parsed.hostname.toLowerCase();
+      if (hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1" || hostname === "0.0.0.0") return true;
+      if (hostname.endsWith(".local") || hostname.endsWith(".internal")) return true;
+      if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return true;
+      const parts = hostname.split(".");
+      if (parts[0] === "10") return true;
+      if (parts[0] === "172" && parseInt(parts[1]) >= 16 && parseInt(parts[1]) <= 31) return true;
+      if (parts[0] === "192" && parts[1] === "168") return true;
+      if (hostname === "169.254.169.254") return true;
+      if (hostname.includes("metadata.google") || hostname.includes("metadata.aws")) return true;
+      return false;
+    } catch { return true; }
+  }
+
   const results: { id: string; slug: string; url: string; status: number | null; ok: boolean; error?: string; checkedAt: string }[] = [];
 
   for (const link of links) {
+    if (isPrivateUrl(link.destinationUrl)) {
+      results.push({
+        id: link.id, slug: link.slug, url: link.destinationUrl,
+        status: null, ok: false, error: "Blocked: private/internal URL",
+        checkedAt: new Date().toISOString(),
+      });
+      continue;
+    }
     try {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 8000);
@@ -1559,7 +1604,7 @@ router.get("/admin/export/users", requireAdmin, async (req, res): Promise<void> 
     GROUP BY u.id, w.name, w.slug
     ORDER BY u.created_at DESC
   `);
-  const csv = toCsv(["id","name","email","plan","suspended_at","created_at","email_verified","workspace_name","workspace_slug","total_links","total_clicks"], rows.rows as any[]);
+  const csv = toCsv(["id","name","email","plan","suspended_at","created_at","email_verified","workspace_name","workspace_slug","total_links","total_clicks"], rows.rows as Record<string, unknown>[]);
   res.setHeader("Content-Type", "text/csv");
   res.setHeader("Content-Disposition", "attachment; filename=snipr-users.csv");
   res.send(csv);
@@ -1577,7 +1622,7 @@ router.get("/admin/export/links", requireAdmin, async (req, res): Promise<void> 
     GROUP BY l.id, u.email, u.plan, w.name
     ORDER BY l.created_at DESC
   `);
-  const csv = toCsv(["id","slug","destination_url","title","enabled","created_at","expires_at","owner_email","owner_plan","workspace_name","total_clicks"], rows.rows as any[]);
+  const csv = toCsv(["id","slug","destination_url","title","enabled","created_at","expires_at","owner_email","owner_plan","workspace_name","total_clicks"], rows.rows as Record<string, unknown>[]);
   res.setHeader("Content-Type", "text/csv");
   res.setHeader("Content-Disposition", "attachment; filename=snipr-links.csv");
   res.send(csv);
@@ -1591,7 +1636,7 @@ router.get("/admin/export/clicks", requireAdmin, async (req, res): Promise<void>
     ORDER BY ce.timestamp DESC
     LIMIT 10000
   `);
-  const csv = toCsv(["id","timestamp","slug","country","city","region","device","browser","os","referrer"], rows.rows as any[]);
+  const csv = toCsv(["id","timestamp","slug","country","city","region","device","browser","os","referrer"], rows.rows as Record<string, unknown>[]);
   res.setHeader("Content-Type", "text/csv");
   res.setHeader("Content-Disposition", "attachment; filename=snipr-clicks.csv");
   res.send(csv);
@@ -1603,7 +1648,7 @@ router.get("/admin/export/emails", requireAdmin, async (req, res): Promise<void>
     type: emailLogsTable.type, status: emailLogsTable.status, createdAt: emailLogsTable.createdAt,
     error: emailLogsTable.error,
   }).from(emailLogsTable).orderBy(desc(emailLogsTable.createdAt)).limit(5000);
-  const csv = toCsv(["id","to","subject","type","status","createdAt","error"], rows as any[]);
+  const csv = toCsv(["id","to","subject","type","status","createdAt","error"], rows as Record<string, unknown>[]);
   res.setHeader("Content-Type", "text/csv");
   res.setHeader("Content-Disposition", "attachment; filename=snipr-emails.csv");
   res.send(csv);
@@ -1745,9 +1790,8 @@ router.post("/admin/notifications/preview", requireAdmin, async (req, res): Prom
     conditions.push(eq(usersTable.plan, planFilter));
   }
 
-  let query = db.select({ count: count() }).from(usersTable);
-  if (conditions.length > 0) query = query.where(and(...conditions)) as any;
-  const [{ count: recipientCount }] = await query;
+  const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+  const [{ count: recipientCount }] = await db.select({ count: count() }).from(usersTable).where(whereClause);
 
   res.json({ recipientCount, subject, template });
 });
@@ -1767,9 +1811,8 @@ router.post("/admin/notifications/send", requireAdmin, async (req, res): Promise
     conditions.push(eq(usersTable.plan, planFilter));
   }
 
-  let query = db.select({ id: usersTable.id, email: usersTable.email, name: usersTable.name }).from(usersTable);
-  if (conditions.length > 0) query = query.where(and(...conditions)) as any;
-  const users = await query;
+  const sendWhereClause = conditions.length > 0 ? and(...conditions) : undefined;
+  const users = await db.select({ id: usersTable.id, email: usersTable.email, name: usersTable.name }).from(usersTable).where(sendWhereClause);
 
   const templateStyles: Record<string, { bgColor: string; accentColor: string; label: string }> = {
     maintenance: { bgColor: "#FEF3C7", accentColor: "#D97706", label: "Maintenance Notice" },

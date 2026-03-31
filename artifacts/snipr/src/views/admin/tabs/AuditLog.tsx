@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState, useCallback } from "react";
-import { Search, RefreshCw, Shield, ChevronDown, Clock, User, Link2, Globe, Settings, Mail, Zap } from "lucide-react";
+import { Search, RefreshCw, Shield, ChevronDown, Clock, User, Link2, Globe, Settings, Mail, Zap, Calendar } from "lucide-react";
 import { apiFetch, fmtTime } from "../utils";
 
 interface AuditEntry {
@@ -55,6 +55,8 @@ export default function AuditLogTab() {
   const [search, setSearch] = useState("");
   const [actionFilter, setActionFilter] = useState("all");
   const [filterOpen, setFilterOpen] = useState(false);
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
   const [total, setTotal] = useState(0);
 
   const doLoad = useCallback(async () => {
@@ -63,13 +65,15 @@ export default function AuditLogTab() {
       const params = new URLSearchParams();
       if (actionFilter !== "all") params.set("action", actionFilter);
       if (search) params.set("search", search);
+      if (dateFrom) params.set("from", dateFrom);
+      if (dateTo) params.set("to", dateTo);
       const data = await apiFetch(`/admin/audit-log?${params}`);
       setLogs(data.logs);
       setTotal(data.total);
     } finally {
       setLoading(false);
     }
-  }, [actionFilter, search]);
+  }, [actionFilter, search, dateFrom, dateTo]);
 
   useEffect(() => {
     const t = setTimeout(doLoad, search ? 300 : 0);
@@ -111,7 +115,22 @@ export default function AuditLogTab() {
         </div>
       </div>
 
-      <div className="text-xs text-[#8888A0]">{total} total audit events</div>
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="flex items-center gap-1.5 text-xs text-[#8888A0]">
+          <Calendar className="w-3 h-3" />
+          <span>From</span>
+          <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)}
+            className="px-2 py-1.5 rounded-lg border border-[#E4E4EC] bg-white text-xs text-[#3A3A3E] outline-none focus:border-[#728DA7]" />
+          <span>To</span>
+          <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)}
+            className="px-2 py-1.5 rounded-lg border border-[#E4E4EC] bg-white text-xs text-[#3A3A3E] outline-none focus:border-[#728DA7]" />
+          {(dateFrom || dateTo) && (
+            <button onClick={() => { setDateFrom(""); setDateTo(""); }}
+              className="ml-1 text-[#728DA7] hover:text-[#4A7A94] text-xs underline">Clear</button>
+          )}
+        </div>
+        <span className="text-xs text-[#8888A0]">{total} total audit events</span>
+      </div>
 
       <div className="bg-white rounded-2xl border border-[#E4E4EC] overflow-hidden">
         <div className="overflow-x-auto">

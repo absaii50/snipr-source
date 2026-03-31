@@ -1,11 +1,11 @@
 "use client";
 import { useEffect, useState, useCallback } from "react";
-import { BarChart3, Globe, Monitor, RefreshCw, TrendingUp, Users, Link2 } from "lucide-react";
+import { BarChart3, Globe, Monitor, RefreshCw, TrendingUp, Users, Link2, Download } from "lucide-react";
 import {
   AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
   BarChart, Bar, Legend,
 } from "recharts";
-import { apiFetch, fmtNum } from "../utils";
+import { apiFetch, apiFetchBlob, downloadBlob, fmtNum } from "../utils";
 
 interface AnalyticsData {
   clicksByDay: { day: string; clicks: string }[];
@@ -84,15 +84,15 @@ export default function AnalyticsTab() {
       ]);
       setData(d);
       setPlatform({
-        clicksByDay: (p.clicksByDay ?? []).map((r: any) => ({
+        clicksByDay: (p.clicksByDay ?? []).map((r: Record<string, string>) => ({
           day: new Date(r.day).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
           clicks: Number(r.clicks),
         })),
-        userGrowth: (p.userGrowth ?? []).map((r: any) => ({
+        userGrowth: (p.userGrowth ?? []).map((r: Record<string, string>) => ({
           day: new Date(r.day).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
           users: Number(r.users),
         })),
-        linkGrowth: (p.linkGrowth ?? []).map((r: any) => ({
+        linkGrowth: (p.linkGrowth ?? []).map((r: Record<string, string>) => ({
           day: new Date(r.day).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
           links: Number(r.links),
         })),
@@ -138,6 +138,10 @@ export default function AnalyticsTab() {
           </div>
           <button onClick={() => load(range)} className="p-2 rounded-xl border border-[#E4E4EC] bg-white hover:bg-[#F4F4F6] transition-all">
             <RefreshCw className={`w-3.5 h-3.5 text-[#8888A0] ${loading ? "animate-spin" : ""}`} />
+          </button>
+          <button onClick={async () => { try { const b = await apiFetchBlob("/admin/export/clicks"); downloadBlob(b, "snipr-clicks.csv"); } catch { alert("Export failed."); } }}
+            className="flex items-center gap-1 px-2.5 py-2 rounded-xl border border-[#E4E4EC] bg-white hover:bg-[#F4F4F6] transition-all text-xs text-[#8888A0]">
+            <Download className="w-3.5 h-3.5" /> CSV
           </button>
         </div>
       </div>

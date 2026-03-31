@@ -96,6 +96,7 @@ export default function UsersTab() {
   const prevSearchRef = useRef(search);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkAction, setBulkAction] = useState<string | null>(null);
+  const [bulkPlanOpen, setBulkPlanOpen] = useState(false);
   const [inspectorData, setInspectorData] = useState<WorkspaceDetail | null>(null);
   const [inspectorLoading, setInspectorLoading] = useState(false);
 
@@ -182,7 +183,8 @@ export default function UsersTab() {
     try {
       await apiFetch("/admin/users/bulk", { method: "POST", body: JSON.stringify({ action, userIds: ids, plan }) });
       setSelected(new Set());
-      doLoad(search, plan as any || ("all" as PlanFilter), sort);
+      setBulkPlanOpen(false);
+      doLoad(search, "all" as PlanFilter, sort);
     } catch { alert(`Failed to ${action}.`); }
     finally { setBulkAction(null); }
   }
@@ -291,6 +293,18 @@ export default function UsersTab() {
             className="px-2.5 py-1 rounded-lg text-xs font-medium bg-green-50 text-green-700 hover:bg-green-100 disabled:opacity-40">Activate</button>
           <button onClick={() => doBulkAction("delete")} disabled={!!bulkAction}
             className="px-2.5 py-1 rounded-lg text-xs font-medium bg-red-50 text-red-700 hover:bg-red-100 disabled:opacity-40">Delete</button>
+          <div className="relative">
+            <button onClick={() => setBulkPlanOpen(v => !v)} disabled={!!bulkAction}
+              className="px-2.5 py-1 rounded-lg text-xs font-medium bg-purple-50 text-purple-700 hover:bg-purple-100 disabled:opacity-40">Change Plan ▾</button>
+            {bulkPlanOpen && (
+              <div className="absolute right-0 top-full mt-1 w-32 bg-white border border-[#E4E4EC] rounded-xl shadow-xl z-20 overflow-hidden">
+                {["free", "pro", "business"].map((p) => (
+                  <button key={p} onClick={() => doBulkAction("change_plan", p)}
+                    className="w-full text-left px-3 py-2 text-xs text-[#3A3A3E] hover:bg-[#F8F8FC] capitalize">{p}</button>
+                ))}
+              </div>
+            )}
+          </div>
           <button onClick={() => setSelected(new Set())}
             className="px-2.5 py-1 rounded-lg text-xs font-medium text-[#8888A0] hover:bg-white">Clear</button>
         </div>
