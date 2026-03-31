@@ -123,13 +123,15 @@ export class WebhookHandlers {
     }
   }
 
-  static async planFromPriceId(priceId: string): Promise<"free" | "pro" | "business"> {
+  static async planFromPriceId(priceId: string): Promise<string> {
     try {
       const stripe = getStripeClient();
       const price = await stripe.prices.retrieve(priceId, { expand: ["product"] });
       const product = price.product as any;
-      if (product?.metadata?.plan === "pro") return "pro";
-      if (product?.metadata?.plan === "business") return "business";
+      const plan = product?.metadata?.plan;
+      if (plan && ["starter", "growth", "pro", "business", "enterprise"].includes(plan)) {
+        return plan;
+      }
     } catch (err) {
       logger.error({ err, priceId }, "Error looking up plan from price");
     }

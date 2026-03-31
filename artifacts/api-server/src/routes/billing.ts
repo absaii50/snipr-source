@@ -4,22 +4,45 @@ import { db, usersTable } from "@workspace/db";
 import { requireAuth } from "../lib/auth";
 import { stripeService } from "../lib/stripeService";
 import { stripeStorage } from "../lib/stripeStorage";
-import { getStripePublishableKey, getUncachableStripeClient } from "../lib/stripeClient";
+import { getStripePublishableKey, getStripeClient } from "../lib/stripeClient";
 import { logger } from "../lib/logger";
 
 const router: IRouter = Router();
 
+const VALID_PLANS = ["starter", "growth", "pro", "business", "enterprise"] as const;
+type PlanName = typeof VALID_PLANS[number];
+
+function isValidPlan(plan: string): plan is PlanName {
+  return VALID_PLANS.includes(plan as PlanName);
+}
+
 function getFrontendBaseUrl(): string {
   if (process.env.FRONTEND_URL) return process.env.FRONTEND_URL.replace(/\/$/, "");
-  if (process.env.REPLIT_DOMAINS) return `https://${process.env.REPLIT_DOMAINS.split(",")[0]}`;
   return "http://localhost:3000";
 }
 
-router.post("/billing/checkout", requireAuth, async (req: Request, res: Response): Promise<void> => {
-  const { plan } = req.body as { plan?: string };
+/** Find the monthly price for a plan by matching product metadata */
+async function findMonthlyPriceForPlan(plan: string, billing?: string): Promise<string | null> {
+  const interval = billing === "annual" ? "year" : "month";
 
-  if (!plan || !["pro", "business"].includes(plan)) {
-    res.status(400).json({ error: "Invalid plan. Must be 'pro' or 'business'." });
+  // Query Stripe API directly
+  const stripe = getStripeClient();
+  const products = await stripe.products.list({ active: true, limit: 100 });
+  const match = products.data.find((p) => p.metadata?.plan === plan);
+  if (!match) return null;
+
+  const prices = await stripe.prices.list({ product: match.id, active: true, limit: 10 });
+  // Find price matching the requested interval
+  const price = prices.data.find((p) => p.recurring?.interval === interval)
+    ?? prices.data[0]; // fallback to any price
+  return price?.id ?? null;
+}
+
+router.post("/billing/checkout", requireAuth, async (req: Request, res: Response): Promise<void> => {
+  const { plan, billing } = req.body as { plan?: string; billing?: string };
+
+  if (!plan || !isValidPlan(plan)) {
+    res.status(400).json({ error: `Invalid plan. Must be one of: ${VALID_PLANS.join(", ")}` });
     return;
   }
 
@@ -44,26 +67,10 @@ router.post("/billing/checkout", requireAuth, async (req: Request, res: Response
         .where(eq(usersTable.id, user.id));
     }
 
-    let priceId: string | null = null;
-
-    const localProducts = await stripeStorage.listProductsWithPrices(true);
-    const localMatch = localProducts.find((p: any) => p.product_metadata?.plan === plan);
-    if (localMatch?.price_id) {
-      priceId = localMatch.price_id;
-    }
+    const priceId = await findMonthlyPriceForPlan(plan, billing);
 
     if (!priceId) {
-      const stripe = await getUncachableStripeClient();
-      const apiProducts = await stripe.products.list({ active: true, limit: 100 });
-      const match = apiProducts.data.find((p) => p.metadata?.plan === plan);
-      if (match) {
-        const prices = await stripe.prices.list({ product: match.id, active: true, limit: 1 });
-        priceId = prices.data[0]?.id ?? null;
-      }
-    }
-
-    if (!priceId) {
-      res.status(503).json({ error: `No Stripe product found for plan: ${plan}. Run the seed script first.` });
+      res.status(503).json({ error: `No Stripe product found for plan: ${plan}.` });
       return;
     }
 
@@ -126,11 +133,12 @@ router.get("/billing/subscription", requireAuth, async (req: Request, res: Respo
     try {
       const sub = await stripeStorage.getSubscription(user.stripeSubscriptionId);
       if (sub) {
-        renewsAt = sub.current_period_end ? new Date(Number(sub.current_period_end) * 1000).toISOString() : null;
-        expiresAt = sub.cancel_at ? new Date(Number(sub.cancel_at) * 1000).toISOString() : null;
+        // Stripe API returns timestamps as seconds (not ms)
+        renewsAt = sub.current_period_end ? new Date(sub.current_period_end * 1000).toISOString() : null;
+        expiresAt = sub.cancel_at ? new Date(sub.cancel_at * 1000).toISOString() : null;
       }
     } catch {
-      // Stripe schema may not have synced yet
+      // Stripe API may be unavailable
     }
   }
 
@@ -144,10 +152,10 @@ router.get("/billing/subscription", requireAuth, async (req: Request, res: Respo
 });
 
 router.post("/billing/create-checkout-session", requireAuth, async (req: Request, res: Response): Promise<void> => {
-  const { plan } = req.body as { plan?: string };
+  const { plan, billing } = req.body as { plan?: string; billing?: string };
 
-  if (!plan || !["pro", "business"].includes(plan)) {
-    res.status(400).json({ error: "Invalid plan. Must be 'pro' or 'business'." });
+  if (!plan || !isValidPlan(plan)) {
+    res.status(400).json({ error: `Invalid plan. Must be one of: ${VALID_PLANS.join(", ")}` });
     return;
   }
 
@@ -172,26 +180,10 @@ router.post("/billing/create-checkout-session", requireAuth, async (req: Request
         .where(eq(usersTable.id, user.id));
     }
 
-    let priceId: string | null = null;
-
-    const localProducts = await stripeStorage.listProductsWithPrices(true);
-    const localMatch = localProducts.find((p: any) => p.product_metadata?.plan === plan);
-    if (localMatch?.price_id) {
-      priceId = localMatch.price_id;
-    }
+    const priceId = await findMonthlyPriceForPlan(plan, billing);
 
     if (!priceId) {
-      const stripe = await getUncachableStripeClient();
-      const apiProducts = await stripe.products.list({ active: true, limit: 100 });
-      const match = apiProducts.data.find((p) => p.metadata?.plan === plan);
-      if (match) {
-        const prices = await stripe.prices.list({ product: match.id, active: true, limit: 1 });
-        priceId = prices.data[0]?.id ?? null;
-      }
-    }
-
-    if (!priceId) {
-      res.status(503).json({ error: `No Stripe product found for plan: ${plan}. Run the seed script first.` });
+      res.status(503).json({ error: `No Stripe product found for plan: ${plan}.` });
       return;
     }
 
@@ -224,7 +216,7 @@ router.get("/billing/session-status", requireAuth, async (req: Request, res: Res
       .from(usersTable)
       .where(eq(usersTable.id, req.session.userId!));
 
-    const stripe = await getUncachableStripeClient();
+    const stripe = getStripeClient();
     const session = await stripe.checkout.sessions.retrieve(sessionId);
 
     const sessionCustomer = typeof session.customer === "string"
@@ -261,6 +253,9 @@ router.get("/billing/plans", async (_req: Request, res: Response): Promise<void>
   try {
     const products = await stripeStorage.listProductsWithPrices(true);
 
+    // Sort order for plans
+    const planOrder: Record<string, number> = { starter: 1, growth: 2, pro: 3, business: 4, enterprise: 5 };
+
     const plans = products.reduce((acc: any[], row: any) => {
       let existing = acc.find((p) => p.productId === row.product_id);
       if (!existing) {
@@ -283,6 +278,13 @@ router.get("/billing/plans", async (_req: Request, res: Response): Promise<void>
       }
       return acc;
     }, []);
+
+    // Sort plans by tier order
+    plans.sort((a: any, b: any) => {
+      const orderA = planOrder[a.metadata?.plan] ?? 99;
+      const orderB = planOrder[b.metadata?.plan] ?? 99;
+      return orderA - orderB;
+    });
 
     res.json({ plans });
   } catch (err: unknown) {
