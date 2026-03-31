@@ -9,7 +9,6 @@ import LinksTab from "./tabs/Links";
 import DomainsTab from "./tabs/Domains";
 import AnalyticsTab from "./tabs/Analytics";
 import PlansTab from "./tabs/Plans";
-import BillingTab from "./tabs/Billing";
 import ReportsTab from "./tabs/Reports";
 import AIInsightsTab from "./tabs/AIInsights";
 import AuditLogTab from "./tabs/AuditLog";
@@ -20,7 +19,7 @@ import { apiFetch } from "./utils";
 
 const VALID_TABS: AdminTab[] = [
   "overview", "users", "links", "domains",
-  "analytics", "plans", "billing", "reports", "email", "ai", "audit", "settings", "guide",
+  "analytics", "plans", "reports", "email", "ai", "audit", "settings", "guide",
 ];
 
 function TabContent({ tab }: { tab: AdminTab }) {
@@ -31,7 +30,6 @@ function TabContent({ tab }: { tab: AdminTab }) {
     case "domains":   return <DomainsTab />;
     case "analytics": return <AnalyticsTab />;
     case "plans":     return <PlansTab />;
-    case "billing":   return <BillingTab />;
     case "reports":   return <ReportsTab />;
     case "email":     return <EmailTab />;
     case "ai":        return <AIInsightsTab />;

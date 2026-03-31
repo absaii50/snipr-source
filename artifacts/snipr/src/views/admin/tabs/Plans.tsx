@@ -60,9 +60,9 @@ export default function PlansTab() {
       <div className="bg-[#FFFBEB] border border-[#FDE68A] rounded-2xl px-5 py-4 flex items-start gap-3">
         <CreditCard className="w-5 h-5 text-[#D97706] shrink-0 mt-0.5" />
         <div>
-          <div className="text-sm font-semibold text-[#92400E]">Payments powered by Lemon Squeezy</div>
+          <div className="text-sm font-semibold text-[#92400E]">Payments powered by Stripe</div>
           <div className="text-xs text-[#B45309] mt-0.5">
-            Subscriptions are managed via Lemon Squeezy. Plan counts below are estimated; real-time subscriber
+            Subscriptions are managed via Stripe. Plan counts below are estimated; real-time subscriber
             data syncs automatically via webhooks when users upgrade or cancel.
           </div>
         </div>

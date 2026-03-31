@@ -219,28 +219,19 @@ export default function GuideTab() {
               </div>
             ))}
           </div>
-          <InfoBox type="info">Plans are managed via Lemon Squeezy. Webhook events update the plan field automatically. You can manually set a user's plan in the Users tab → Performance table.</InfoBox>
+          <InfoBox type="info">Plans are managed via Stripe. Webhook events update the plan field automatically. You can manually set a user&apos;s plan in the Users tab → Performance table.</InfoBox>
         </div>
       </Section>
 
-      {/* Billing / Lemon Squeezy */}
-      <Section icon={CreditCard} title="Billing with Lemon Squeezy">
-        <p className="text-[#6666A0] text-xs">Snipr uses Lemon Squeezy for subscriptions. To enable billing:</p>
+      {/* Billing / Stripe */}
+      <Section icon={CreditCard} title="Billing with Stripe">
+        <p className="text-[#6666A0] text-xs">Snipr uses Stripe for subscriptions. Billing is managed via the Stripe integration.</p>
         <div className="mt-3 space-y-2">
-          <Step n={1}>Create a Lemon Squeezy store and products (Pro plan, Business plan).</Step>
-          <Step n={2}>
-            Add these secrets to Replit's Secrets panel:
-            <div className="mt-2 space-y-1.5">
-              {["LEMONSQUEEZY_API_KEY", "LEMONSQUEEZY_STORE_ID", "LEMONSQUEEZY_PRO_VARIANT_ID", "LEMONSQUEEZY_BUSINESS_VARIANT_ID", "LEMONSQUEEZY_WEBHOOK_SECRET"].map((k) => (
-                <Code key={k}>{k}</Code>
-              ))}
-            </div>
-          </Step>
-          <Step n={3}>Configure the webhook URL in Lemon Squeezy dashboard:</Step>
-          <Code>https://snipr.sh/api/billing/webhook</Code>
-          <Step n={4}>The webhook handles <code>subscription_created</code>, <code>subscription_updated</code>, and <code>subscription_cancelled</code> events to keep user plans in sync.</Step>
+          <Step n={1}>Connect Stripe via the Replit integrations panel.</Step>
+          <Step n={2}>Create products for Pro and Business plans in the Stripe dashboard.</Step>
+          <Step n={3}>Webhooks are managed automatically by the Stripe integration.</Step>
         </div>
-        <InfoBox type="tip">Until billing is fully configured, you can manually set user plans in the Users tab using the plan dropdown in each user's profile.</InfoBox>
+        <InfoBox type="tip">Until billing is fully configured, you can manually set user plans in the Users tab using the plan dropdown in each user&apos;s profile.</InfoBox>
       </Section>
 
       {/* Security & Admin */}
@@ -268,7 +259,7 @@ export default function GuideTab() {
               { label: "Frontend", value: "Next.js 15 App Router · React 19 · Tailwind CSS" },
               { label: "Backend", value: "Express 5 · TypeScript · Drizzle ORM" },
               { label: "Database", value: "PostgreSQL (Replit managed)" },
-              { label: "Billing", value: "Lemon Squeezy webhooks" },
+              { label: "Billing", value: "Stripe payments & webhooks" },
               { label: "Redirect Engine", value: "Express router · custom domain Host-header routing" },
               { label: "Analytics", value: "Click events stored in PostgreSQL · recharts visualization" },
             ].map(({ label, value }) => (
@@ -289,7 +280,7 @@ export default function GuideTab() {
             { label: "Admin Panel", url: "/admin" },
             { label: "Standard redirect", url: "/r/:slug" },
             { label: "Custom domain redirect", url: "https://yourdomain.com/:slug" },
-            { label: "Billing webhook", url: "/api/billing/webhook" },
+            { label: "Billing webhook", url: "/api/stripe/webhook" },
             { label: "Admin API base", url: "/api/admin/*" },
           ].map(({ label, url }) => (
             <div key={label} className="flex items-center gap-3 bg-[#F8F8FC] rounded-xl px-3 py-2.5 border border-[#E4E4EC]">

@@ -1,7 +1,6 @@
 import { Router, type IRouter, type Request, type Response, type NextFunction } from "express";
 import bcrypt from "bcryptjs";
 import { getDomainVerifyToken, checkDomainDns } from "../lib/dns-utils";
-import { invalidateConfigCache } from "../lib/config";
 import crypto from "crypto";
 import {
   db,
@@ -198,16 +197,7 @@ router.patch("/admin/users/:id/plan", requireAdmin, async (req, res): Promise<vo
     return;
   }
 
-  const updates: Record<string, unknown> = { plan };
-  if (plan === "free") {
-    updates.lsSubscriptionId = null;
-    updates.lsCustomerId = null;
-    updates.lsSubscriptionStatus = null;
-    updates.planRenewsAt = null;
-    updates.planExpiresAt = null;
-  }
-
-  await db.update(usersTable).set(updates).where(eq(usersTable.id, req.params.id));
+  await db.update(usersTable).set({ plan }).where(eq(usersTable.id, req.params.id));
   await logAuditAction("change_plan", "user", req.params.id, { plan }, req.ip);
   res.json({ ok: true, plan });
 });
@@ -863,103 +853,6 @@ Respond ONLY with valid JSON in this exact schema, no markdown:
   res.json({ ...parsed, generatedAt: new Date().toISOString() });
 });
 
-/* ── Billing / Subscriptions ───────────────────────────────────────── */
-router.get("/admin/billing/stats", requireAdmin, async (req, res): Promise<void> => {
-  const PLAN_PRICE: Record<string, number> = { pro: 19, business: 49 };
-
-  const allSubUsers = await db
-    .select({
-      plan: usersTable.plan,
-      lsSubscriptionStatus: usersTable.lsSubscriptionStatus,
-    })
-    .from(usersTable)
-    .where(sql`${usersTable.plan} != 'free'`);
-
-  let mrr = 0;
-  let active = 0;
-  let cancelled = 0;
-  let paused = 0;
-  let totalPaid = allSubUsers.length;
-
-  const byPlan: Record<string, number> = { free: 0, pro: 0, business: 0 };
-
-  const [freeCount] = await db
-    .select({ count: count() })
-    .from(usersTable)
-    .where(eq(usersTable.plan, "free"));
-  byPlan.free = freeCount.count;
-
-  for (const u of allSubUsers) {
-    byPlan[u.plan] = (byPlan[u.plan] ?? 0) + 1;
-    if (u.lsSubscriptionStatus === "active") {
-      active++;
-      mrr += PLAN_PRICE[u.plan] ?? 0;
-    } else if (u.lsSubscriptionStatus === "cancelled") {
-      cancelled++;
-    } else if (u.lsSubscriptionStatus === "paused") {
-      paused++;
-    }
-  }
-
-  res.json({
-    mrr,
-    arr: mrr * 12,
-    totalPaid,
-    active,
-    cancelled,
-    paused,
-    byPlan,
-  });
-});
-
-router.get("/admin/billing/subscribers", requireAdmin, async (req, res): Promise<void> => {
-  const plan = (req.query.plan as string) ?? "";
-  const status = (req.query.status as string) ?? "";
-  const search = (req.query.search as string) ?? "";
-
-  const subscribers = await db
-    .select({
-      id: usersTable.id,
-      name: usersTable.name,
-      email: usersTable.email,
-      plan: usersTable.plan,
-      lsSubscriptionId: usersTable.lsSubscriptionId,
-      lsCustomerId: usersTable.lsCustomerId,
-      lsSubscriptionStatus: usersTable.lsSubscriptionStatus,
-      planRenewsAt: usersTable.planRenewsAt,
-      planExpiresAt: usersTable.planExpiresAt,
-      createdAt: usersTable.createdAt,
-    })
-    .from(usersTable)
-    .where(
-      sql`
-        ${usersTable.plan} != 'free'
-        ${plan ? sql` AND ${usersTable.plan} = ${plan}` : sql``}
-        ${status ? sql` AND ${usersTable.lsSubscriptionStatus} = ${status}` : sql``}
-        ${search ? sql` AND (lower(${usersTable.name}) like ${"%" + search.toLowerCase() + "%"} OR lower(${usersTable.email}) like ${"%" + search.toLowerCase() + "%"})` : sql``}
-      `
-    )
-    .orderBy(desc(usersTable.createdAt))
-    .limit(200);
-
-  res.json(subscribers);
-});
-
-router.patch("/admin/billing/subscribers/:id/reset", requireAdmin, async (req, res): Promise<void> => {
-  await db
-    .update(usersTable)
-    .set({
-      plan: "free",
-      lsSubscriptionId: null,
-      lsCustomerId: null,
-      lsVariantId: null,
-      lsSubscriptionStatus: null,
-      planRenewsAt: null,
-      planExpiresAt: null,
-    })
-    .where(eq(usersTable.id, req.params.id));
-  res.json({ ok: true });
-});
 
 /* ── User Performance Analytics ─────────────────────────────────────── */
 
@@ -1202,123 +1095,6 @@ router.get("/admin/users/top", requireAdmin, async (req, res): Promise<void> => 
 
 /* ── Platform Settings ──────────────────────────────────────────────── */
 
-const LS_SETTING_KEYS = [
-  "ls_api_key",
-  "ls_store_id",
-  "ls_webhook_secret",
-  "ls_pro_variant_id",
-  "ls_business_variant_id",
-] as const;
-
-type LsKey = typeof LS_SETTING_KEYS[number];
-
-const LS_ENV_MAP: Record<LsKey, string> = {
-  ls_api_key: "LEMONSQUEEZY_API_KEY",
-  ls_store_id: "LEMONSQUEEZY_STORE_ID",
-  ls_webhook_secret: "LEMONSQUEEZY_WEBHOOK_SECRET",
-  ls_pro_variant_id: "LEMONSQUEEZY_PRO_VARIANT_ID",
-  ls_business_variant_id: "LEMONSQUEEZY_BUSINESS_VARIANT_ID",
-};
-
-function maskSecret(v: string | null | undefined): string {
-  if (!v) return "";
-  if (v.length <= 8) return "••••••••";
-  return v.slice(0, 4) + "••••••••" + v.slice(-4);
-}
-
-async function getSettingValue(key: string): Promise<string | null> {
-  const envKey = LS_ENV_MAP[key as LsKey];
-  if (envKey && process.env[envKey]) return process.env[envKey]!;
-  const [row] = await db.select().from(platformSettingsTable).where(eq(platformSettingsTable.key, key));
-  return row?.value ?? null;
-}
-
-router.get("/admin/settings/billing", requireAdmin, async (req, res): Promise<void> => {
-  const rows = await db.select().from(platformSettingsTable)
-    .where(sql`key LIKE 'ls_%'`);
-
-  const dbMap: Record<string, string> = {};
-  for (const r of rows) dbMap[r.key] = r.value;
-
-  const result: Record<string, { set: boolean; masked: string; source: "env" | "db" | "none" }> = {};
-
-  for (const key of LS_SETTING_KEYS) {
-    const envKey = LS_ENV_MAP[key];
-    const envVal = process.env[envKey];
-    const dbVal = dbMap[key];
-
-    if (envVal) {
-      result[key] = { set: true, masked: maskSecret(envVal), source: "env" };
-    } else if (dbVal) {
-      result[key] = { set: true, masked: maskSecret(dbVal), source: "db" };
-    } else {
-      result[key] = { set: false, masked: "", source: "none" };
-    }
-  }
-
-  res.json(result);
-});
-
-router.post("/admin/settings/billing", requireAdmin, async (req, res): Promise<void> => {
-  const body = req.body as Partial<Record<LsKey, string>>;
-  const saved: string[] = [];
-
-  for (const key of LS_SETTING_KEYS) {
-    const val = body[key];
-    if (val !== undefined) {
-      const trimmed = val.trim();
-      if (trimmed === "") {
-        await db.delete(platformSettingsTable).where(eq(platformSettingsTable.key, key));
-      } else {
-        await db.insert(platformSettingsTable)
-          .values({ key, value: trimmed })
-          .onConflictDoUpdate({ target: platformSettingsTable.key, set: { value: trimmed } });
-        saved.push(key);
-      }
-    }
-  }
-
-  invalidateConfigCache();
-  await logAuditAction("update_billing_settings", "settings", null, { saved }, req.ip);
-  res.json({ ok: true, saved });
-});
-
-router.post("/admin/settings/billing/test", requireAdmin, async (req, res): Promise<void> => {
-  const apiKey = await getSettingValue("ls_api_key");
-  const storeId = await getSettingValue("ls_store_id");
-
-  if (!apiKey) {
-    res.status(422).json({ ok: false, error: "API key not configured" });
-    return;
-  }
-
-  try {
-    const r = await fetch("https://api.lemonsqueezy.com/v1/stores", {
-      headers: { Authorization: `Bearer ${apiKey}`, Accept: "application/vnd.api+json" },
-    });
-    if (!r.ok) {
-      const text = await r.text().catch(() => "");
-      res.status(502).json({ ok: false, error: `Lemon Squeezy returned ${r.status}`, detail: text.slice(0, 200) });
-      return;
-    }
-    const data = await r.json() as { data?: { id: string; attributes: { name: string } }[] };
-    const stores = data.data ?? [];
-    const matched = storeId ? stores.find((s) => s.id === storeId) : null;
-
-    res.json({
-      ok: true,
-      stores: stores.map((s) => ({ id: s.id, name: s.attributes.name })),
-      matchedStore: matched ? { id: matched.id, name: matched.attributes.name } : null,
-    });
-  } catch (err: unknown) {
-    res.status(502).json({ ok: false, error: err instanceof Error ? err.message : "Network error" });
-  }
-});
-
-router.post("/admin/settings/billing/webhook-test", requireAdmin, async (req, res): Promise<void> => {
-  const secret = await getSettingValue("ls_webhook_secret");
-  res.json({ configured: !!secret });
-});
 
 // --- Audit Log ---
 
@@ -1523,15 +1299,7 @@ router.post("/admin/users/bulk", requireAdmin, async (req, res): Promise<void> =
         res.status(400).json({ error: "Invalid plan" });
         return;
       }
-      const updates: Record<string, unknown> = { plan };
-      if (plan === "free") {
-        updates.lsSubscriptionId = null;
-        updates.lsCustomerId = null;
-        updates.lsSubscriptionStatus = null;
-        updates.planRenewsAt = null;
-        updates.planExpiresAt = null;
-      }
-      await db.update(usersTable).set(updates).where(inArray(usersTable.id, userIds));
+      await db.update(usersTable).set({ plan }).where(inArray(usersTable.id, userIds));
       affected = userIds.length;
       await logAuditAction("bulk_plan_change", "user", null, { count: affected, plan, userIds }, req.ip);
       break;
