@@ -5,7 +5,8 @@ import {
   ArrowUpDown, BarChart3, Link2, TrendingUp,
   ChevronDown, MousePointerClick, Eye, Crown,
   LogIn, CheckSquare, Square, Download, X,
-  Globe, Users as UsersIcon, Zap,
+  Globe, Users as UsersIcon, Zap, ShieldCheck, ShieldX,
+  MailCheck, MailX,
 } from "lucide-react";
 import { apiFetch, apiFetchBlob, downloadBlob, fmtDate, fmtNum } from "../utils";
 import UserProfile from "./UserProfile";
@@ -17,6 +18,7 @@ interface PerformanceUser {
   plan: string;
   suspended_at: string | null;
   created_at: string;
+  email_verified: boolean;
   workspace_name: string | null;
   workspace_slug: string | null;
   total_links: number;
@@ -198,6 +200,16 @@ export default function UsersTab() {
     } catch { alert("Failed to impersonate."); }
   }
 
+  async function toggleVerify(id: string, currentlyVerified: boolean) {
+    setActionId(id);
+    try {
+      const endpoint = currentlyVerified ? "force-unverify" : "force-verify";
+      await apiFetch(`/admin/${endpoint}/${id}`, { method: "POST" });
+      setUsers((u) => u.map((x) => x.id === id ? { ...x, email_verified: !currentlyVerified } : x));
+    } catch { alert("Failed to update verification status."); }
+    finally { setActionId(null); }
+  }
+
   async function openInspector(id: string) {
     setInspectorLoading(true);
     try {
@@ -375,7 +387,12 @@ export default function UsersTab() {
                       </div>
                       <div className="min-w-0">
                         <div className="text-sm font-medium text-[#0A0A0A] truncate max-w-[140px]">{u.name}</div>
-                        <div className="text-xs text-[#8888A0] truncate max-w-[140px]">{u.email}</div>
+                        <div className="flex items-center gap-1 text-xs text-[#8888A0] truncate max-w-[160px]">
+                          <span className="truncate">{u.email}</span>
+                          {u.email_verified
+                            ? <span title="Verified"><ShieldCheck className="w-3 h-3 text-green-500 shrink-0" /></span>
+                            : <span title="Unverified"><ShieldX className="w-3 h-3 text-amber-400 shrink-0" /></span>}
+                        </div>
                       </div>
                     </div>
                   </td>
@@ -415,6 +432,15 @@ export default function UsersTab() {
                       <button onClick={() => openInspector(u.id)} title="Workspace inspector"
                         className="p-1.5 rounded-lg hover:bg-teal-50 text-[#8888A0] hover:text-teal-600 transition-all">
                         <Globe className="w-3.5 h-3.5" />
+                      </button>
+                      <button onClick={() => toggleVerify(u.id, u.email_verified)} disabled={actionId === u.id}
+                        title={u.email_verified ? "Unverify email" : "Verify email"}
+                        className={`p-1.5 rounded-lg transition-all disabled:opacity-40 ${
+                          u.email_verified
+                            ? "hover:bg-amber-50 text-green-500 hover:text-amber-600"
+                            : "hover:bg-green-50 text-amber-400 hover:text-green-600"
+                        }`}>
+                        {u.email_verified ? <MailCheck className="w-3.5 h-3.5" /> : <MailX className="w-3.5 h-3.5" />}
                       </button>
                       {/* Plan change popover */}
                       <div className="relative">

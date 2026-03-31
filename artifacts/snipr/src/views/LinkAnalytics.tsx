@@ -6,7 +6,8 @@ import { useParams } from "next/navigation";
 import { ProtectedLayout } from "@/components/layout/ProtectedLayout";
 import { 
   useGetLink,
-  useGetLinkAnalytics, 
+  getGetLinkQueryKey,
+  useGetLinkAnalytics,
   getGetLinkAnalyticsQueryKey,
   useGetLinkTimeseries,
   getGetLinkTimeseriesQueryKey,
@@ -51,7 +52,7 @@ export default function LinkAnalytics() {
 
   const ST5 = 5 * 60 * 1000;
 
-  const { data: link, isLoading: isLoadingLink } = useGetLink(linkId || "", { query: { staleTime: ST5 } });
+  const { data: link, isLoading: isLoadingLink } = useGetLink(linkId || "", { query: { queryKey: getGetLinkQueryKey(linkId || ""), staleTime: ST5 } });
   
   const { data: stats, isLoading: isLoadingStats } = useGetLinkAnalytics(linkId || "", queryParams, {
     query: { queryKey: getGetLinkAnalyticsQueryKey(linkId || "", queryParams), placeholderData: keepPreviousData, enabled: !!linkId, staleTime: ST5 }

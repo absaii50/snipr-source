@@ -70,6 +70,8 @@ export interface Link {
   folderId?: string | null;
   clickLimit?: number | null;
   fallbackUrl?: string | null;
+  domainId?: string | null;
+  isCloaked?: boolean;
   hasPassword: boolean;
   createdAt: string;
   updatedAt: string;
@@ -139,6 +141,7 @@ export const CreateLinkRuleRequestType = {
   device: "device",
   ab: "ab",
   rotator: "rotator",
+  city: "city",
 } as const;
 
 export type CreateLinkRuleRequestConditions = { [key: string]: unknown };

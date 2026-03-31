@@ -14,7 +14,7 @@ export function useAuth() {
     query: {
       queryKey: getGetMeQueryKey(),
       retry: false,
-      staleTime: Infinity,
+      staleTime: 5 * 60 * 1000, // 5 minutes
     }
   });
 

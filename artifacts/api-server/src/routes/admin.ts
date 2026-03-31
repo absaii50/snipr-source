@@ -608,6 +608,24 @@ router.post("/admin/force-verify/:userId", requireAdmin, async (req, res): Promi
   res.json({ ok: true });
 });
 
+router.post("/admin/force-unverify/:userId", requireAdmin, async (req, res): Promise<void> => {
+  const { userId } = req.params;
+
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.id, userId));
+  if (!user) {
+    res.status(404).json({ error: "User not found" });
+    return;
+  }
+
+  await db
+    .update(usersTable)
+    .set({ emailVerified: false })
+    .where(eq(usersTable.id, userId));
+
+  await logAuditAction("force_unverify_email", "user", userId, { email: user.email }, req.ip);
+  res.json({ ok: true });
+});
+
 router.post("/admin/resend-verification/:userId", requireAdmin, async (req, res): Promise<void> => {
   const { userId } = req.params;
 
@@ -878,6 +896,7 @@ router.get("/admin/users/performance", requireAdmin, async (req, res): Promise<v
       u.plan,
       u.suspended_at,
       u.created_at,
+      u.email_verified,
       w.name   AS workspace_name,
       w.slug   AS workspace_slug,
       COUNT(DISTINCT l.id)::int                                       AS total_links,
@@ -897,7 +916,7 @@ router.get("/admin/users/performance", requireAdmin, async (req, res): Promise<v
     WHERE 1=1
       ${search ? sql`AND (lower(u.name) LIKE ${"%" + search + "%"} OR lower(u.email) LIKE ${"%" + search + "%"})` : sql``}
       ${plan ? sql`AND u.plan = ${plan}` : sql``}
-    GROUP BY u.id, u.name, u.email, u.plan, u.suspended_at, u.created_at, w.name, w.slug
+    GROUP BY u.id, u.name, u.email, u.plan, u.suspended_at, u.created_at, u.email_verified, w.name, w.slug
     ORDER BY ${sql.raw(orderBy)}
     LIMIT 200
   `);

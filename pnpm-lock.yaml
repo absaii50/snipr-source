@@ -185,9 +185,6 @@ importers:
       '@workspace/db':
         specifier: workspace:*
         version: link:../../lib/db
-      '@workspace/integrations-openai-ai-server':
-        specifier: workspace:*
-        version: link:../../lib/integrations-openai-ai-server
       bcryptjs:
         specifier: ^3.0.3
         version: 3.0.3
@@ -239,6 +236,9 @@ importers:
       resend:
         specifier: ^6.9.4
         version: 6.9.4
+      stripe:
+        specifier: ^21.0.1
+        version: 21.0.1(@types/node@25.5.0)
       ua-parser-js:
         specifier: ^2.0.9
         version: 2.0.9

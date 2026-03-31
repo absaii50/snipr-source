@@ -9,6 +9,7 @@ import {
   useGetWorkspaceTimeseries,
   getGetWorkspaceTimeseriesQueryKey,
   useGetLinks,
+  getGetLinksQueryKey,
   type Link as LinkType,
 } from "@workspace/api-client-react";
 import {
@@ -156,9 +157,9 @@ export default function Analytics() {
   const { from: prevFrom, to: prevTo } = useMemo(() => period.getPrevRange(now), [period, now]);
   const sevenFrom = useMemo(() => iso(subDays(now, 6)), [now]);
 
-  const linkFilter = selectedLinkId ? { linkId: selectedLinkId } : {};
+  const linkFilter: Record<string, string> = selectedLinkId ? { linkId: selectedLinkId } : {};
 
-  const { data: links } = useGetLinks(undefined, { query: { staleTime: 5 * 60 * 1000 } });
+  const { data: links } = useGetLinks(undefined, { query: { queryKey: getGetLinksQueryKey(), staleTime: 5 * 60 * 1000 } });
 
   const periodParams = { from, to, ...linkFilter };
   const prevParams = { from: prevFrom, to: prevTo, ...linkFilter };

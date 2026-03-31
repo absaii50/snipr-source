@@ -4,10 +4,16 @@ import { db, linksTable, clickEventsTable, conversionsTable, aiInsightsTable } f
 import OpenAI from "openai";
 import { requireAuth } from "../lib/auth";
 
-const deepseek = new OpenAI({
-  apiKey: process.env.DEEPSEEK_API_KEY,
-  baseURL: "https://api.deepseek.com",
-});
+let deepseek: OpenAI | null = null;
+function getDeepseek() {
+  if (!deepseek) {
+    deepseek = new OpenAI({
+      apiKey: process.env.DEEPSEEK_API_KEY || "placeholder",
+      baseURL: "https://api.deepseek.com",
+    });
+  }
+  return deepseek;
+}
 
 const router: IRouter = Router();
 
@@ -165,7 +171,7 @@ Write a weekly summary covering:
 4. Conversion/revenue highlights (if any)
 5. One actionable recommendation`;
 
-  const response = await deepseek.chat.completions.create({
+  const response = await getDeepseek().chat.completions.create({
     model: "deepseek-chat",
     max_tokens: 512,
     messages: [
@@ -244,7 +250,7 @@ ${JSON.stringify(ctx, null, 2)}
 
 Question: ${question}`;
 
-  const response = await deepseek.chat.completions.create({
+  const response = await getDeepseek().chat.completions.create({
     model: "deepseek-chat",
     max_tokens: 400,
     messages: [
@@ -307,7 +313,7 @@ Question: ${question}`;
   let fullAnswer = "";
 
   try {
-    const stream = await deepseek.chat.completions.create({
+    const stream = await getDeepseek().chat.completions.create({
       model: "deepseek-chat",
       max_tokens: 256,
       stream: true,
@@ -365,7 +371,7 @@ Generate 5 smart, actionable insights for this user. Return only a JSON array.`;
   let suggestions: Array<{ title: string; body: string; icon: string }> = [];
 
   try {
-    const response = await deepseek.chat.completions.create({
+    const response = await getDeepseek().chat.completions.create({
       model: "deepseek-chat",
       max_tokens: 512,
       messages: [
@@ -456,7 +462,7 @@ Produce the audit report as a JSON array.`;
   let findings: Array<{ type: string; slug: string; message: string }> = [];
 
   try {
-    const response = await deepseek.chat.completions.create({
+    const response = await getDeepseek().chat.completions.create({
       model: "deepseek-chat",
       max_tokens: 768,
       messages: [
@@ -544,7 +550,7 @@ router.post("/ai/slug-suggest", requireAuth, async (req, res): Promise<void> => 
   let suggestions: string[] = [];
 
   try {
-    const response = await deepseek.chat.completions.create({
+    const response = await getDeepseek().chat.completions.create({
       model: "deepseek-chat",
       max_tokens: 200,
       messages: [

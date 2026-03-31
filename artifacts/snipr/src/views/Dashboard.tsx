@@ -2,10 +2,10 @@
 import { useMemo, useState, useEffect } from "react";
 import { ProtectedLayout } from "@/components/layout/ProtectedLayout";
 import {
-  useGetLinks, useGetWorkspaceAnalytics,
-  useGetWorkspaceTimeseries, useGetDomains,
+  useGetLinks, getGetLinksQueryKey, useGetWorkspaceAnalytics, getGetWorkspaceAnalyticsQueryKey,
+  useGetWorkspaceTimeseries, getGetWorkspaceTimeseriesQueryKey, useGetDomains, getGetDomainsQueryKey,
 } from "@workspace/api-client-react";
-import type { Link, Domain, TopEntry, TimeseriesPoint } from "@workspace/api-client-react";
+import type { Link as LinkType, Domain, TopEntry, TimeseriesPoint } from "@workspace/api-client-react";
 import {
   LinkIcon, Loader2, ArrowRight, Plus, BarChart3,
   MousePointerClick, ExternalLink, ArrowUpRight, ArrowDownRight,
@@ -120,8 +120,8 @@ export default function Dashboard() {
   useEffect(() => { setMounted(true); setOrigin(window.location.origin); }, []);
 
   const ST5 = 5 * 60 * 1000;
-  const { data: links, isLoading } = useGetLinks(undefined, { query: { staleTime: ST5 } });
-  const { data: allDomains } = useGetDomains({ query: { staleTime: ST5 } });
+  const { data: links, isLoading } = useGetLinks(undefined, { query: { queryKey: getGetLinksQueryKey(), staleTime: ST5 } });
+  const { data: allDomains } = useGetDomains({ query: { queryKey: getGetDomainsQueryKey(), staleTime: ST5 } });
   const domainMap = useMemo(() => {
     const m: Record<string, string> = {};
     allDomains?.forEach((d: Domain) => { if (d.id) m[d.id] = d.domain; });
@@ -133,21 +133,25 @@ export default function Dashboard() {
   const prevTo   = subDays(new Date(from), 1).toISOString().split("T")[0];
 
   const allStatsFrom = useMemo(() => subDays(new Date(), 364).toISOString().split("T")[0], []);
-  const { data: allStats }  = useGetWorkspaceAnalytics({ from: allStatsFrom, to: new Date().toISOString().split("T")[0] }, { query: { staleTime: 10 * 60 * 1000 } });
-  const { data: stats }     = useGetWorkspaceAnalytics({ from, to }, { query: { staleTime: ST5 } });
-  const { data: prevStats } = useGetWorkspaceAnalytics({ from: prevFrom, to: prevTo }, { query: { staleTime: ST5 } });
+  const allStatsParams = { from: allStatsFrom, to: new Date().toISOString().split("T")[0] };
+  const { data: allStats }  = useGetWorkspaceAnalytics(allStatsParams, { query: { queryKey: getGetWorkspaceAnalyticsQueryKey(allStatsParams), staleTime: 10 * 60 * 1000 } });
+  const statsParams = { from, to };
+  const { data: stats }     = useGetWorkspaceAnalytics(statsParams, { query: { queryKey: getGetWorkspaceAnalyticsQueryKey(statsParams), staleTime: ST5 } });
+  const prevStatsParams = { from: prevFrom, to: prevTo };
+  const { data: prevStats } = useGetWorkspaceAnalytics(prevStatsParams, { query: { queryKey: getGetWorkspaceAnalyticsQueryKey(prevStatsParams), staleTime: ST5 } });
   const { data: todayClicks = 0 } = useQuery({ queryKey: ["stats-today"], queryFn: fetchTodayClicks, staleTime: 30_000 });
   const { data: clickCounts = {} } = useQuery({ queryKey: ["links-clicks"], queryFn: fetchLinkClicks, staleTime: 60_000 });
   const { data: userContext } = useQuery({ queryKey: ["user-context"], queryFn: fetchUserContext, staleTime: 5 * 60 * 1000 });
 
-  const tsResult   = useGetWorkspaceTimeseries({ from, to, interval }, { query: { staleTime: ST5 } });
+  const tsParams2 = { from, to, interval } as const;
+  const tsResult   = useGetWorkspaceTimeseries(tsParams2 as any, { query: { queryKey: getGetWorkspaceTimeseriesQueryKey(tsParams2 as any), staleTime: ST5 } });
   const timeseries = useMemo(() => {
     if (!tsResult.data) return [];
     return (tsResult.data as TimeseriesPoint[]).map((pt) => ({ ...pt, day: fmtDay(pt.time, interval, period) }));
   }, [tsResult.data, interval, period]);
 
   const totalLinks  = links?.length ?? 0;
-  const activeLinks = links?.filter((l: Link) => l.enabled).length ?? 0;
+  const activeLinks = links?.filter((l: LinkType) => l.enabled).length ?? 0;
   const firstName   = user?.name?.split(" ")[0] ?? "there";
 
   const clicksNow  = stats?.totalClicks ?? 0;
@@ -157,7 +161,7 @@ export default function Dashboard() {
   const uniqueNow  = stats?.uniqueClicks ?? 0;
 
   const topLinks = useMemo(() =>
-    !links ? [] : [...links].sort((a: Link, b: Link) => (clickCounts[b.id] ?? 0) - (clickCounts[a.id] ?? 0)).slice(0, 7),
+    !links ? [] : [...links].sort((a: LinkType, b: LinkType) => (clickCounts[b.id] ?? 0) - (clickCounts[a.id] ?? 0)).slice(0, 7),
     [links, clickCounts]
   );
   const topCountries = useMemo(() => (stats?.topCountries ?? []).slice(0, 8), [stats]);
@@ -165,11 +169,11 @@ export default function Dashboard() {
   const topDevices   = useMemo(() => (stats?.topDevices   ?? []).slice(0, 5), [stats]);
 
   const recentLinks  = useMemo(() =>
-    !links ? [] : [...links].sort((a: Link, b: Link) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 5),
+    !links ? [] : [...links].sort((a: LinkType, b: LinkType) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 5),
     [links]
   );
-  const disabledLinks   = useMemo(() => (!links ? [] : links.filter((l: Link) => !l.enabled).slice(0, 4)), [links]);
-  const zeroClickLinks  = useMemo(() => (!links ? [] : links.filter((l: Link) => (clickCounts[l.id] ?? 0) === 0 && l.enabled).slice(0, 4)), [links, clickCounts]);
+  const disabledLinks   = useMemo(() => (!links ? [] : links.filter((l: LinkType) => !l.enabled).slice(0, 4)), [links]);
+  const zeroClickLinks  = useMemo(() => (!links ? [] : links.filter((l: LinkType) => (clickCounts[l.id] ?? 0) === 0 && l.enabled).slice(0, 4)), [links, clickCounts]);
 
   /* ── new insight KPI derivations ── */
   const topLinkEntry   = topLinks[0] ?? null;
@@ -471,9 +475,9 @@ export default function Dashboard() {
                 : topLinks.length === 0
                   ? <EmptySection icon={<LinkIcon className="w-5 h-5 text-[#CBD5E1]" />} title="No links yet" hint="Create your first short link to track performance here." cta={<Link href="/links"><span className="text-[11px] font-bold text-[#4F46E5] flex items-center gap-1">Create a link <ArrowRight className="w-3 h-3" /></span></Link>} />
                   : <div className="divide-y divide-[#F8FAFC]">
-                      {topLinks.map((link: Link, i: number) => {
+                      {topLinks.map((link: LinkType, i: number) => {
                         const clicks = clickCounts[link.id] ?? 0;
-                        const maxC   = Math.max(...topLinks.map((l: Link) => clickCounts[l.id] ?? 0), 1);
+                        const maxC   = Math.max(...topLinks.map((l: LinkType) => clickCounts[l.id] ?? 0), 1);
                         const pct    = Math.max((clicks / maxC) * 100, 2);
                         const domain = link.domainId ? domainMap[link.domainId] : null;
                         const shortUrl = domain ? `https://${domain}/${link.slug}` : `${origin}/r/${link.slug}`;
@@ -567,7 +571,7 @@ export default function Dashboard() {
                 : recentLinks.length === 0
                   ? <EmptySection icon={<Clock className="w-5 h-5 text-[#CBD5E1]" />} title="No links yet" hint="Your newly created links will appear here." cta={<Link href="/links"><span className="text-[11px] font-bold text-[#4F46E5] flex items-center gap-1">Create a link <ArrowRight className="w-3 h-3" /></span></Link>} />
                   : <div className="space-y-1 pt-1">
-                      {recentLinks.map((link: Link) => (
+                      {recentLinks.map((link: LinkType) => (
                         <div key={link.id} className="group flex items-start gap-2.5 py-2 rounded-lg hover:bg-[#F8FAFC] -mx-2 px-2 transition-colors">
                           <div className={`w-1.5 h-1.5 rounded-full mt-1.5 shrink-0 ${link.enabled ? "bg-[#14B8A6]" : "bg-[#CBD5E1]"}`} />
                           <div className="flex-1 min-w-0">
@@ -602,7 +606,7 @@ export default function Dashboard() {
           >
             {!isLoading && disabledLinks.length > 0 && (
               <div className="space-y-1.5">
-                {disabledLinks.map((link: Link) => (
+                {disabledLinks.map((link: LinkType) => (
                   <div key={link.id} className="flex items-center gap-2.5">
                     <div className="w-1.5 h-1.5 rounded-full bg-[#CBD5E1] shrink-0" />
                     <p className="text-[11px] font-medium text-[#475569] truncate flex-1 min-w-0">{link.slug}</p>
@@ -611,9 +615,9 @@ export default function Dashboard() {
                     </Link>
                   </div>
                 ))}
-                {disabledLinks.length < (links?.filter((l: Link) => !l.enabled).length ?? 0) && (
+                {disabledLinks.length < (links?.filter((l: LinkType) => !l.enabled).length ?? 0) && (
                   <Link href="/links" className="text-[10px] text-[#94A3B8] hover:text-[#4F46E5] transition-colors flex items-center gap-0.5 mt-1">
-                    +{(links?.filter((l: Link) => !l.enabled).length ?? 0) - disabledLinks.length} more <ArrowRight className="w-2.5 h-2.5" />
+                    +{(links?.filter((l: LinkType) => !l.enabled).length ?? 0) - disabledLinks.length} more <ArrowRight className="w-2.5 h-2.5" />
                   </Link>
                 )}
               </div>
@@ -632,7 +636,7 @@ export default function Dashboard() {
           >
             {!isLoading && zeroClickLinks.length > 0 && (
               <div className="space-y-1.5">
-                {zeroClickLinks.map((link: Link) => {
+                {zeroClickLinks.map((link: LinkType) => {
                   const domain = link.domainId ? domainMap[link.domainId] : null;
                   const shortUrl = domain ? `https://${domain}/${link.slug}` : `${origin}/r/${link.slug}`;
                   return (

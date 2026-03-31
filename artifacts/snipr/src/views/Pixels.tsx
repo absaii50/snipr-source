@@ -154,7 +154,7 @@ export default function Pixels() {
       return;
     }
 
-    const payload: Record<string, string> = { name, type, pixelId, customScript };
+    const payload: any = { name, type, pixelId, customScript };
 
     try {
       if (editingPixel) {

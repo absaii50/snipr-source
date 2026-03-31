@@ -1,7 +1,7 @@
 "use client";
 import { useState, useMemo, useCallback, useEffect } from "react";
 import { ProtectedLayout } from "@/components/layout/ProtectedLayout";
-import { useGetLinks, useDeleteLink, useUpdateLink, useGetFolders, useGetTags, useGetDomains, getGetLinksQueryKey } from "@workspace/api-client-react";
+import { useGetLinks, useDeleteLink, useUpdateLink, useGetFolders, useGetTags, useGetDomains, getGetLinksQueryKey, getGetFoldersQueryKey, getGetTagsQueryKey, getGetDomainsQueryKey } from "@workspace/api-client-react";
 import { LinkModal } from "@/components/LinkModal";
 import { QrModal } from "@/components/QrModal";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
@@ -90,9 +90,9 @@ const COUNTRY_FLAGS: Record<string, string> = {
 
 export default function Links() {
   const ST5 = 5 * 60 * 1000;
-  const { data: links, isLoading } = useGetLinks(undefined, { query: { staleTime: ST5 } });
-  const { data: folders = [] } = useGetFolders({ query: { staleTime: ST5 } });
-  const { data: tags = [] } = useGetTags({ query: { staleTime: ST5 } });
+  const { data: links, isLoading } = useGetLinks(undefined, { query: { queryKey: getGetLinksQueryKey(), staleTime: ST5 } });
+  const { data: folders = [] } = useGetFolders({ query: { queryKey: getGetFoldersQueryKey(), staleTime: ST5 } });
+  const { data: tags = [] } = useGetTags({ query: { queryKey: getGetTagsQueryKey(), staleTime: ST5 } });
   const { data: clickCounts = {} } = useQuery({
     queryKey: ["links-clicks"],
     queryFn: fetchLinkClicks,
@@ -104,7 +104,7 @@ export default function Links() {
     staleTime: 60_000,
   });
 
-  const { data: allDomains } = useGetDomains({ query: { staleTime: ST5 } });
+  const { data: allDomains } = useGetDomains({ query: { queryKey: getGetDomainsQueryKey(), staleTime: ST5 } });
   const domainMap = useMemo(() => {
     const map: Record<string, string> = {};
     allDomains?.forEach((d: any) => { if (d.id) map[d.id] = d.domain; });
