@@ -72,52 +72,58 @@ export class WebhookHandlers {
       return;
     }
 
-    // invoice.payment_succeeded — backup activation for custom Elements checkout
+    // invoice.payment_succeeded — backup plan activation for custom Elements checkout
     if (type === "invoice.payment_succeeded") {
       const invoice = event.data?.object;
-      if (!invoice?.customer || invoice.billing_reason === "subscription_create" || invoice.billing_reason === "subscription_cycle") {
-        const invoiceCustomerId = invoice?.customer;
-        if (!invoiceCustomerId) return;
+      if (!invoice?.customer || !invoice?.subscription) return;
 
-        const [invUser] = await db.select().from(usersTable).where(eq(usersTable.stripeCustomerId, invoiceCustomerId));
-        if (!invUser) return;
+      // Only act on subscription invoices (not one-off)
+      const reason = invoice.billing_reason;
+      if (reason !== "subscription_create" && reason !== "subscription_cycle" && reason !== "subscription_update") return;
 
-        const subscriptionId = invoice.subscription;
-        if (!subscriptionId) return;
+      const [invUser] = await db.select().from(usersTable).where(eq(usersTable.stripeCustomerId, invoice.customer));
+      if (!invUser) return;
 
-        const stripe = getStripeClient();
-        const sub = await stripe.subscriptions.retrieve(subscriptionId as string);
-        if (sub.status !== "active" && sub.status !== "trialing") return;
+      const stripe = getStripeClient();
+      const sub = await stripe.subscriptions.retrieve(invoice.subscription as string);
+      if (sub.status !== "active" && sub.status !== "trialing") return;
 
-        const priceId = sub.items?.data[0]?.price?.id;
-        const plan = priceId ? await WebhookHandlers.planFromPriceId(priceId) : null;
-        if (!plan || plan === "free") return;
+      const priceId = sub.items?.data[0]?.price?.id;
+      const plan = priceId ? await WebhookHandlers.planFromPriceId(priceId) : null;
+      if (!plan || plan === "free") return;
 
-        await db.update(usersTable).set({
-          plan,
-          stripeSubscriptionId: sub.id,
-          stripeSubscriptionStatus: sub.status,
-          planRenewsAt: sub.current_period_end ? new Date(sub.current_period_end * 1000) : null,
-        }).where(eq(usersTable.id, invUser.id));
+      await db.update(usersTable).set({
+        plan,
+        stripeSubscriptionId: sub.id,
+        stripeSubscriptionStatus: sub.status,
+        planRenewsAt: sub.current_period_end ? new Date(sub.current_period_end * 1000) : null,
+      }).where(eq(usersTable.id, invUser.id));
 
-        logger.info({ userId: invUser.id, plan, subscriptionId }, "Plan activated via invoice.payment_succeeded");
-      }
+      logger.info({ userId: invUser.id, plan, reason }, "Plan activated via invoice.payment_succeeded");
       return;
     }
 
-    // invoice.payment_failed — mark subscription as past_due/incomplete
+    // invoice.payment_failed — get real status from Stripe and update DB
     if (type === "invoice.payment_failed") {
       const invoice = event.data?.object;
-      if (!invoice?.customer) return;
+      if (!invoice?.customer || !invoice?.subscription) return;
 
       const [failUser] = await db.select().from(usersTable).where(eq(usersTable.stripeCustomerId, invoice.customer));
       if (!failUser) return;
 
+      const stripe = getStripeClient();
+      const sub = await stripe.subscriptions.retrieve(invoice.subscription as string);
+      // status will be "incomplete" (first payment) or "past_due" (renewal failure)
+      const realStatus = sub.status;
+
       await db.update(usersTable).set({
-        stripeSubscriptionStatus: "incomplete",
+        stripeSubscriptionStatus: realStatus,
+        // If subscription is now past_due, keep the plan but flag it
+        // If subscription is incomplete (first payment failed), revert plan to free
+        ...(realStatus === "incomplete" ? { plan: "free" } : {}),
       }).where(eq(usersTable.id, failUser.id));
 
-      logger.info({ userId: failUser.id }, "Payment failed — subscription marked incomplete");
+      logger.warn({ userId: failUser.id, status: realStatus, invoiceId: invoice.id }, "Payment failed");
       return;
     }
 
