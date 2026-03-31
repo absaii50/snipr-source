@@ -1743,10 +1743,20 @@ interface RateLimitEvent {
 
 const rateLimitEvents: RateLimitEvent[] = [];
 const RATE_LIMIT_EVENT_MAX = 500;
+const rateLimitWhitelist: Set<string> = new Set();
+const rateLimitOverrides: Map<string, number> = new Map();
 
 export function recordRateLimitEvent(path: string, ip: string) {
   rateLimitEvents.push({ path, ip: ip.replace(/^::ffff:/, ""), timestamp: new Date().toISOString() });
   if (rateLimitEvents.length > RATE_LIMIT_EVENT_MAX) rateLimitEvents.shift();
+}
+
+export function isIpWhitelisted(ip: string): boolean {
+  return rateLimitWhitelist.has(ip.replace(/^::ffff:/, ""));
+}
+
+export function getRateLimitOverride(name: string): number | undefined {
+  return rateLimitOverrides.get(name);
 }
 
 router.get("/admin/rate-limits", requireAdmin, async (_req, res): Promise<void> => {
@@ -1757,19 +1767,53 @@ router.get("/admin/rate-limits", requireAdmin, async (_req, res): Promise<void> 
     blockedByPath[e.path] = (blockedByPath[e.path] || 0) + 1;
   }
 
+  const defaultLimits = [
+    { name: "API General", path: "/api/*", windowMs: 60000, max: 200, description: "Standard API endpoints" },
+    { name: "Redirects", path: "/*", windowMs: 60000, max: 120, description: "Short link redirects" },
+    { name: "Password Reset", path: "/api/auth/forgot-password", windowMs: 900000, max: 5, description: "Password reset requests" },
+    { name: "Admin Login", path: "/api/admin/login", windowMs: 900000, max: 5, description: "Admin panel login" },
+  ];
+
+  const limits = defaultLimits.map(l => ({
+    ...l,
+    effectiveMax: rateLimitOverrides.get(l.name) ?? l.max,
+    overridden: rateLimitOverrides.has(l.name),
+  }));
+
   res.json({
-    limits: [
-      { name: "API General", path: "/api/*", windowMs: 60000, max: 200, description: "Standard API endpoints" },
-      { name: "Redirects", path: "/*", windowMs: 60000, max: 120, description: "Short link redirects" },
-      { name: "Password Reset", path: "/api/auth/forgot-password", windowMs: 900000, max: 5, description: "Password reset requests" },
-      { name: "Admin Login", path: "/api/admin/login", windowMs: 900000, max: 5, description: "Admin panel login" },
-    ],
+    limits,
+    whitelist: [...rateLimitWhitelist],
     recentBlocked: {
       total: recentEvents.length,
       byPath: blockedByPath,
       lastEvents: recentEvents.slice(-20),
     },
   });
+});
+
+router.post("/admin/rate-limits/whitelist", requireAdmin, async (req, res): Promise<void> => {
+  const { ip, action } = req.body as { ip: string; action: "add" | "remove" };
+  if (!ip || !action) { res.status(400).json({ error: "ip and action required" }); return; }
+  const cleaned = ip.trim().replace(/^::ffff:/, "");
+  if (action === "add") {
+    rateLimitWhitelist.add(cleaned);
+  } else {
+    rateLimitWhitelist.delete(cleaned);
+  }
+  await logAuditAction("rate_limit_whitelist", "settings", null, { ip: cleaned, action }, req.ip);
+  res.json({ ok: true, whitelist: [...rateLimitWhitelist] });
+});
+
+router.post("/admin/rate-limits/adjust", requireAdmin, async (req, res): Promise<void> => {
+  const { name, max } = req.body as { name: string; max: number | null };
+  if (!name) { res.status(400).json({ error: "name required" }); return; }
+  if (max === null || max === undefined) {
+    rateLimitOverrides.delete(name);
+  } else {
+    rateLimitOverrides.set(name, Math.max(1, Math.min(10000, max)));
+  }
+  await logAuditAction("rate_limit_adjust", "settings", null, { name, max }, req.ip);
+  res.json({ ok: true, overrides: Object.fromEntries(rateLimitOverrides) });
 });
 
 /* ══════════════════════════════════════════════════════════════════════

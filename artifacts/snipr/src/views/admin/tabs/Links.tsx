@@ -55,6 +55,8 @@ export default function LinksTab() {
   const prevSearchRef = useRef(search);
   const [healthChecking, setHealthChecking] = useState(false);
   const [healthResults, setHealthResults] = useState<{ slug: string; url: string; status: number; ok: boolean; error?: string }[] | null>(null);
+  const [linkHealth, setLinkHealth] = useState<Record<string, { ok: boolean; status: number | null; checkedAt: string; error?: string }>>({});
+  const [checkingLinkId, setCheckingLinkId] = useState<string | null>(null);
 
   const doLoad = useCallback(async (q: string, f: FilterStatus, s: SortKey) => {
     setLoading(true);
@@ -107,9 +109,30 @@ export default function LinksTab() {
     setHealthChecking(true);
     try {
       const data = await apiFetch("/admin/links/health-check", { method: "POST" });
-      setHealthResults(Array.isArray(data) ? data : data.results || []);
+      const results = Array.isArray(data) ? data : data.results || [];
+      setHealthResults(results);
+      const healthMap: Record<string, { ok: boolean; status: number | null; checkedAt: string; error?: string }> = {};
+      for (const r of results) {
+        if (r.id) healthMap[r.id] = { ok: r.ok, status: r.status ?? null, checkedAt: r.checkedAt || new Date().toISOString(), error: r.error };
+      }
+      setLinkHealth(prev => ({ ...prev, ...healthMap }));
     } catch { alert("Health check failed."); }
     finally { setHealthChecking(false); }
+  }
+
+  async function checkSingleLink(linkId: string) {
+    setCheckingLinkId(linkId);
+    try {
+      const data = await apiFetch("/admin/links/health-check", {
+        method: "POST", body: JSON.stringify({ linkIds: [linkId] }),
+      });
+      const results = Array.isArray(data) ? data : data.results || [];
+      if (results.length > 0) {
+        const r = results[0];
+        setLinkHealth(prev => ({ ...prev, [linkId]: { ok: r.ok, status: r.status ?? null, checkedAt: r.checkedAt || new Date().toISOString(), error: r.error } }));
+      }
+    } catch { alert("Health check failed."); }
+    finally { setCheckingLinkId(null); }
   }
 
   const sortLabel: Record<SortKey, string> = {
@@ -286,19 +309,30 @@ export default function LinksTab() {
                     </span>
                   </td>
                   <td className="px-4 py-3.5">
-                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button onClick={() => toggle(l.id)} disabled={actionId === l.id}
-                        title={l.enabled ? "Disable" : "Enable"}
-                        className={`p-1.5 rounded-lg transition-all disabled:opacity-40 ${
-                          l.enabled ? "hover:bg-amber-50 text-[#8888A0] hover:text-amber-600" : "hover:bg-green-50 text-[#8888A0] hover:text-green-600"
-                        }`}>
-                        {l.enabled ? <ToggleRight className="w-3.5 h-3.5" /> : <ToggleLeft className="w-3.5 h-3.5" />}
-                      </button>
-                      <button onClick={() => del(l.id, l.slug)} disabled={actionId === l.id}
-                        title="Delete"
-                        className="p-1.5 rounded-lg hover:bg-red-50 text-[#8888A0] hover:text-red-500 transition-all disabled:opacity-40">
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
+                    <div className="flex items-center gap-1.5">
+                      {linkHealth[l.id] && (
+                        <span title={linkHealth[l.id].error || `Status: ${linkHealth[l.id].status || "N/A"} · ${new Date(linkHealth[l.id].checkedAt).toLocaleTimeString()}`}
+                          className={`w-2 h-2 rounded-full shrink-0 ${linkHealth[l.id].ok ? "bg-green-500" : "bg-red-500"}`} />
+                      )}
+                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button onClick={() => checkSingleLink(l.id)} disabled={checkingLinkId === l.id}
+                          title="Check health"
+                          className="p-1.5 rounded-lg hover:bg-blue-50 text-[#8888A0] hover:text-blue-600 transition-all disabled:opacity-40">
+                          {checkingLinkId === l.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <HeartPulse className="w-3.5 h-3.5" />}
+                        </button>
+                        <button onClick={() => toggle(l.id)} disabled={actionId === l.id}
+                          title={l.enabled ? "Disable" : "Enable"}
+                          className={`p-1.5 rounded-lg transition-all disabled:opacity-40 ${
+                            l.enabled ? "hover:bg-amber-50 text-[#8888A0] hover:text-amber-600" : "hover:bg-green-50 text-[#8888A0] hover:text-green-600"
+                          }`}>
+                          {l.enabled ? <ToggleRight className="w-3.5 h-3.5" /> : <ToggleLeft className="w-3.5 h-3.5" />}
+                        </button>
+                        <button onClick={() => del(l.id, l.slug)} disabled={actionId === l.id}
+                          title="Delete"
+                          className="p-1.5 rounded-lg hover:bg-red-50 text-[#8888A0] hover:text-red-500 transition-all disabled:opacity-40">
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </div>
                   </td>
                 </tr>

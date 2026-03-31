@@ -10,7 +10,7 @@ import router from "./routes";
 import redirectRouter from "./routes/redirect";
 import { logger } from "./lib/logger";
 import { WebhookHandlers } from "./lib/webhookHandlers";
-import { recordRateLimitEvent } from "./routes/admin";
+import { recordRateLimitEvent, isIpWhitelisted } from "./routes/admin";
 
 const sessionSecret = process.env.SESSION_SECRET;
 if (!sessionSecret && process.env.NODE_ENV === "production") {
@@ -139,7 +139,7 @@ const redirectLimiter = rateLimit({
   max: 120,
   standardHeaders: true,
   legacyHeaders: false,
-  skip: (req) => req.method === "HEAD",
+  skip: (req) => req.method === "HEAD" || isIpWhitelisted(req.ip || ""),
   handler: rateLimitHandler,
 });
 
@@ -148,6 +148,7 @@ const apiLimiter = rateLimit({
   max: 200,
   standardHeaders: true,
   legacyHeaders: false,
+  skip: (req) => isIpWhitelisted(req.ip || ""),
   handler: rateLimitHandler,
 });
 
@@ -160,7 +161,7 @@ const passwordResetLimiter = rateLimit({
     recordRateLimitEvent(req.path, req.ip || "unknown");
     res.status(429).json({ error: "Too many password reset requests. Please try again later." });
   },
-  skip: (req) => req.method !== "POST" || (req.path !== "/auth/forgot-password" && req.path !== "/auth/reset-password"),
+  skip: (req) => isIpWhitelisted(req.ip || "") || req.method !== "POST" || (req.path !== "/auth/forgot-password" && req.path !== "/auth/reset-password"),
 });
 
 const adminLoginLimiter = rateLimit({
@@ -172,7 +173,7 @@ const adminLoginLimiter = rateLimit({
     recordRateLimitEvent(req.path, req.ip || "unknown");
     res.status(429).json({ error: "Too many login attempts. Please try again later." });
   },
-  skip: (req) => req.method !== "POST" || req.path !== "/admin/login",
+  skip: (req) => isIpWhitelisted(req.ip || "") || req.method !== "POST" || req.path !== "/admin/login",
 });
 
 app.use("/api/", passwordResetLimiter);

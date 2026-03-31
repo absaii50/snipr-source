@@ -213,6 +213,19 @@ export default function UsersTab() {
     } catch { alert("Export failed."); }
   }
 
+  function exportSelectedUsers() {
+    const selectedUsers = users.filter(u => selected.has(u.id));
+    if (selectedUsers.length === 0) return;
+    const headers = ["id", "name", "email", "plan", "total_links", "total_clicks", "created_at", "suspended_at"];
+    const rows = selectedUsers.map(u => headers.map(h => {
+      const val = u[h as keyof typeof u];
+      return val != null ? String(val).replace(/"/g, '""') : "";
+    }));
+    const csv = [headers.join(","), ...rows.map(r => r.map(c => `"${c}"`).join(","))].join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    downloadBlob(blob, `snipr-users-selected-${selectedUsers.length}.csv`);
+  }
+
   const filtered = users.filter((u) =>
     status === "suspended" ? !!u.suspended_at :
     status === "active" ? !u.suspended_at : true
@@ -305,6 +318,10 @@ export default function UsersTab() {
               </div>
             )}
           </div>
+          <button onClick={() => exportSelectedUsers()} disabled={!!bulkAction}
+            className="px-2.5 py-1 rounded-lg text-xs font-medium bg-blue-50 text-blue-700 hover:bg-blue-100 disabled:opacity-40">
+            <Download className="w-3 h-3 inline mr-0.5" />Export
+          </button>
           <button onClick={() => setSelected(new Set())}
             className="px-2.5 py-1 rounded-lg text-xs font-medium text-[#8888A0] hover:bg-white">Clear</button>
         </div>

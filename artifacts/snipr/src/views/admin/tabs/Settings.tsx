@@ -144,8 +144,12 @@ export default function SettingsTab() {
   const [webhookUrl, setWebhookUrl] = useState("");
   const [announcement, setAnnouncement] = useState({ text: "", type: "info" as "info" | "warning" | "success", enabled: false });
   const [announcementSaving, setAnnouncementSaving] = useState(false);
-  const [rateLimits, setRateLimits] = useState<{ name: string; path: string; windowMs: number; max: number; description: string }[]>([]);
+  const [rateLimits, setRateLimits] = useState<{ name: string; path: string; windowMs: number; max: number; effectiveMax: number; overridden: boolean; description: string }[]>([]);
   const [recentBlocked, setRecentBlocked] = useState<{ total: number; byPath: Record<string, number>; lastEvents: { path: string; ip: string; timestamp: string }[] } | null>(null);
+  const [whitelist, setWhitelist] = useState<string[]>([]);
+  const [newWhitelistIp, setNewWhitelistIp] = useState("");
+  const [editingLimit, setEditingLimit] = useState<string | null>(null);
+  const [editLimitValue, setEditLimitValue] = useState("");
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -185,7 +189,38 @@ export default function SettingsTab() {
       const data = await apiFetch("/admin/rate-limits");
       setRateLimits(data.limits || []);
       setRecentBlocked(data.recentBlocked || null);
+      setWhitelist(data.whitelist || []);
     } catch {}
+  }
+
+  async function addWhitelistIp() {
+    if (!newWhitelistIp.trim()) return;
+    try {
+      const data = await apiFetch("/admin/rate-limits/whitelist", {
+        method: "POST", body: JSON.stringify({ ip: newWhitelistIp.trim(), action: "add" }),
+      });
+      setWhitelist(data.whitelist || []);
+      setNewWhitelistIp("");
+    } catch { alert("Failed to add IP"); }
+  }
+
+  async function removeWhitelistIp(ip: string) {
+    try {
+      const data = await apiFetch("/admin/rate-limits/whitelist", {
+        method: "POST", body: JSON.stringify({ ip, action: "remove" }),
+      });
+      setWhitelist(data.whitelist || []);
+    } catch { alert("Failed to remove IP"); }
+  }
+
+  async function adjustLimit(name: string, max: number | null) {
+    try {
+      await apiFetch("/admin/rate-limits/adjust", {
+        method: "POST", body: JSON.stringify({ name, max }),
+      });
+      setEditingLimit(null);
+      loadRateLimits();
+    } catch { alert("Failed to adjust limit"); }
   }
 
   function setField(key: string, value: string) {
@@ -456,28 +491,78 @@ export default function SettingsTab() {
 
       {/* ─── Rate Limit Dashboard ──────────────────────────────── */}
       <Section icon={Gauge} title="Rate Limit Dashboard">
-        <div className="space-y-3">
+        <div className="space-y-4">
           {rateLimits.length === 0 ? (
             <p className="text-xs text-[#8888A0]">No rate limit data available.</p>
           ) : (
             <div className="divide-y divide-[#F4F4F6]">
-              {rateLimits.map((rl, i) => (
-                <div key={i} className="py-3 flex items-center justify-between">
-                  <div>
+              {rateLimits.map((rl) => (
+                <div key={rl.name} className="py-3 flex items-center justify-between gap-3">
+                  <div className="flex-1 min-w-0">
                     <div className="text-sm font-medium text-[#0A0A0A]">{rl.name}</div>
                     <div className="text-xs text-[#8888A0]">
                       <code className="bg-[#F4F4F6] px-1 rounded text-[10px]">{rl.path}</code>
-                      <span className="ml-2">{rl.max} req / {Math.round(rl.windowMs / 1000)}s</span>
+                      <span className="ml-2">{rl.effectiveMax} req / {Math.round(rl.windowMs / 1000)}s</span>
+                      {rl.overridden && <span className="ml-1 text-amber-600">(custom, default: {rl.max})</span>}
                     </div>
                     <div className="text-[10px] text-[#8888A0] mt-0.5">{rl.description}</div>
                   </div>
-                  <span className="px-2 py-0.5 rounded-full bg-green-50 text-green-700 text-[10px] font-semibold">Active</span>
+                  <div className="flex items-center gap-2 shrink-0">
+                    {editingLimit === rl.name ? (
+                      <div className="flex items-center gap-1.5">
+                        <input type="number" value={editLimitValue} onChange={e => setEditLimitValue(e.target.value)}
+                          className="w-20 px-2 py-1 rounded-lg border border-[#E4E4EC] text-xs" min={1} max={10000} />
+                        <button onClick={() => adjustLimit(rl.name, parseInt(editLimitValue) || rl.max)}
+                          className="px-2 py-1 rounded-lg bg-[#0A0A0A] text-white text-[10px] font-semibold">Save</button>
+                        {rl.overridden && (
+                          <button onClick={() => adjustLimit(rl.name, null)}
+                            className="px-2 py-1 rounded-lg bg-amber-100 text-amber-700 text-[10px] font-semibold">Reset</button>
+                        )}
+                        <button onClick={() => setEditingLimit(null)}
+                          className="px-2 py-1 rounded-lg text-[#8888A0] text-[10px] hover:bg-[#F4F4F6]">Cancel</button>
+                      </div>
+                    ) : (
+                      <button onClick={() => { setEditingLimit(rl.name); setEditLimitValue(String(rl.effectiveMax)); }}
+                        className="px-2 py-1 rounded-lg text-[10px] text-[#728DA7] hover:bg-[#F4F4F6] border border-[#E4E4EC]">
+                        <Sliders className="w-3 h-3 inline mr-1" />Adjust
+                      </button>
+                    )}
+                    <span className="px-2 py-0.5 rounded-full bg-green-50 text-green-700 text-[10px] font-semibold">Active</span>
+                  </div>
                 </div>
               ))}
             </div>
           )}
+
+          <div className="p-3 bg-[#F8F8FC] rounded-xl border border-[#E4E4EC]">
+            <div className="text-xs font-semibold text-[#0A0A0A] mb-2 flex items-center gap-1.5">
+              <ShieldCheck className="w-3.5 h-3.5 text-[#728DA7]" />
+              IP Whitelist
+            </div>
+            <div className="text-[10px] text-[#8888A0] mb-2">Whitelisted IPs bypass all rate limits.</div>
+            <div className="flex items-center gap-2 mb-2">
+              <input value={newWhitelistIp} onChange={e => setNewWhitelistIp(e.target.value)}
+                placeholder="Enter IP address..." onKeyDown={e => e.key === "Enter" && addWhitelistIp()}
+                className="flex-1 px-2.5 py-1.5 rounded-lg border border-[#E4E4EC] bg-white text-xs outline-none focus:border-[#728DA7]" />
+              <button onClick={addWhitelistIp} disabled={!newWhitelistIp.trim()}
+                className="px-3 py-1.5 rounded-lg bg-[#728DA7] text-white text-xs font-semibold hover:bg-[#5A7590] disabled:opacity-40">Add</button>
+            </div>
+            {whitelist.length > 0 ? (
+              <div className="flex flex-wrap gap-1.5">
+                {whitelist.map(ip => (
+                  <span key={ip} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-white border border-[#E4E4EC] text-[10px] font-mono text-[#3A3A3E]">
+                    {ip}
+                    <button onClick={() => removeWhitelistIp(ip)} className="text-red-400 hover:text-red-600 ml-0.5">&times;</button>
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <p className="text-[10px] text-[#8888A0] italic">No whitelisted IPs.</p>
+            )}
+          </div>
+
           {recentBlocked && (
-            <div className="mt-3 p-3 bg-[#FFF7ED] rounded-xl border border-orange-200">
+            <div className="p-3 bg-[#FFF7ED] rounded-xl border border-orange-200">
               <div className="text-xs font-semibold text-orange-800 mb-2">Recent Blocked Requests (24h)</div>
               <div className="text-sm font-medium text-orange-900 mb-1">{recentBlocked.total} total blocked</div>
               {Object.keys(recentBlocked.byPath).length > 0 && (
