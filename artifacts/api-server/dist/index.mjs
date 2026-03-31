@@ -104805,7 +104805,7 @@ router16.post("/billing/create-subscription-intent", requireAuth, async (req, re
       customer: customerId,
       status: "incomplete",
       limit: 10,
-      expand: ["data.latest_invoice.payment_intent"]
+      expand: ["data.latest_invoice.confirmation_secret"]
     });
     for (const sub of existingSubs.data) {
       if (sub.items.data.some((item) => item.price.id === priceId)) {
@@ -104819,7 +104819,7 @@ router16.post("/billing/create-subscription-intent", requireAuth, async (req, re
         items: [{ price: priceId }],
         payment_behavior: "default_incomplete",
         payment_settings: { save_default_payment_method: "on_subscription" },
-        expand: ["latest_invoice.payment_intent"]
+        expand: ["latest_invoice.confirmation_secret"]
       });
     }
     let clientSecret = null;
@@ -104830,36 +104830,13 @@ router16.post("/billing/create-subscription-intent", requireAuth, async (req, re
       if (cs?.client_secret) {
         clientSecret = cs.client_secret;
       }
-      if (!clientSecret) {
-        const pi = latestInvoice.payment_intent;
-        if (pi && typeof pi === "object" && pi.client_secret) {
-          clientSecret = pi.client_secret;
-        } else if (pi && typeof pi === "string") {
-          const paymentIntent = await stripe.paymentIntents.retrieve(pi);
-          clientSecret = paymentIntent.client_secret ?? null;
-        }
-      }
-      if (!clientSecret) {
-        const payment = latestInvoice.payment;
-        const pi = payment?.payment_intent;
-        if (pi && typeof pi === "object" && pi.client_secret) {
-          clientSecret = pi.client_secret;
-        } else if (pi && typeof pi === "string") {
-          const paymentIntent = await stripe.paymentIntents.retrieve(pi);
-          clientSecret = paymentIntent.client_secret ?? null;
-        }
-      }
     }
     if (!clientSecret && invoiceId) {
       const inv = await stripe.invoices.retrieve(invoiceId, {
-        expand: ["confirmation_secret", "payment_intent", "payment.payment_intent"]
+        expand: ["confirmation_secret"]
       });
       if (inv.confirmation_secret?.client_secret) {
         clientSecret = inv.confirmation_secret.client_secret;
-      } else if (inv.payment_intent && typeof inv.payment_intent === "object") {
-        clientSecret = inv.payment_intent.client_secret ?? null;
-      } else if (inv.payment?.payment_intent && typeof inv.payment.payment_intent === "object") {
-        clientSecret = inv.payment.payment_intent.client_secret ?? null;
       }
     }
     if (!clientSecret) {

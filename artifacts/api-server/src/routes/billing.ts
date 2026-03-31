@@ -320,7 +320,7 @@ router.post("/billing/create-subscription-intent", requireAuth, async (req: Requ
       customer: customerId,
       status: "incomplete",
       limit: 10,
-      expand: ["data.latest_invoice.payment_intent"],
+      expand: ["data.latest_invoice.confirmation_secret"],
     });
     for (const sub of existingSubs.data) {
       if (sub.items.data.some((item: any) => item.price.id === priceId)) {
@@ -336,60 +336,34 @@ router.post("/billing/create-subscription-intent", requireAuth, async (req: Requ
         items: [{ price: priceId }],
         payment_behavior: "default_incomplete",
         payment_settings: { save_default_payment_method: "on_subscription" },
-        expand: ["latest_invoice.payment_intent"],
+        expand: ["latest_invoice.confirmation_secret"],
       });
     }
 
-    // Resolve client_secret — Stripe v21+ uses confirmation_secret on invoices
+    // Resolve client_secret — Stripe v21 (API 2025-04-30.basil)
+    // uses invoice.confirmation_secret.client_secret instead of invoice.payment_intent.client_secret
     let clientSecret: string | null = null;
     const latestInvoice = subscription.latest_invoice;
 
-    // Get invoice ID for fallback retrieval
     const invoiceId = typeof latestInvoice === "string"
       ? latestInvoice
       : latestInvoice?.id;
 
-    // 1. Try Stripe v21+ confirmation_secret (new API)
+    // 1. Try confirmation_secret from expanded invoice (Stripe v21+)
     if (latestInvoice && typeof latestInvoice === "object") {
       const cs = (latestInvoice as any).confirmation_secret;
       if (cs?.client_secret) {
         clientSecret = cs.client_secret;
       }
-      // 2. Try legacy payment_intent field
-      if (!clientSecret) {
-        const pi = (latestInvoice as any).payment_intent;
-        if (pi && typeof pi === "object" && pi.client_secret) {
-          clientSecret = pi.client_secret;
-        } else if (pi && typeof pi === "string") {
-          const paymentIntent = await stripe.paymentIntents.retrieve(pi);
-          clientSecret = paymentIntent.client_secret ?? null;
-        }
-      }
-      // 3. Try nested payment.payment_intent (v21 structure)
-      if (!clientSecret) {
-        const payment = (latestInvoice as any).payment;
-        const pi = payment?.payment_intent;
-        if (pi && typeof pi === "object" && pi.client_secret) {
-          clientSecret = pi.client_secret;
-        } else if (pi && typeof pi === "string") {
-          const paymentIntent = await stripe.paymentIntents.retrieve(pi);
-          clientSecret = paymentIntent.client_secret ?? null;
-        }
-      }
     }
 
-    // 4. Fallback: retrieve invoice directly
+    // 2. Fallback: retrieve invoice with explicit expand
     if (!clientSecret && invoiceId) {
       const inv = await stripe.invoices.retrieve(invoiceId, {
-        expand: ["confirmation_secret", "payment_intent", "payment.payment_intent"],
+        expand: ["confirmation_secret"],
       }) as any;
-
       if (inv.confirmation_secret?.client_secret) {
         clientSecret = inv.confirmation_secret.client_secret;
-      } else if (inv.payment_intent && typeof inv.payment_intent === "object") {
-        clientSecret = inv.payment_intent.client_secret ?? null;
-      } else if (inv.payment?.payment_intent && typeof inv.payment.payment_intent === "object") {
-        clientSecret = inv.payment.payment_intent.client_secret ?? null;
       }
     }
 
