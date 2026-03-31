@@ -89637,7 +89637,7 @@ var allowedOrigins = [
   process.env.FRONTEND_URL || "http://localhost:3000",
   "https://snipr.sh"
 ];
-var replitDevPattern = /^https:\/\/[a-zA-Z0-9-]+(\.picard|\.riker)?\.replit\.dev(:\d+)?$/;
+var replitDevPattern = /^https:\/\/.+\.replit\.dev(:\d+)?$/;
 app.use((0, import_cors.default)({
   origin: (origin, callback) => {
     if (!origin) {

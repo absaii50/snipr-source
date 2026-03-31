@@ -51,8 +51,8 @@ const allowedOrigins = [
   "https://snipr.sh",
 ];
 
-// Replit dev domain patterns (*.replit.dev, *.riker.replit.dev, *.picard.replit.dev)
-const replitDevPattern = /^https:\/\/[a-zA-Z0-9-]+(\.picard|\.riker)?\.replit\.dev(:\d+)?$/;
+// Replit dev domain patterns (*.replit.dev, *.riker.replit.dev, *.picard.replit.dev, *.sisko.replit.dev, etc.)
+const replitDevPattern = /^https:\/\/.+\.replit\.dev(:\d+)?$/;
 
 app.use(cors({
   origin: (origin, callback) => {
