@@ -375,6 +375,7 @@ router.get("/admin/domains", requireAdmin, async (req, res): Promise<void> => {
       verified: domainsTable.verified,
       isParentDomain: domainsTable.isParentDomain,
       supportsSubdomains: domainsTable.supportsSubdomains,
+      isPlatformDomain: domainsTable.isPlatformDomain,
       createdAt: domainsTable.createdAt,
       workspaceId: domainsTable.workspaceId,
     })
