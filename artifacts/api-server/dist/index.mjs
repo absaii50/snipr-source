@@ -78784,6 +78784,11 @@ router3.post("/links", requireAuth, async (req, res) => {
     return;
   }
   const domainId = domainRecord.id;
+  const [existingLink] = await db.select({ id: linksTable.id }).from(linksTable).where(and(eq(linksTable.slug, slug), eq(linksTable.domainId, domainId)));
+  if (existingLink) {
+    res.status(409).json({ error: "Slug already taken", message: `The slug "${slug}" is already in use on this domain.` });
+    return;
+  }
   let link;
   try {
     const result = await db.insert(linksTable).values({
@@ -88180,6 +88185,7 @@ router14.get("/admin/domains", requireAdmin, async (req, res) => {
     verified: domainsTable.verified,
     isParentDomain: domainsTable.isParentDomain,
     supportsSubdomains: domainsTable.supportsSubdomains,
+    isPlatformDomain: domainsTable.isPlatformDomain,
     createdAt: domainsTable.createdAt,
     workspaceId: domainsTable.workspaceId
   }).from(domainsTable).orderBy(desc(domainsTable.createdAt)).limit(100);

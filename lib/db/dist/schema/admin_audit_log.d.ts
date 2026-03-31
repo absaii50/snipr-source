@@ -1,13 +1,12 @@
-import { z } from "zod/v4";
-export declare const linkRulesTable: import("drizzle-orm/pg-core").PgTableWithColumns<{
-    name: "link_rules";
+export declare const adminAuditLogTable: import("drizzle-orm/pg-core").PgTableWithColumns<{
+    name: "admin_audit_log";
     schema: undefined;
     columns: {
         id: import("drizzle-orm/pg-core").PgColumn<{
             name: "id";
-            tableName: "link_rules";
+            tableName: "admin_audit_log";
             dataType: "string";
-            columnType: "PgUUID";
+            columnType: "PgVarchar";
             data: string;
             driverParam: string;
             notNull: true;
@@ -15,31 +14,16 @@ export declare const linkRulesTable: import("drizzle-orm/pg-core").PgTableWithCo
             isPrimaryKey: true;
             isAutoincrement: false;
             hasRuntimeDefault: false;
-            enumValues: undefined;
+            enumValues: [string, ...string[]];
             baseColumn: never;
             identity: undefined;
             generated: undefined;
-        }, {}, {}>;
-        linkId: import("drizzle-orm/pg-core").PgColumn<{
-            name: "link_id";
-            tableName: "link_rules";
-            dataType: "string";
-            columnType: "PgUUID";
-            data: string;
-            driverParam: string;
-            notNull: true;
-            hasDefault: false;
-            isPrimaryKey: false;
-            isAutoincrement: false;
-            hasRuntimeDefault: false;
-            enumValues: undefined;
-            baseColumn: never;
-            identity: undefined;
-            generated: undefined;
-        }, {}, {}>;
-        type: import("drizzle-orm/pg-core").PgColumn<{
-            name: "type";
-            tableName: "link_rules";
+        }, {}, {
+            length: number | undefined;
+        }>;
+        action: import("drizzle-orm/pg-core").PgColumn<{
+            name: "action";
+            tableName: "admin_audit_log";
             dataType: "string";
             columnType: "PgText";
             data: string;
@@ -54,32 +38,49 @@ export declare const linkRulesTable: import("drizzle-orm/pg-core").PgTableWithCo
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
-        priority: import("drizzle-orm/pg-core").PgColumn<{
-            name: "priority";
-            tableName: "link_rules";
-            dataType: "number";
-            columnType: "PgInteger";
-            data: number;
-            driverParam: string | number;
-            notNull: true;
-            hasDefault: true;
+        targetType: import("drizzle-orm/pg-core").PgColumn<{
+            name: "target_type";
+            tableName: "admin_audit_log";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: false;
+            hasDefault: false;
             isPrimaryKey: false;
             isAutoincrement: false;
             hasRuntimeDefault: false;
-            enumValues: undefined;
+            enumValues: [string, ...string[]];
             baseColumn: never;
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
-        conditions: import("drizzle-orm/pg-core").PgColumn<{
-            name: "conditions";
-            tableName: "link_rules";
+        targetId: import("drizzle-orm/pg-core").PgColumn<{
+            name: "target_id";
+            tableName: "admin_audit_log";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        details: import("drizzle-orm/pg-core").PgColumn<{
+            name: "details";
+            tableName: "admin_audit_log";
             dataType: "json";
             columnType: "PgJsonb";
             data: unknown;
             driverParam: unknown;
-            notNull: true;
-            hasDefault: true;
+            notNull: false;
+            hasDefault: false;
             isPrimaryKey: false;
             isAutoincrement: false;
             hasRuntimeDefault: false;
@@ -88,26 +89,9 @@ export declare const linkRulesTable: import("drizzle-orm/pg-core").PgTableWithCo
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
-        destinationUrl: import("drizzle-orm/pg-core").PgColumn<{
-            name: "destination_url";
-            tableName: "link_rules";
-            dataType: "string";
-            columnType: "PgText";
-            data: string;
-            driverParam: string;
-            notNull: true;
-            hasDefault: false;
-            isPrimaryKey: false;
-            isAutoincrement: false;
-            hasRuntimeDefault: false;
-            enumValues: [string, ...string[]];
-            baseColumn: never;
-            identity: undefined;
-            generated: undefined;
-        }, {}, {}>;
-        label: import("drizzle-orm/pg-core").PgColumn<{
-            name: "label";
-            tableName: "link_rules";
+        adminIp: import("drizzle-orm/pg-core").PgColumn<{
+            name: "admin_ip";
+            tableName: "admin_audit_log";
             dataType: "string";
             columnType: "PgText";
             data: string;
@@ -124,7 +108,7 @@ export declare const linkRulesTable: import("drizzle-orm/pg-core").PgTableWithCo
         }, {}, {}>;
         createdAt: import("drizzle-orm/pg-core").PgColumn<{
             name: "created_at";
-            tableName: "link_rules";
+            tableName: "admin_audit_log";
             dataType: "date";
             columnType: "PgTimestamp";
             data: Date;
@@ -142,17 +126,5 @@ export declare const linkRulesTable: import("drizzle-orm/pg-core").PgTableWithCo
     };
     dialect: "pg";
 }>;
-export declare const insertLinkRuleSchema: z.ZodObject<{
-    destinationUrl: z.ZodString;
-    type: z.ZodString;
-    linkId: z.ZodUUID;
-    priority: z.ZodOptional<z.ZodInt>;
-    conditions: z.ZodOptional<z.ZodType<import("drizzle-zod").Json, unknown, z.core.$ZodTypeInternals<import("drizzle-zod").Json, unknown>>>;
-    label: z.ZodOptional<z.ZodNullable<z.ZodString>>;
-}, {
-    out: {};
-    in: {};
-}>;
-export type InsertLinkRule = z.infer<typeof insertLinkRuleSchema>;
-export type LinkRule = typeof linkRulesTable.$inferSelect;
-//# sourceMappingURL=link_rules.d.ts.map
+export type AdminAuditLog = typeof adminAuditLogTable.$inferSelect;
+//# sourceMappingURL=admin_audit_log.d.ts.map

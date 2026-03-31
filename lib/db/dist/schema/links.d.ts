@@ -207,6 +207,74 @@ export declare const linksTable: import("drizzle-orm/pg-core").PgTableWithColumn
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
+        isCloaked: import("drizzle-orm/pg-core").PgColumn<{
+            name: "is_cloaked";
+            tableName: "links";
+            dataType: "boolean";
+            columnType: "PgBoolean";
+            data: boolean;
+            driverParam: boolean;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        hideReferrer: import("drizzle-orm/pg-core").PgColumn<{
+            name: "hide_referrer";
+            tableName: "links";
+            dataType: "boolean";
+            columnType: "PgBoolean";
+            data: boolean;
+            driverParam: boolean;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        iosDeepLink: import("drizzle-orm/pg-core").PgColumn<{
+            name: "ios_deep_link";
+            tableName: "links";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        androidDeepLink: import("drizzle-orm/pg-core").PgColumn<{
+            name: "android_deep_link";
+            tableName: "links";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
         createdAt: import("drizzle-orm/pg-core").PgColumn<{
             name: "created_at";
             tableName: "links";
@@ -256,6 +324,10 @@ export declare const insertLinkSchema: z.ZodObject<{
     folderId: z.ZodOptional<z.ZodNullable<z.ZodUUID>>;
     clickLimit: z.ZodOptional<z.ZodNullable<z.ZodInt>>;
     fallbackUrl: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    isCloaked: z.ZodOptional<z.ZodBoolean>;
+    hideReferrer: z.ZodOptional<z.ZodBoolean>;
+    iosDeepLink: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    androidDeepLink: z.ZodOptional<z.ZodNullable<z.ZodString>>;
 }, {
     out: {};
     in: {};

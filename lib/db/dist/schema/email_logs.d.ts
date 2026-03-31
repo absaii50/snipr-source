@@ -1,11 +1,10 @@
-import { z } from "zod/v4";
-export declare const domainsTable: import("drizzle-orm/pg-core").PgTableWithColumns<{
-    name: "domains";
+export declare const emailLogsTable: import("drizzle-orm/pg-core").PgTableWithColumns<{
+    name: "email_logs";
     schema: undefined;
     columns: {
         id: import("drizzle-orm/pg-core").PgColumn<{
             name: "id";
-            tableName: "domains";
+            tableName: "email_logs";
             dataType: "string";
             columnType: "PgUUID";
             data: string;
@@ -20,14 +19,14 @@ export declare const domainsTable: import("drizzle-orm/pg-core").PgTableWithColu
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
-        workspaceId: import("drizzle-orm/pg-core").PgColumn<{
-            name: "workspace_id";
-            tableName: "domains";
+        userId: import("drizzle-orm/pg-core").PgColumn<{
+            name: "user_id";
+            tableName: "email_logs";
             dataType: "string";
             columnType: "PgUUID";
             data: string;
             driverParam: string;
-            notNull: true;
+            notNull: false;
             hasDefault: false;
             isPrimaryKey: false;
             isAutoincrement: false;
@@ -37,9 +36,9 @@ export declare const domainsTable: import("drizzle-orm/pg-core").PgTableWithColu
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
-        domain: import("drizzle-orm/pg-core").PgColumn<{
-            name: "domain";
-            tableName: "domains";
+        to: import("drizzle-orm/pg-core").PgColumn<{
+            name: "to";
+            tableName: "email_logs";
             dataType: "string";
             columnType: "PgText";
             data: string;
@@ -54,65 +53,65 @@ export declare const domainsTable: import("drizzle-orm/pg-core").PgTableWithColu
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
-        verified: import("drizzle-orm/pg-core").PgColumn<{
-            name: "verified";
-            tableName: "domains";
-            dataType: "boolean";
-            columnType: "PgBoolean";
-            data: boolean;
-            driverParam: boolean;
+        subject: import("drizzle-orm/pg-core").PgColumn<{
+            name: "subject";
+            tableName: "email_logs";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
             notNull: true;
-            hasDefault: true;
+            hasDefault: false;
             isPrimaryKey: false;
             isAutoincrement: false;
             hasRuntimeDefault: false;
-            enumValues: undefined;
+            enumValues: [string, ...string[]];
             baseColumn: never;
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
-        isParentDomain: import("drizzle-orm/pg-core").PgColumn<{
-            name: "is_parent_domain";
-            tableName: "domains";
-            dataType: "boolean";
-            columnType: "PgBoolean";
-            data: boolean;
-            driverParam: boolean;
+        type: import("drizzle-orm/pg-core").PgColumn<{
+            name: "type";
+            tableName: "email_logs";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
             notNull: true;
-            hasDefault: true;
+            hasDefault: false;
             isPrimaryKey: false;
             isAutoincrement: false;
             hasRuntimeDefault: false;
-            enumValues: undefined;
+            enumValues: [string, ...string[]];
             baseColumn: never;
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
-        supportsSubdomains: import("drizzle-orm/pg-core").PgColumn<{
-            name: "supports_subdomains";
-            tableName: "domains";
-            dataType: "boolean";
-            columnType: "PgBoolean";
-            data: boolean;
-            driverParam: boolean;
-            notNull: true;
-            hasDefault: true;
-            isPrimaryKey: false;
-            isAutoincrement: false;
-            hasRuntimeDefault: false;
-            enumValues: undefined;
-            baseColumn: never;
-            identity: undefined;
-            generated: undefined;
-        }, {}, {}>;
-        purpose: import("drizzle-orm/pg-core").PgColumn<{
-            name: "purpose";
-            tableName: "domains";
+        resendId: import("drizzle-orm/pg-core").PgColumn<{
+            name: "resend_id";
+            tableName: "email_logs";
             dataType: "string";
             columnType: "PgText";
             data: string;
             driverParam: string;
             notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        status: import("drizzle-orm/pg-core").PgColumn<{
+            name: "status";
+            tableName: "email_logs";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: true;
             hasDefault: true;
             isPrimaryKey: false;
             isAutoincrement: false;
@@ -122,43 +121,26 @@ export declare const domainsTable: import("drizzle-orm/pg-core").PgTableWithColu
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
-        isPlatformDomain: import("drizzle-orm/pg-core").PgColumn<{
-            name: "is_platform_domain";
-            tableName: "domains";
-            dataType: "boolean";
-            columnType: "PgBoolean";
-            data: boolean;
-            driverParam: boolean;
-            notNull: true;
-            hasDefault: true;
+        error: import("drizzle-orm/pg-core").PgColumn<{
+            name: "error";
+            tableName: "email_logs";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: false;
+            hasDefault: false;
             isPrimaryKey: false;
             isAutoincrement: false;
             hasRuntimeDefault: false;
-            enumValues: undefined;
+            enumValues: [string, ...string[]];
             baseColumn: never;
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
         createdAt: import("drizzle-orm/pg-core").PgColumn<{
             name: "created_at";
-            tableName: "domains";
-            dataType: "date";
-            columnType: "PgTimestamp";
-            data: Date;
-            driverParam: string;
-            notNull: true;
-            hasDefault: true;
-            isPrimaryKey: false;
-            isAutoincrement: false;
-            hasRuntimeDefault: false;
-            enumValues: undefined;
-            baseColumn: never;
-            identity: undefined;
-            generated: undefined;
-        }, {}, {}>;
-        updatedAt: import("drizzle-orm/pg-core").PgColumn<{
-            name: "updated_at";
-            tableName: "domains";
+            tableName: "email_logs";
             dataType: "date";
             columnType: "PgTimestamp";
             data: Date;
@@ -176,17 +158,5 @@ export declare const domainsTable: import("drizzle-orm/pg-core").PgTableWithColu
     };
     dialect: "pg";
 }>;
-export declare const insertDomainSchema: z.ZodObject<{
-    workspaceId: z.ZodUUID;
-    domain: z.ZodString;
-    isParentDomain: z.ZodOptional<z.ZodBoolean>;
-    supportsSubdomains: z.ZodOptional<z.ZodBoolean>;
-    purpose: z.ZodOptional<z.ZodNullable<z.ZodString>>;
-    isPlatformDomain: z.ZodOptional<z.ZodBoolean>;
-}, {
-    out: {};
-    in: {};
-}>;
-export type InsertDomain = z.infer<typeof insertDomainSchema>;
-export type Domain = typeof domainsTable.$inferSelect;
-//# sourceMappingURL=domains.d.ts.map
+export type EmailLog = typeof emailLogsTable.$inferSelect;
+//# sourceMappingURL=email_logs.d.ts.map
