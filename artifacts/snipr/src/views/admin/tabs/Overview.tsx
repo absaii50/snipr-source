@@ -22,10 +22,13 @@ interface HealthData {
   memory: { rss: number; heapUsed: number; heapTotal: number; external: number };
   activeSessions: number;
   dbSizeMb: number;
+  dbPool?: { activeConnections: number; totalCommits: number; totalRollbacks: number; deadlocks: number };
+  apiResponseTime?: { avgMs: number; lastDbLatencyMs: number; samples: number };
   clicksToday: number;
   usersToday: number;
   nodeVersion: string;
   status: string;
+  checks?: Record<string, boolean>;
 }
 interface RecentUser { id: string; name: string; email: string; createdAt: string; }
 interface TopLink { slug: string; destination_url: string; clicks: number; }
@@ -236,6 +239,27 @@ export default function Overview() {
               </div>
               <span className="text-sm font-bold text-[#0A0A0A]">{health.nodeVersion}</span>
             </div>
+            {health.dbPool && (
+              <div className="rounded-xl bg-[#F8F8FC] p-3">
+                <div className="flex items-center gap-1.5 mb-1">
+                  <Database className="w-3 h-3 text-[#8888A0]" />
+                  <span className="text-[10px] text-[#8888A0] font-semibold uppercase">DB Pool</span>
+                </div>
+                <span className="text-sm font-bold text-[#0A0A0A]">{health.dbPool.activeConnections}</span>
+                <span className="text-[10px] text-[#8888A0] ml-1">conn</span>
+                {health.dbPool.deadlocks > 0 && <span className="text-[10px] text-red-500 ml-2">{health.dbPool.deadlocks} deadlocks</span>}
+              </div>
+            )}
+            {health.apiResponseTime && (
+              <div className="rounded-xl bg-[#F8F8FC] p-3">
+                <div className="flex items-center gap-1.5 mb-1">
+                  <Activity className="w-3 h-3 text-[#8888A0]" />
+                  <span className="text-[10px] text-[#8888A0] font-semibold uppercase">Avg DB Latency</span>
+                </div>
+                <span className="text-sm font-bold text-[#0A0A0A]">{health.apiResponseTime.avgMs}ms</span>
+                <span className="text-[10px] text-[#8888A0] ml-1">({health.apiResponseTime.samples} samples)</span>
+              </div>
+            )}
           </div>
         </div>
       )}

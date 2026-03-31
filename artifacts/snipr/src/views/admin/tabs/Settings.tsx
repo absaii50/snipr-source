@@ -145,6 +145,7 @@ export default function SettingsTab() {
   const [announcement, setAnnouncement] = useState({ text: "", type: "info" as "info" | "warning" | "success", enabled: false });
   const [announcementSaving, setAnnouncementSaving] = useState(false);
   const [rateLimits, setRateLimits] = useState<{ name: string; path: string; windowMs: number; max: number; description: string }[]>([]);
+  const [recentBlocked, setRecentBlocked] = useState<{ total: number; byPath: Record<string, number>; lastEvents: { path: string; ip: string; timestamp: string }[] } | null>(null);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -183,6 +184,7 @@ export default function SettingsTab() {
     try {
       const data = await apiFetch("/admin/rate-limits");
       setRateLimits(data.limits || []);
+      setRecentBlocked(data.recentBlocked || null);
     } catch {}
   }
 
@@ -472,6 +474,36 @@ export default function SettingsTab() {
                   <span className="px-2 py-0.5 rounded-full bg-green-50 text-green-700 text-[10px] font-semibold">Active</span>
                 </div>
               ))}
+            </div>
+          )}
+          {recentBlocked && (
+            <div className="mt-3 p-3 bg-[#FFF7ED] rounded-xl border border-orange-200">
+              <div className="text-xs font-semibold text-orange-800 mb-2">Recent Blocked Requests (24h)</div>
+              <div className="text-sm font-medium text-orange-900 mb-1">{recentBlocked.total} total blocked</div>
+              {Object.keys(recentBlocked.byPath).length > 0 && (
+                <div className="space-y-1 mb-2">
+                  {Object.entries(recentBlocked.byPath).map(([path, cnt]) => (
+                    <div key={path} className="flex items-center justify-between text-xs">
+                      <code className="bg-white/60 px-1 rounded text-[10px] text-orange-700">{path}</code>
+                      <span className="font-semibold text-orange-800">{cnt}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {recentBlocked.lastEvents.length > 0 && (
+                <details className="text-xs text-orange-700">
+                  <summary className="cursor-pointer hover:text-orange-900">Last {recentBlocked.lastEvents.length} events</summary>
+                  <div className="mt-1 space-y-0.5 max-h-32 overflow-y-auto">
+                    {recentBlocked.lastEvents.map((evt, i) => (
+                      <div key={i} className="flex gap-2 font-mono text-[10px]">
+                        <span>{new Date(evt.timestamp).toLocaleTimeString()}</span>
+                        <span>{evt.ip}</span>
+                        <span className="text-orange-900">{evt.path}</span>
+                      </div>
+                    ))}
+                  </div>
+                </details>
+              )}
             </div>
           )}
           <button onClick={loadRateLimits}

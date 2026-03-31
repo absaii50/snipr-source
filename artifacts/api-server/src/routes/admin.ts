@@ -295,6 +295,7 @@ router.patch("/admin/links/:id/toggle", requireAdmin, async (req, res): Promise<
 
 router.delete("/admin/links/:id", requireAdmin, async (req, res): Promise<void> => {
   await db.delete(linksTable).where(eq(linksTable.id, req.params.id));
+  await logAuditAction("delete_link", "link", req.params.id, null, req.ip);
   res.json({ ok: true });
 });
 
@@ -476,6 +477,7 @@ router.post("/admin/domains", requireAdmin, async (req, res): Promise<void> => {
     })
     .returning();
 
+  await logAuditAction("create_domain", "domain", created.id, { domain: normalized, workspaceId }, req.ip);
   res.status(201).json(created);
 });
 
@@ -513,6 +515,7 @@ router.get("/admin/workspaces-list", requireAdmin, async (req, res): Promise<voi
 
 router.delete("/admin/domains/:id", requireAdmin, async (req, res): Promise<void> => {
   await db.delete(domainsTable).where(eq(domainsTable.id, req.params.id));
+  await logAuditAction("delete_domain", "domain", req.params.id, null, req.ip);
   res.json({ ok: true });
 });
 
@@ -593,7 +596,6 @@ router.post("/admin/force-verify/:userId", requireAdmin, async (req, res): Promi
     .set({ emailVerified: true, emailVerificationToken: null })
     .where(eq(usersTable.id, userId));
 
-  // Log admin action
   await db.insert(emailLogsTable).values({
     userId,
     to: user.email,
@@ -602,6 +604,7 @@ router.post("/admin/force-verify/:userId", requireAdmin, async (req, res): Promi
     status: "sent",
   });
 
+  await logAuditAction("force_verify_email", "user", userId, { email: user.email }, req.ip);
   res.json({ ok: true });
 });
 
@@ -632,6 +635,7 @@ router.post("/admin/resend-verification/:userId", requireAdmin, async (req, res)
     emailVerificationToken: newToken,
   });
 
+  await logAuditAction("resend_verification", "user", userId, { email: user.email }, req.ip);
   res.json({ ok: true, message: "Verification email sent" });
 });
 
@@ -1265,6 +1269,7 @@ router.post("/admin/settings/billing", requireAdmin, async (req, res): Promise<v
   }
 
   invalidateConfigCache();
+  await logAuditAction("update_billing_settings", "settings", null, { saved }, req.ip);
   res.json({ ok: true, saved });
 });
 
@@ -1345,19 +1350,41 @@ router.get("/admin/audit-log", requireAdmin, async (req, res): Promise<void> => 
 
 const SERVER_START_TIME = Date.now();
 
+const responseTimeSamples: number[] = [];
+function recordResponseTime(ms: number) {
+  responseTimeSamples.push(ms);
+  if (responseTimeSamples.length > 200) responseTimeSamples.shift();
+}
+
 router.get("/admin/health-detail", requireAdmin, async (req, res): Promise<void> => {
   const mem = process.memoryUsage();
   const uptime = Math.floor((Date.now() - SERVER_START_TIME) / 1000);
 
-  const [[sessionCount], [dbSize]] = await Promise.all([
+  const dbQueryStart = Date.now();
+  const [[sessionCount], [dbSize], [dbPoolInfo]] = await Promise.all([
     db.select({ count: count() }).from(sql`session`),
     db.execute(sql`SELECT pg_database_size(current_database()) as size`).then(r => r.rows),
+    db.execute(sql`SELECT numbackends, xact_commit, xact_rollback, deadlocks FROM pg_stat_database WHERE datname = current_database()`).then(r => r.rows),
   ]);
+  const dbLatencyMs = Date.now() - dbQueryStart;
+  recordResponseTime(dbLatencyMs);
 
   const [[clicksToday], [usersToday]] = await Promise.all([
     db.select({ count: count() }).from(clickEventsTable).where(sql`${clickEventsTable.timestamp} >= NOW() - INTERVAL '1 day'`),
     db.select({ count: count() }).from(usersTable).where(sql`${usersTable.createdAt} >= NOW() - INTERVAL '1 day'`),
   ]);
+
+  const pool = dbPoolInfo as Record<string, unknown> | undefined;
+  const avgResponseMs = responseTimeSamples.length > 0
+    ? Math.round(responseTimeSamples.reduce((a, b) => a + b, 0) / responseTimeSamples.length)
+    : 0;
+
+  const checks = {
+    database: dbLatencyMs < 5000,
+    memory: mem.heapUsed / mem.heapTotal < 0.95,
+    uptime: uptime > 0,
+  };
+  const overallStatus = Object.values(checks).every(Boolean) ? "healthy" : "degraded";
 
   res.json({
     uptime,
@@ -1370,11 +1397,23 @@ router.get("/admin/health-detail", requireAdmin, async (req, res): Promise<void>
     activeSessions: sessionCount?.count ?? 0,
     dbSizeBytes: Number((dbSize as Record<string, unknown>)?.size ?? 0),
     dbSizeMb: Math.round(Number((dbSize as Record<string, unknown>)?.size ?? 0) / 1024 / 1024),
+    dbPool: {
+      activeConnections: Number(pool?.numbackends ?? 0),
+      totalCommits: Number(pool?.xact_commit ?? 0),
+      totalRollbacks: Number(pool?.xact_rollback ?? 0),
+      deadlocks: Number(pool?.deadlocks ?? 0),
+    },
+    apiResponseTime: {
+      avgMs: avgResponseMs,
+      lastDbLatencyMs: dbLatencyMs,
+      samples: responseTimeSamples.length,
+    },
     clicksToday: clicksToday?.count ?? 0,
     usersToday: usersToday?.count ?? 0,
     nodeVersion: process.version,
     platform: process.platform,
-    status: "healthy",
+    status: overallStatus,
+    checks,
   });
 });
 
@@ -1562,10 +1601,11 @@ router.post("/admin/links/health-check", requireAdmin, async (req, res): Promise
         status: r.status, ok: r.status >= 200 && r.status < 400,
         checkedAt: new Date().toISOString(),
       });
-    } catch (e: any) {
+    } catch (e: unknown) {
+      const err = e instanceof Error ? e : new Error("Network error");
       results.push({
         id: link.id, slug: link.slug, url: link.destinationUrl,
-        status: null, ok: false, error: e.name === "AbortError" ? "Timeout" : (e.message || "Network error"),
+        status: null, ok: false, error: err.name === "AbortError" ? "Timeout" : (err.message || "Network error"),
         checkedAt: new Date().toISOString(),
       });
     }
@@ -1694,7 +1734,28 @@ router.get("/announcement", async (_req, res): Promise<void> => {
    FEATURE 8: Rate Limit Dashboard
    ══════════════════════════════════════════════════════════════════════ */
 
+interface RateLimitEvent {
+  path: string;
+  ip: string;
+  timestamp: string;
+}
+
+const rateLimitEvents: RateLimitEvent[] = [];
+const RATE_LIMIT_EVENT_MAX = 500;
+
+export function recordRateLimitEvent(path: string, ip: string) {
+  rateLimitEvents.push({ path, ip: ip.replace(/^::ffff:/, ""), timestamp: new Date().toISOString() });
+  if (rateLimitEvents.length > RATE_LIMIT_EVENT_MAX) rateLimitEvents.shift();
+}
+
 router.get("/admin/rate-limits", requireAdmin, async (_req, res): Promise<void> => {
+  const last24h = new Date(Date.now() - 86400000).toISOString();
+  const recentEvents = rateLimitEvents.filter(e => e.timestamp >= last24h);
+  const blockedByPath: Record<string, number> = {};
+  for (const e of recentEvents) {
+    blockedByPath[e.path] = (blockedByPath[e.path] || 0) + 1;
+  }
+
   res.json({
     limits: [
       { name: "API General", path: "/api/*", windowMs: 60000, max: 200, description: "Standard API endpoints" },
@@ -1702,6 +1763,11 @@ router.get("/admin/rate-limits", requireAdmin, async (_req, res): Promise<void> 
       { name: "Password Reset", path: "/api/auth/forgot-password", windowMs: 900000, max: 5, description: "Password reset requests" },
       { name: "Admin Login", path: "/api/admin/login", windowMs: 900000, max: 5, description: "Admin panel login" },
     ],
+    recentBlocked: {
+      total: recentEvents.length,
+      byPath: blockedByPath,
+      lastEvents: recentEvents.slice(-20),
+    },
   });
 });
 
@@ -1717,11 +1783,11 @@ router.get("/admin/users/:id/workspace-detail", requireAdmin, async (req, res): 
 
   const [ws] = await db.select().from(workspacesTable).where(eq(workspacesTable.userId, userId));
 
-  let links: any[] = [];
-  let domains: any[] = [];
-  let members: any[] = [];
+  let links: Record<string, unknown>[] = [];
+  let domains: Record<string, unknown>[] = [];
+  let members: Record<string, unknown>[] = [];
   let totalClicks = 0;
-  let recentClicks: any[] = [];
+  let recentClicks: Record<string, unknown>[] = [];
 
   if (ws) {
     links = await db.execute(sql`
@@ -1768,7 +1834,7 @@ router.get("/admin/users/:id/workspace-detail", requireAdmin, async (req, res): 
     recentClicks,
     summary: {
       totalLinks: links.length,
-      activeLinks: links.filter((l: any) => l.enabled).length,
+      activeLinks: links.filter((l) => l.enabled).length,
       totalClicks,
       totalDomains: domains.length,
       totalMembers: members.length,

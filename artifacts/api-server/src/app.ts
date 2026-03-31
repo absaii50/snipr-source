@@ -10,6 +10,7 @@ import router from "./routes";
 import redirectRouter from "./routes/redirect";
 import { logger } from "./lib/logger";
 import { WebhookHandlers } from "./lib/webhookHandlers";
+import { recordRateLimitEvent } from "./routes/admin";
 
 const sessionSecret = process.env.SESSION_SECRET;
 if (!sessionSecret && process.env.NODE_ENV === "production") {
@@ -128,13 +129,18 @@ app.use(
 
 // Rate limiting — redirects (all paths): 120/min per IP; API endpoints: 200/min per IP
 // Dashboard alone fires 7+ simultaneous requests per page load; 30/min was far too strict
+function rateLimitHandler(req: Request, res: Response, _next: NextFunction, _options: Record<string, unknown>) {
+  recordRateLimitEvent(req.path, req.ip || "unknown");
+  res.status(429).json({ error: "Too many requests. Please slow down." });
+}
+
 const redirectLimiter = rateLimit({
   windowMs: 60 * 1000,
   max: 120,
   standardHeaders: true,
   legacyHeaders: false,
   skip: (req) => req.method === "HEAD",
-  message: { error: "Too many requests. Please slow down." },
+  handler: rateLimitHandler,
 });
 
 const apiLimiter = rateLimit({
@@ -142,7 +148,7 @@ const apiLimiter = rateLimit({
   max: 200,
   standardHeaders: true,
   legacyHeaders: false,
-  message: { error: "Too many requests. Please slow down." },
+  handler: rateLimitHandler,
 });
 
 const passwordResetLimiter = rateLimit({
@@ -150,16 +156,22 @@ const passwordResetLimiter = rateLimit({
   max: 5,
   standardHeaders: true,
   legacyHeaders: false,
-  message: { error: "Too many password reset requests. Please try again later." },
+  handler: (req: Request, res: Response, _next: NextFunction) => {
+    recordRateLimitEvent(req.path, req.ip || "unknown");
+    res.status(429).json({ error: "Too many password reset requests. Please try again later." });
+  },
   skip: (req) => req.method !== "POST" || (req.path !== "/auth/forgot-password" && req.path !== "/auth/reset-password"),
 });
 
 const adminLoginLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15-minute window
-  max: 5, // Only 5 attempts per 15 minutes
+  windowMs: 15 * 60 * 1000,
+  max: 5,
   standardHeaders: true,
   legacyHeaders: false,
-  message: { error: "Too many login attempts. Please try again later." },
+  handler: (req: Request, res: Response, _next: NextFunction) => {
+    recordRateLimitEvent(req.path, req.ip || "unknown");
+    res.status(429).json({ error: "Too many login attempts. Please try again later." });
+  },
   skip: (req) => req.method !== "POST" || req.path !== "/admin/login",
 });
 
