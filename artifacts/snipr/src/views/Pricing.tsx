@@ -162,8 +162,8 @@ export default function Pricing() {
             <br />
             <span className="text-[#8888A0] mt-1 block">
               Payments secured by{" "}
-              <a href="https://lemonsqueezy.com" target="_blank" rel="noopener noreferrer" className="text-[#FFC439] hover:underline">
-                Lemon Squeezy
+              <a href="https://stripe.com" target="_blank" rel="noopener noreferrer" className="text-[#635BFF] hover:underline">
+                Stripe
               </a>
             </span>
           </div>

@@ -146,7 +146,6 @@ export default function Billing() {
           </div>
         ) : (
           <div className="space-y-6">
-            {/* Current plan card */}
             <div className="bg-white rounded-2xl border border-[#E4E4EC] p-6">
               <div className="flex items-start justify-between mb-5">
                 <div className="flex items-center gap-3">
@@ -205,7 +204,6 @@ export default function Billing() {
               )}
             </div>
 
-            {/* Upgrade options */}
             {currentPlan !== "business" && (
               <div className="bg-white rounded-2xl border border-[#E4E4EC] p-6">
                 <h2 className="text-[15px] font-bold text-[#0A0A0A] mb-4">Upgrade your plan</h2>
@@ -259,17 +257,16 @@ export default function Billing() {
               </div>
             )}
 
-            {/* Powered by Lemon Squeezy */}
             <div className="flex items-center gap-2 text-[12px] text-[#AAAAB4]">
               <CreditCard className="w-3.5 h-3.5" />
               Payments powered by{" "}
               <a
-                href="https://lemonsqueezy.com"
+                href="https://stripe.com"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-[#FFC439] font-semibold hover:underline"
+                className="text-[#635BFF] font-semibold hover:underline"
               >
-                Lemon Squeezy
+                Stripe
               </a>
             </div>
           </div>

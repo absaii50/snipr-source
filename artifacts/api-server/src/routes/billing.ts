@@ -2,31 +2,24 @@ import { Router, type IRouter, type Request, type Response } from "express";
 import { eq } from "drizzle-orm";
 import { db, usersTable } from "@workspace/db";
 import { requireAuth } from "../lib/auth";
-import {
-  createCheckout,
-  getCustomerPortalUrl,
-  verifyWebhookSignature,
-  planFromVariantId,
-} from "../lib/lemonsqueezy";
+import { stripeService } from "../lib/stripeService";
+import { stripeStorage } from "../lib/stripeStorage";
+import { getStripePublishableKey, getUncachableStripeClient } from "../lib/stripeClient";
+import { logger } from "../lib/logger";
 
 const router: IRouter = Router();
 
-const PLAN_VARIANT_MAP: Record<string, string> = {
-  pro: process.env.LEMONSQUEEZY_PRO_VARIANT_ID ?? "",
-  business: process.env.LEMONSQUEEZY_BUSINESS_VARIANT_ID ?? "",
-};
+function getFrontendBaseUrl(): string {
+  if (process.env.FRONTEND_URL) return process.env.FRONTEND_URL.replace(/\/$/, "");
+  if (process.env.REPLIT_DOMAINS) return `https://${process.env.REPLIT_DOMAINS.split(",")[0]}`;
+  return "http://localhost:3000";
+}
 
 router.post("/billing/checkout", requireAuth, async (req: Request, res: Response): Promise<void> => {
   const { plan } = req.body as { plan?: string };
 
-  if (!plan || !PLAN_VARIANT_MAP[plan]) {
+  if (!plan || !["pro", "business"].includes(plan)) {
     res.status(400).json({ error: "Invalid plan. Must be 'pro' or 'business'." });
-    return;
-  }
-
-  const variantId = PLAN_VARIANT_MAP[plan];
-  if (!variantId) {
-    res.status(503).json({ error: "Billing not configured. Missing variant ID for this plan." });
     return;
   }
 
@@ -40,20 +33,52 @@ router.post("/billing/checkout", requireAuth, async (req: Request, res: Response
     return;
   }
 
-  const origin = req.headers.origin ?? `https://${req.headers.host}`;
-  const redirectUrl = `${origin}/billing?upgraded=1`;
-
   try {
-    const checkoutUrl = await createCheckout({
-      variantId,
-      userId: user.id,
-      userEmail: user.email,
-      userName: user.name,
-      redirectUrl,
-    });
-    res.json({ url: checkoutUrl });
+    let customerId = user.stripeCustomerId;
+    if (!customerId) {
+      const customer = await stripeService.createCustomer(user.email, user.id, user.name);
+      customerId = customer.id;
+      await db
+        .update(usersTable)
+        .set({ stripeCustomerId: customerId })
+        .where(eq(usersTable.id, user.id));
+    }
+
+    let priceId: string | null = null;
+
+    const localProducts = await stripeStorage.listProductsWithPrices(true);
+    const localMatch = localProducts.find((p: any) => p.product_metadata?.plan === plan);
+    if (localMatch?.price_id) {
+      priceId = localMatch.price_id;
+    }
+
+    if (!priceId) {
+      const stripe = await getUncachableStripeClient();
+      const apiProducts = await stripe.products.list({ active: true, limit: 100 });
+      const match = apiProducts.data.find((p) => p.metadata?.plan === plan);
+      if (match) {
+        const prices = await stripe.prices.list({ product: match.id, active: true, limit: 1 });
+        priceId = prices.data[0]?.id ?? null;
+      }
+    }
+
+    if (!priceId) {
+      res.status(503).json({ error: `No Stripe product found for plan: ${plan}. Run the seed script first.` });
+      return;
+    }
+
+    const baseUrl = getFrontendBaseUrl();
+    const session = await stripeService.createCheckoutSession(
+      customerId,
+      priceId,
+      `${baseUrl}/billing?upgraded=1`,
+      `${baseUrl}/pricing`
+    );
+
+    res.json({ url: session.url });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Unknown error";
+    logger.error({ err }, "Failed to create checkout session");
     res.status(502).json({ error: "Failed to create checkout session.", detail: message });
   }
 });
@@ -64,16 +89,21 @@ router.get("/billing/portal", requireAuth, async (req: Request, res: Response): 
     .from(usersTable)
     .where(eq(usersTable.id, req.session.userId!));
 
-  if (!user?.lsSubscriptionId) {
-    res.status(404).json({ error: "No active subscription found." });
+  if (!user?.stripeCustomerId) {
+    res.status(404).json({ error: "No billing account found." });
     return;
   }
 
   try {
-    const portalUrl = await getCustomerPortalUrl(user.lsSubscriptionId);
-    res.json({ url: portalUrl });
+    const baseUrl = getFrontendBaseUrl();
+    const portalSession = await stripeService.createCustomerPortalSession(
+      user.stripeCustomerId,
+      `${baseUrl}/billing`
+    );
+    res.json({ url: portalSession.url });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Unknown error";
+    logger.error({ err }, "Failed to create portal session");
     res.status(502).json({ error: "Failed to retrieve billing portal.", detail: message });
   }
 });
@@ -89,119 +119,72 @@ router.get("/billing/subscription", requireAuth, async (req: Request, res: Respo
     return;
   }
 
+  let renewsAt: string | null = null;
+  let expiresAt: string | null = null;
+
+  if (user.stripeSubscriptionId) {
+    try {
+      const sub = await stripeStorage.getSubscription(user.stripeSubscriptionId);
+      if (sub) {
+        renewsAt = sub.current_period_end ? new Date(Number(sub.current_period_end) * 1000).toISOString() : null;
+        expiresAt = sub.cancel_at ? new Date(Number(sub.cancel_at) * 1000).toISOString() : null;
+      }
+    } catch {
+      // Stripe schema may not have synced yet
+    }
+  }
+
   res.json({
     plan: user.plan,
-    status: user.lsSubscriptionStatus ?? null,
-    subscriptionId: user.lsSubscriptionId ?? null,
-    renewsAt: user.planRenewsAt ?? null,
-    expiresAt: user.planExpiresAt ?? null,
+    status: user.stripeSubscriptionStatus ?? null,
+    subscriptionId: user.stripeSubscriptionId ?? null,
+    renewsAt: renewsAt ?? user.planRenewsAt ?? null,
+    expiresAt: expiresAt ?? user.planExpiresAt ?? null,
   });
 });
 
-router.post("/billing/webhook", async (req: Request, res: Response): Promise<void> => {
-  const signature = req.headers["x-signature"] as string | undefined;
-  const rawBody = (req as Request & { rawBody?: Buffer }).rawBody;
-
-  if (!signature || !rawBody) {
-    res.status(400).json({ error: "Missing signature or body." });
-    return;
-  }
-
-  let valid = false;
+router.get("/billing/publishable-key", async (_req: Request, res: Response): Promise<void> => {
   try {
-    valid = await verifyWebhookSignature(rawBody, signature);
-  } catch {
-    res.status(503).json({ error: "Webhook secret not configured." });
-    return;
+    const key = await getStripePublishableKey();
+    res.json({ publishableKey: key });
+  } catch (err: unknown) {
+    logger.error({ err }, "Failed to get Stripe publishable key");
+    res.status(500).json({ error: "Billing not configured." });
   }
+});
 
-  if (!valid) {
-    res.status(401).json({ error: "Invalid signature." });
-    return;
+router.get("/billing/plans", async (_req: Request, res: Response): Promise<void> => {
+  try {
+    const products = await stripeStorage.listProductsWithPrices(true);
+
+    const plans = products.reduce((acc: any[], row: any) => {
+      let existing = acc.find((p) => p.productId === row.product_id);
+      if (!existing) {
+        existing = {
+          productId: row.product_id,
+          name: row.product_name,
+          description: row.product_description,
+          metadata: row.product_metadata,
+          prices: [],
+        };
+        acc.push(existing);
+      }
+      if (row.price_id) {
+        existing.prices.push({
+          priceId: row.price_id,
+          unitAmount: row.unit_amount,
+          currency: row.currency,
+          recurring: row.recurring,
+        });
+      }
+      return acc;
+    }, []);
+
+    res.json({ plans });
+  } catch (err: unknown) {
+    logger.error({ err }, "Failed to list plans");
+    res.status(500).json({ error: "Failed to load plans." });
   }
-
-  const event = req.body as {
-    meta: {
-      event_name: string;
-      custom_data?: { user_id?: string };
-    };
-    data: {
-      id: string;
-      attributes: {
-        customer_id: number;
-        variant_id: number;
-        status: string;
-        renews_at: string | null;
-        ends_at: string | null;
-      };
-    };
-  };
-
-  const eventName = event.meta?.event_name;
-  const userId = event.meta?.custom_data?.user_id;
-  const sub = event.data?.attributes;
-  const subscriptionId = event.data?.id;
-
-  if (!userId) {
-    res.status(200).json({ received: true, note: "No user_id in custom_data — skipped." });
-    return;
-  }
-
-  const variantId = String(sub.variant_id);
-  const plan = await planFromVariantId(variantId);
-
-  switch (eventName) {
-    case "subscription_created":
-    case "subscription_updated":
-    case "subscription_resumed": {
-      await db
-        .update(usersTable)
-        .set({
-          plan,
-          lsCustomerId: String(sub.customer_id),
-          lsSubscriptionId: subscriptionId,
-          lsVariantId: variantId,
-          lsSubscriptionStatus: sub.status,
-          planRenewsAt: sub.renews_at ? new Date(sub.renews_at) : null,
-          planExpiresAt: sub.ends_at ? new Date(sub.ends_at) : null,
-        })
-        .where(eq(usersTable.id, userId));
-      break;
-    }
-
-    case "subscription_cancelled": {
-      await db
-        .update(usersTable)
-        .set({
-          lsSubscriptionStatus: "cancelled",
-          planExpiresAt: sub.ends_at ? new Date(sub.ends_at) : null,
-        })
-        .where(eq(usersTable.id, userId));
-      break;
-    }
-
-    case "subscription_expired": {
-      await db
-        .update(usersTable)
-        .set({
-          plan: "free",
-          lsSubscriptionStatus: "expired",
-          planRenewsAt: null,
-        })
-        .where(eq(usersTable.id, userId));
-      break;
-    }
-
-    case "subscription_paused": {
-      await db
-        .update(usersTable)
-        .set({ lsSubscriptionStatus: "paused" })
-        .where(eq(usersTable.id, userId));
-      break;
-    }
-  }
-
-  res.status(200).json({ received: true });
 });
 
 export default router;

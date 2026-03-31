@@ -22,6 +22,10 @@ export const usersTable = pgTable("users", {
   lsSubscriptionStatus: text("ls_subscription_status"),
   planRenewsAt: timestamp("plan_renews_at", { withTimezone: true }),
   planExpiresAt: timestamp("plan_expires_at", { withTimezone: true }),
+
+  stripeCustomerId: text("stripe_customer_id"),
+  stripeSubscriptionId: text("stripe_subscription_id"),
+  stripeSubscriptionStatus: text("stripe_subscription_status"),
 });
 
 export const insertUserSchema = createInsertSchema(usersTable).omit({

@@ -136,9 +136,24 @@ artifacts-monorepo/
 - `GET /api/links/:id/rules` — Get smart routing rules for a link
 - `PUT /api/links/:id/rules` — Set/replace rules for a link (bulk)
 
+## Billing — Stripe Integration
+
+- **Payment provider**: Stripe (via `stripe` + `stripe-replit-sync` packages)
+- **Stripe connection**: Replit integration connector (connection ID: `conn_stripe_01KN0T7C9KR8AGR6VC92HXBHCM`)
+- **Client library**: `artifacts/api-server/src/lib/stripeClient.ts` — credentials from Replit connector, exports `getUncachableStripeClient()`, `getStripePublishableKey()`, `getStripeSecretKey()`, `getStripeSync()`
+- **Webhook handlers**: `artifacts/api-server/src/lib/webhookHandlers.ts` — processes Stripe webhooks, syncs to `stripe.*` schema via stripe-replit-sync, updates user plan in `users` table
+- **Stripe service**: `artifacts/api-server/src/lib/stripeService.ts` — checkout sessions, customer portal, customer creation
+- **Stripe storage**: `artifacts/api-server/src/lib/stripeStorage.ts` — queries `stripe.*` schema for products, prices, subscriptions
+- **Billing routes**: `artifacts/api-server/src/routes/billing.ts` — `/billing/checkout`, `/billing/portal`, `/billing/subscription`, `/billing/publishable-key`, `/billing/plans`
+- **Webhook route**: `/api/stripe/webhook` registered in `app.ts` BEFORE `express.json()` to preserve raw body
+- **Stripe init**: `index.ts` runs `runMigrations()` → `getStripeSync()` → `findOrCreateManagedWebhook()` → `syncBackfill()` on startup
+- **Seed script**: `scripts/src/seed-products.ts` — creates Pro ($19/mo) and Business ($49/mo) products in Stripe with `metadata.plan` field
+- **DB columns**: `users.stripe_customer_id`, `users.stripe_subscription_id`, `users.stripe_subscription_status` (legacy LS columns kept for data preservation)
+- **Plans**: free ($0), pro ($19/mo), business ($49/mo)
+
 ## Database Schema
 
-- `users` — id, name, email, password_hash, timestamps
+- `users` — id, name, email, password_hash, stripe_customer_id, stripe_subscription_id, stripe_subscription_status, plan, timestamps
 - `workspaces` — id, name, slug, user_id, timestamps
 - `links` — id, workspace_id, slug, destination_url, title, enabled, expires_at, password_hash, click_limit, fallback_url, folder_id, timestamps
 - `click_events` — id, link_id, timestamp, referrer, user_agent, browser, os, device, country, city, ip_hash, is_qr, utm_*
