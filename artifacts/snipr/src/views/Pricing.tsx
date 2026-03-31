@@ -49,9 +49,10 @@ export default function Pricing() {
       features: [
         "10K clicks/month",
         "Basic short links",
-        "Limited analytics",
-        "1 workspace",
-        "QR code support",
+        "Custom slugs",
+        "QR code export",
+        "Basic click analytics",
+        "snipr.sh domain",
       ],
       cta: "Get Started Free",
       action: () => { window.location.href = user ? "/dashboard" : "/signup"; },
@@ -68,11 +69,11 @@ export default function Pricing() {
       description: "For personal projects",
       features: [
         "1M clicks/month",
-        "Custom slugs",
-        "Advanced analytics",
         "1 custom domain",
-        "QR code support",
-        "Email support",
+        "Geo & device analytics",
+        "Link expiry & scheduling",
+        "Password-protected links",
+        "Folders & tags",
       ],
       cta: loadingPlan === "starter" ? "Redirecting…" : "Get Starter",
       action: () => startCheckout("starter"),
@@ -89,11 +90,11 @@ export default function Pricing() {
       description: "For creators & marketers",
       features: [
         "5M clicks/month",
-        "Everything in Starter",
         "3 custom domains",
-        "Smart routing / geo rules",
-        "AI insights",
+        "Link cloaking",
+        "Geo & device routing rules",
         "UTM builder",
+        "AI-powered insights",
       ],
       cta: loadingPlan === "growth" ? "Redirecting…" : "Get Growth",
       action: () => startCheckout("growth"),
@@ -110,10 +111,10 @@ export default function Pricing() {
       description: "For growing businesses",
       features: [
         "25M clicks/month",
-        "Everything in Growth",
         "10 custom domains",
-        "Conversion tracking",
-        "Pixel integrations",
+        "Conversion & revenue tracking",
+        "Pixel integrations (Meta, Google, TikTok)",
+        "Link rules (city, OS, language)",
         "Priority support",
       ],
       cta: loadingPlan === "pro" ? "Redirecting…" : "Get Pro",
@@ -131,9 +132,9 @@ export default function Pricing() {
       description: "For scaling teams",
       features: [
         "100M clicks/month",
-        "Everything in Pro",
         "Unlimited domains",
-        "Team management",
+        "Team workspaces & roles",
+        "Webhook & Zapier integrations",
         "API access",
         "Dedicated support",
       ],
@@ -152,10 +153,10 @@ export default function Pricing() {
       description: "For large organisations",
       features: [
         "Unlimited clicks",
-        "Everything in Business",
-        "SLA guarantee",
+        "Unlimited domains & workspaces",
+        "Custom AI reporting",
+        "SLA & uptime guarantee",
         "Custom onboarding",
-        "SSO / SAML",
         "24/7 dedicated support",
       ],
       cta: loadingPlan === "enterprise" ? "Redirecting…" : "Get Enterprise",
@@ -182,13 +183,13 @@ export default function Pricing() {
           </div>
 
           {/* Billing toggle */}
-          <div className="flex items-center justify-center gap-3 mb-12">
+          <div className="flex items-center justify-center gap-4 mb-12">
             <span className={`text-[14px] font-medium ${billing === "monthly" ? "text-[#EFEFF0]" : "text-[#5A5C60]"}`}>Monthly</span>
             <button
               onClick={() => setBilling(billing === "monthly" ? "annual" : "monthly")}
-              className={`relative w-12 h-6 rounded-full transition-colors ${billing === "annual" ? "bg-[#728DA7]" : "bg-[#2A2A2E]"}`}
+              className={`relative w-11 h-6 rounded-full transition-colors overflow-hidden ${billing === "annual" ? "bg-[#728DA7]" : "bg-[#2A2A2E]"}`}
             >
-              <span className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${billing === "annual" ? "translate-x-7" : "translate-x-1"}`} />
+              <span className={`absolute top-[3px] left-[3px] w-[18px] h-[18px] rounded-full bg-white transition-transform duration-200 ${billing === "annual" ? "translate-x-[20px]" : "translate-x-0"}`} />
             </button>
             <span className={`text-[14px] font-medium ${billing === "annual" ? "text-[#EFEFF0]" : "text-[#5A5C60]"}`}>
               Annual
