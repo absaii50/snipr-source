@@ -932,6 +932,8 @@ router.get("/admin/users/:id/analytics", requireAdmin, async (req, res): Promise
   const [userRows, linkRows] = await Promise.all([
     db.execute(sql`
       SELECT u.id, u.name, u.email, u.plan, u.suspended_at, u.created_at,
+             u.billing_details,
+             u.stripe_customer_id, u.stripe_subscription_id, u.stripe_subscription_status,
              w.name AS workspace_name, w.slug AS workspace_slug, w.id AS workspace_id
       FROM users u
       LEFT JOIN workspaces w ON w.user_id = u.id

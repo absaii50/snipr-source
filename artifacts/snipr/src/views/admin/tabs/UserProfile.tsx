@@ -25,11 +25,27 @@ interface LinkRow {
   top_referrer: string | null;
 }
 
+interface BillingDetails {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone?: string;
+  address: string;
+  city: string;
+  state: string;
+  postalCode: string;
+  country: string;
+}
+
 interface UserAnalytics {
   user: {
     id: string; name: string; email: string; plan: string;
     suspended_at: string | null; created_at: string;
     workspace_name: string; workspace_slug: string;
+    billing_details: BillingDetails | null;
+    stripe_customer_id: string | null;
+    stripe_subscription_id: string | null;
+    stripe_subscription_status: string | null;
   };
   allLinks: LinkRow[];
   topLinks: LinkRow[];
@@ -301,6 +317,42 @@ export default function UserProfile({
                 ))}
               </div>
             </div>
+
+            {/* Billing Details */}
+            {data.user.billing_details && (
+              <div className="px-6 py-4 border-b border-[#E4E4EC] bg-white">
+                <div className="flex items-center gap-2 mb-3">
+                  <Crown className="w-3.5 h-3.5 text-[#728DA7]" />
+                  <span className="text-[11px] font-bold text-[#0A0A0A] uppercase tracking-wide">Billing Details</span>
+                  {data.user.stripe_subscription_status && (
+                    <span className={`ml-auto text-[10px] px-2 py-0.5 rounded-full font-semibold border ${
+                      data.user.stripe_subscription_status === "active"
+                        ? "bg-green-50 text-green-700 border-green-200"
+                        : "bg-amber-50 text-amber-700 border-amber-200"
+                    }`}>
+                      {data.user.stripe_subscription_status}
+                    </span>
+                  )}
+                </div>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-[12px]">
+                  {[
+                    { label: "Name", value: `${data.user.billing_details.firstName} ${data.user.billing_details.lastName}` },
+                    { label: "Email", value: data.user.billing_details.email },
+                    { label: "Phone", value: data.user.billing_details.phone || "—" },
+                    { label: "Country", value: data.user.billing_details.country },
+                    { label: "Address", value: data.user.billing_details.address },
+                    { label: "City", value: `${data.user.billing_details.city}${data.user.billing_details.state ? `, ${data.user.billing_details.state}` : ""}` },
+                    { label: "Postal code", value: data.user.billing_details.postalCode },
+                    { label: "Stripe customer", value: data.user.stripe_customer_id ? data.user.stripe_customer_id.slice(0, 18) + "…" : "—" },
+                  ].map(({ label, value }) => (
+                    <div key={label}>
+                      <div className="text-[10px] text-[#8888A0] uppercase tracking-wide font-semibold mb-0.5">{label}</div>
+                      <div className="text-[#0A0A0A] font-medium truncate">{value}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Tabs */}
             <div className="border-b border-[#E4E4EC] px-4 pt-3 flex gap-1 overflow-x-auto">

@@ -249,6 +249,107 @@ router.get("/billing/publishable-key", async (_req: Request, res: Response): Pro
   }
 });
 
+interface BillingDetails {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone?: string;
+  address: string;
+  city: string;
+  state: string;
+  postalCode: string;
+  country: string;
+}
+
+/** Custom checkout: create subscription with payment intent so we can use Stripe Elements */
+router.post("/billing/create-subscription-intent", requireAuth, async (req: Request, res: Response): Promise<void> => {
+  const { plan, billing, billingDetails } = req.body as {
+    plan?: string;
+    billing?: string;
+    billingDetails?: BillingDetails;
+  };
+
+  if (!plan || !isValidPlan(plan)) {
+    res.status(400).json({ error: `Invalid plan. Must be one of: ${VALID_PLANS.join(", ")}` });
+    return;
+  }
+
+  if (!billingDetails?.firstName || !billingDetails?.lastName || !billingDetails?.email || !billingDetails?.address) {
+    res.status(400).json({ error: "Billing details are required." });
+    return;
+  }
+
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.id, req.session.userId!));
+  if (!user) { res.status(401).json({ error: "User not found." }); return; }
+
+  try {
+    const stripe = getStripeClient();
+
+    // Create or update Stripe customer with full billing details
+    let customerId = user.stripeCustomerId;
+    const customerData = {
+      email: billingDetails.email,
+      name: `${billingDetails.firstName} ${billingDetails.lastName}`,
+      phone: billingDetails.phone,
+      address: {
+        line1: billingDetails.address,
+        city: billingDetails.city,
+        state: billingDetails.state,
+        postal_code: billingDetails.postalCode,
+        country: billingDetails.country,
+      },
+      metadata: { userId: user.id },
+    };
+
+    if (customerId) {
+      await stripe.customers.update(customerId, customerData);
+    } else {
+      const customer = await stripe.customers.create(customerData);
+      customerId = customer.id;
+    }
+
+    const priceId = await findMonthlyPriceForPlan(plan, billing);
+    if (!priceId) {
+      res.status(503).json({ error: `No Stripe product found for plan: ${plan}.` });
+      return;
+    }
+
+    // Create subscription with default_incomplete so we get a payment intent
+    const subscription = await stripe.subscriptions.create({
+      customer: customerId,
+      items: [{ price: priceId }],
+      payment_behavior: "default_incomplete",
+      payment_settings: { save_default_payment_method: "on_subscription" },
+      expand: ["latest_invoice.payment_intent"],
+    });
+
+    const invoice = subscription.latest_invoice as any;
+    const paymentIntent = invoice?.payment_intent;
+
+    if (!paymentIntent?.client_secret) {
+      res.status(502).json({ error: "Failed to create payment intent." });
+      return;
+    }
+
+    // Save billing details + stripe IDs to DB
+    await db.update(usersTable).set({
+      stripeCustomerId: customerId,
+      stripeSubscriptionId: subscription.id,
+      stripeSubscriptionStatus: subscription.status,
+      billingDetails,
+    } as any).where(eq(usersTable.id, user.id));
+
+    res.json({
+      clientSecret: paymentIntent.client_secret,
+      subscriptionId: subscription.id,
+    });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Unknown error";
+    logger.error({ err }, "Failed to create subscription intent");
+    res.status(502).json({ error: "Failed to start checkout.", detail: message });
+  }
+});
+
 router.get("/billing/plans", async (_req: Request, res: Response): Promise<void> => {
   try {
     const products = await stripeStorage.listProductsWithPrices(true);

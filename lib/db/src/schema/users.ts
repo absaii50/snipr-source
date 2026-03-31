@@ -1,4 +1,4 @@
-import { pgTable, text, uuid, timestamp, boolean } from "drizzle-orm/pg-core";
+import { pgTable, text, uuid, timestamp, boolean, jsonb } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -26,6 +26,19 @@ export const usersTable = pgTable("users", {
   stripeCustomerId: text("stripe_customer_id"),
   stripeSubscriptionId: text("stripe_subscription_id"),
   stripeSubscriptionStatus: text("stripe_subscription_status"),
+
+  // Billing address collected at checkout
+  billingDetails: jsonb("billing_details").$type<{
+    firstName: string;
+    lastName: string;
+    email: string;
+    phone?: string;
+    address: string;
+    city: string;
+    state: string;
+    postalCode: string;
+    country: string;
+  }>(),
 });
 
 export const insertUserSchema = createInsertSchema(usersTable).omit({
