@@ -104824,28 +104824,46 @@ router16.post("/billing/create-subscription-intent", requireAuth, async (req, re
     }
     let clientSecret = null;
     const latestInvoice = subscription.latest_invoice;
+    const invoiceId = typeof latestInvoice === "string" ? latestInvoice : latestInvoice?.id;
     if (latestInvoice && typeof latestInvoice === "object") {
-      const pi = latestInvoice.payment_intent;
-      if (pi && typeof pi === "object" && pi.client_secret) {
-        clientSecret = pi.client_secret;
-      } else if (pi && typeof pi === "string") {
-        const paymentIntent = await stripe.paymentIntents.retrieve(pi);
-        clientSecret = paymentIntent.client_secret ?? null;
+      const cs = latestInvoice.confirmation_secret;
+      if (cs?.client_secret) {
+        clientSecret = cs.client_secret;
       }
-    } else if (latestInvoice && typeof latestInvoice === "string") {
-      const inv = await stripe.invoices.retrieve(latestInvoice, {
-        expand: ["payment_intent"]
+      if (!clientSecret) {
+        const pi = latestInvoice.payment_intent;
+        if (pi && typeof pi === "object" && pi.client_secret) {
+          clientSecret = pi.client_secret;
+        } else if (pi && typeof pi === "string") {
+          const paymentIntent = await stripe.paymentIntents.retrieve(pi);
+          clientSecret = paymentIntent.client_secret ?? null;
+        }
+      }
+      if (!clientSecret) {
+        const payment = latestInvoice.payment;
+        const pi = payment?.payment_intent;
+        if (pi && typeof pi === "object" && pi.client_secret) {
+          clientSecret = pi.client_secret;
+        } else if (pi && typeof pi === "string") {
+          const paymentIntent = await stripe.paymentIntents.retrieve(pi);
+          clientSecret = paymentIntent.client_secret ?? null;
+        }
+      }
+    }
+    if (!clientSecret && invoiceId) {
+      const inv = await stripe.invoices.retrieve(invoiceId, {
+        expand: ["confirmation_secret", "payment_intent", "payment.payment_intent"]
       });
-      const pi = inv.payment_intent;
-      if (pi && typeof pi === "object") {
-        clientSecret = pi.client_secret ?? null;
-      } else if (pi && typeof pi === "string") {
-        const paymentIntent = await stripe.paymentIntents.retrieve(pi);
-        clientSecret = paymentIntent.client_secret ?? null;
+      if (inv.confirmation_secret?.client_secret) {
+        clientSecret = inv.confirmation_secret.client_secret;
+      } else if (inv.payment_intent && typeof inv.payment_intent === "object") {
+        clientSecret = inv.payment_intent.client_secret ?? null;
+      } else if (inv.payment?.payment_intent && typeof inv.payment.payment_intent === "object") {
+        clientSecret = inv.payment.payment_intent.client_secret ?? null;
       }
     }
     if (!clientSecret) {
-      logger.error({ subscriptionId: subscription.id, latestInvoice }, "Could not resolve client_secret");
+      logger.error({ subscriptionId: subscription.id, invoiceId }, "Could not resolve client_secret");
       res.status(502).json({ error: "Could not initialize payment. Please try again." });
       return;
     }
