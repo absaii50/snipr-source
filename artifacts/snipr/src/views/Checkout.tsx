@@ -1,6 +1,7 @@
 "use client";
 import { useState, useCallback, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
+import { useAuth } from "@/hooks/use-auth";
 import { loadStripe, type Stripe } from "@stripe/stripe-js";
 import {
   EmbeddedCheckoutProvider,
@@ -23,16 +24,25 @@ const PLAN_INFO: Record<PlanName, { name: string; monthlyPrice: string; annualPr
 export default function Checkout() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const { user, isLoading: authLoading } = useAuth();
   const plan = searchParams.get("plan") as PlanName | null;
   const billing = searchParams.get("billing") as "monthly" | "annual" | null;
   const [error, setError] = useState<string | null>(null);
   const [stripePromise, setStripePromise] = useState<Promise<Stripe | null> | null>(null);
+
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.replace(`/login?redirect=/checkout?plan=${plan ?? "starter"}&billing=${billing ?? "monthly"}`);
+    }
+  }, [authLoading, user, plan, billing, router]);
 
   useEffect(() => {
     if (!plan || !VALID_PLANS.includes(plan)) {
       router.replace("/pricing");
       return;
     }
+    if (!user) return; // wait for auth
     // Fetch publishable key; show error immediately if misconfigured
     fetch("/api/billing/publishable-key")
       .then(async (r) => {
@@ -46,7 +56,7 @@ export default function Checkout() {
       .catch(() => {
         setError("Could not connect to billing service. Please try again.");
       });
-  }, [plan, router]);
+  }, [plan, billing, router, user]);
 
   const fetchClientSecret = useCallback(async () => {
     const res = await fetch("/api/billing/create-checkout-session", {
@@ -69,6 +79,10 @@ export default function Checkout() {
     }
     return data.clientSecret;
   }, [plan, billing]);
+
+  if (authLoading || (!authLoading && !user)) {
+    return null; // redirect in progress
+  }
 
   if (!plan || !VALID_PLANS.includes(plan)) {
     return null;
