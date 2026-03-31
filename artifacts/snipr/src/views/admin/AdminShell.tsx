@@ -3,13 +3,13 @@ import { useState } from "react";
 import {
   LayoutDashboard, Users, Link2, Globe, BarChart3,
   CreditCard, DollarSign, FileText, Sparkles, Settings, LogOut, ShieldCheck,
-  ChevronRight, Menu, X, BookOpen, Mail,
+  ChevronRight, Menu, X, BookOpen, Mail, ScrollText,
 } from "lucide-react";
 import { apiFetch } from "./utils";
 
 export type AdminTab =
   | "overview" | "users" | "links" | "domains"
-  | "analytics" | "plans" | "billing" | "reports" | "email" | "ai" | "settings" | "guide";
+  | "analytics" | "plans" | "billing" | "reports" | "email" | "ai" | "audit" | "settings" | "guide";
 
 const NAV: { id: AdminTab; label: string; icon: React.ElementType; divider?: boolean }[] = [
   { id: "overview",  label: "Overview",    icon: LayoutDashboard },
@@ -22,6 +22,7 @@ const NAV: { id: AdminTab; label: string; icon: React.ElementType; divider?: boo
   { id: "reports",   label: "Reports",     icon: FileText },
   { id: "email",     label: "Email",       icon: Mail },
   { id: "ai",        label: "AI Insights", icon: Sparkles },
+  { id: "audit",     label: "Audit Log",   icon: ScrollText },
   { id: "settings",  label: "Settings",    icon: Settings },
   { id: "guide",     label: "How-To Guide", icon: BookOpen },
 ];
@@ -37,6 +38,7 @@ const TAB_TITLES: Record<AdminTab, { title: string; sub: string }> = {
   reports:   { title: "Reports & Logs",      sub: "Recent platform activity" },
   email:     { title: "Email",              sub: "Email logs, verification, and delivery" },
   ai:        { title: "AI Insights",         sub: "Intelligent platform summaries" },
+  audit:     { title: "Audit Log",           sub: "Track all admin actions and changes" },
   settings:  { title: "Settings",            sub: "Platform configuration and controls" },
   guide:     { title: "How-To Guide",        sub: "Setup instructions and platform documentation" },
 };

@@ -24,7 +24,7 @@ interface SendEmailOpts {
   type: string;
 }
 
-async function sendEmail(opts: SendEmailOpts): Promise<{ id?: string; error?: string }> {
+export async function sendEmail(opts: SendEmailOpts): Promise<{ id?: string; error?: string }> {
   const { to, subject, html, userId, type } = opts;
 
   if (!resend) {

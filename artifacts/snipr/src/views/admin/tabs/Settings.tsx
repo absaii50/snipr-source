@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import {
   Globe, Sliders, ToggleLeft, AlertTriangle, ShieldCheck, Save,
   CreditCard, CheckCircle2, XCircle, Loader2, Copy, CheckCircle, ExternalLink,
-  Eye, EyeOff, RefreshCw, Zap, Info,
+  Eye, EyeOff, RefreshCw, Zap, Info, Megaphone, Gauge,
 } from "lucide-react";
 import { apiFetch } from "../utils";
 
@@ -142,6 +142,9 @@ export default function SettingsTab() {
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<TestResult | null>(null);
   const [webhookUrl, setWebhookUrl] = useState("");
+  const [announcement, setAnnouncement] = useState({ text: "", type: "info" as "info" | "warning" | "success", enabled: false });
+  const [announcementSaving, setAnnouncementSaving] = useState(false);
+  const [rateLimits, setRateLimits] = useState<{ name: string; path: string; windowMs: number; max: number; description: string }[]>([]);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -159,7 +162,29 @@ export default function SettingsTab() {
     finally { setLoadingStatus(false); }
   }, []);
 
-  useEffect(() => { loadBillingStatus(); }, [loadBillingStatus]);
+  useEffect(() => { loadBillingStatus(); loadAnnouncement(); loadRateLimits(); }, [loadBillingStatus]);
+
+  async function loadAnnouncement() {
+    try {
+      const data = await apiFetch("/admin/announcement");
+      if (data) setAnnouncement({ text: data.text || "", type: data.type || "info", enabled: data.enabled ?? false });
+    } catch {}
+  }
+
+  async function saveAnnouncement() {
+    setAnnouncementSaving(true);
+    try {
+      await apiFetch("/admin/announcement", { method: "POST", body: JSON.stringify(announcement) });
+    } catch { alert("Failed to save announcement"); }
+    finally { setAnnouncementSaving(false); }
+  }
+
+  async function loadRateLimits() {
+    try {
+      const data = await apiFetch("/admin/rate-limits");
+      setRateLimits(data.limits || []);
+    } catch {}
+  }
 
   function setField(key: string, value: string) {
     setForm((f) => ({ ...f, [key]: value }));
@@ -367,6 +392,92 @@ export default function SettingsTab() {
           <FieldRow label="Admin password" placeholder="••••••••" type="password" sub="Change admin password" />
           <ToggleRow label="Enforce 2FA for admin" sub="Require TOTP on admin login" />
           <ToggleRow label="IP allowlist"          sub="Restrict admin panel to specific IP ranges" />
+        </div>
+      </Section>
+
+      {/* ─── Announcement Banner ───────────────────────────────── */}
+      <Section icon={Megaphone} title="Announcement Banner">
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-sm font-medium text-[#0A0A0A]">Enable Banner</div>
+              <div className="text-xs text-[#8888A0] mt-0.5">Show a banner to all users across the platform</div>
+            </div>
+            <button
+              onClick={() => setAnnouncement(a => ({ ...a, enabled: !a.enabled }))}
+              className={`w-10 h-[22px] rounded-full relative transition-colors ${announcement.enabled ? "bg-[#728DA7]" : "bg-[#C8C8D8]"}`}>
+              <div className={`absolute top-0.5 w-[18px] h-[18px] bg-white rounded-full shadow-sm transition-all ${announcement.enabled ? "left-[22px]" : "left-0.5"}`} />
+            </button>
+          </div>
+          <div>
+            <label className="text-xs font-medium text-[#8888A0] uppercase mb-1.5 block">Type</label>
+            <div className="flex gap-2">
+              {(["info", "warning", "success"] as const).map(t => (
+                <button key={t} onClick={() => setAnnouncement(a => ({ ...a, type: t }))}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium capitalize transition-all ${
+                    announcement.type === t
+                      ? t === "info" ? "bg-blue-100 text-blue-700 border border-blue-200"
+                        : t === "warning" ? "bg-amber-100 text-amber-700 border border-amber-200"
+                        : "bg-green-100 text-green-700 border border-green-200"
+                      : "bg-[#F4F4F6] text-[#8888A0] border border-transparent hover:bg-[#E8EEF4]"
+                  }`}>{t}</button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <label className="text-xs font-medium text-[#8888A0] uppercase mb-1.5 block">Message</label>
+            <textarea
+              value={announcement.text}
+              onChange={e => setAnnouncement(a => ({ ...a, text: e.target.value }))}
+              placeholder="Enter your announcement message..."
+              rows={2}
+              className="w-full px-3 py-2.5 rounded-xl border border-[#E4E4EC] bg-white text-sm outline-none focus:border-[#728DA7] focus:ring-2 focus:ring-[#728DA7]/15 transition-all resize-none"
+            />
+          </div>
+          {announcement.text && (
+            <div className={`rounded-xl px-4 py-3 text-sm flex items-center gap-2 ${
+              announcement.type === "warning" ? "bg-amber-50 text-amber-800 border border-amber-200"
+                : announcement.type === "success" ? "bg-green-50 text-green-800 border border-green-200"
+                : "bg-blue-50 text-blue-800 border border-blue-200"
+            }`}>
+              <Megaphone className="w-4 h-4 shrink-0" />
+              <span>{announcement.text}</span>
+            </div>
+          )}
+          <button onClick={saveAnnouncement} disabled={announcementSaving}
+            className="px-4 py-2 rounded-xl bg-[#0A0A0A] text-white text-xs font-semibold hover:bg-[#1A1A2E] disabled:opacity-40 transition-all flex items-center gap-2">
+            {announcementSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+            Save Announcement
+          </button>
+        </div>
+      </Section>
+
+      {/* ─── Rate Limit Dashboard ──────────────────────────────── */}
+      <Section icon={Gauge} title="Rate Limit Dashboard">
+        <div className="space-y-3">
+          {rateLimits.length === 0 ? (
+            <p className="text-xs text-[#8888A0]">No rate limit data available.</p>
+          ) : (
+            <div className="divide-y divide-[#F4F4F6]">
+              {rateLimits.map((rl, i) => (
+                <div key={i} className="py-3 flex items-center justify-between">
+                  <div>
+                    <div className="text-sm font-medium text-[#0A0A0A]">{rl.name}</div>
+                    <div className="text-xs text-[#8888A0]">
+                      <code className="bg-[#F4F4F6] px-1 rounded text-[10px]">{rl.path}</code>
+                      <span className="ml-2">{rl.max} req / {Math.round(rl.windowMs / 1000)}s</span>
+                    </div>
+                    <div className="text-[10px] text-[#8888A0] mt-0.5">{rl.description}</div>
+                  </div>
+                  <span className="px-2 py-0.5 rounded-full bg-green-50 text-green-700 text-[10px] font-semibold">Active</span>
+                </div>
+              ))}
+            </div>
+          )}
+          <button onClick={loadRateLimits}
+            className="px-3 py-1.5 rounded-lg text-xs font-medium text-[#8888A0] hover:text-[#3A3A3E] hover:bg-[#F4F4F6] transition-all flex items-center gap-1.5">
+            <RefreshCw className="w-3 h-3" /> Refresh
+          </button>
         </div>
       </Section>
     </div>

@@ -13,9 +13,11 @@ import {
   conversionsTable,
   platformSettingsTable,
   emailLogsTable,
+  adminAuditLogTable,
+  workspaceMembersTable,
 } from "@workspace/db";
 import { count, desc, eq, sql, ilike, isNull, isNotNull, and, inArray } from "drizzle-orm";
-import { sendVerificationEmail } from "../lib/email";
+import { sendVerificationEmail, sendEmail } from "../lib/email";
 
 const router: IRouter = Router();
 
@@ -36,6 +38,12 @@ function requireAdmin(req: Request, res: Response, next: NextFunction): void {
     return;
   }
   next();
+}
+
+async function logAuditAction(action: string, targetType: string | null, targetId: string | null, details: Record<string, unknown> | null, adminIp?: string) {
+  try {
+    await db.insert(adminAuditLogTable).values({ action, targetType, targetId, details, adminIp: adminIp ?? null });
+  } catch {}
 }
 
 /* ── Auth ──────────────────────────────────────────────────────────── */
@@ -198,11 +206,13 @@ router.patch("/admin/users/:id/suspend", requireAdmin, async (req, res): Promise
   const userId = req.params.id;
   await db.update(usersTable).set({ suspendedAt: new Date() }).where(eq(usersTable.id, userId));
   await db.execute(sql`DELETE FROM session WHERE (sess::jsonb->>'userId')::text = ${userId}`);
+  await logAuditAction("suspend_user", "user", userId, null, req.ip);
   res.json({ ok: true });
 });
 
 router.patch("/admin/users/:id/activate", requireAdmin, async (req, res): Promise<void> => {
   await db.update(usersTable).set({ suspendedAt: null }).where(eq(usersTable.id, req.params.id));
+  await logAuditAction("activate_user", "user", req.params.id, null, req.ip);
   res.json({ ok: true });
 });
 
@@ -210,6 +220,7 @@ router.delete("/admin/users/:id", requireAdmin, async (req, res): Promise<void> 
   const userId = req.params.id;
   await db.execute(sql`DELETE FROM session WHERE (sess::jsonb->>'userId')::text = ${userId}`);
   await db.delete(usersTable).where(eq(usersTable.id, userId));
+  await logAuditAction("delete_user", "user", userId, null, req.ip);
   res.json({ ok: true });
 });
 
@@ -1292,6 +1303,513 @@ router.post("/admin/settings/billing/test", requireAdmin, async (req, res): Prom
 router.post("/admin/settings/billing/webhook-test", requireAdmin, async (req, res): Promise<void> => {
   const secret = await getSettingValue("ls_webhook_secret");
   res.json({ configured: !!secret });
+});
+
+/* ══════════════════════════════════════════════════════════════════════
+   FEATURE 1: Audit Log
+   ══════════════════════════════════════════════════════════════════════ */
+
+router.get("/admin/audit-log", requireAdmin, async (req, res): Promise<void> => {
+  const action = (req.query.action as string) ?? "";
+  const search = (req.query.search as string) ?? "";
+  const page = Math.max(1, parseInt(req.query.page as string) || 1);
+  const limit = Math.min(parseInt(req.query.limit as string) || 50, 100);
+  const offset = (page - 1) * limit;
+
+  const conditions = [];
+  if (action) conditions.push(eq(adminAuditLogTable.action, action));
+  if (search) conditions.push(sql`(${adminAuditLogTable.targetType}::text ILIKE ${"%" + search + "%"} OR ${adminAuditLogTable.targetId}::text ILIKE ${"%" + search + "%"} OR ${adminAuditLogTable.details}::text ILIKE ${"%" + search + "%"})`);
+
+  let query = db
+    .select()
+    .from(adminAuditLogTable)
+    .orderBy(desc(adminAuditLogTable.createdAt))
+    .limit(limit)
+    .offset(offset);
+
+  if (conditions.length > 0) {
+    query = query.where(and(...conditions)) as any;
+  }
+
+  const logs = await query;
+  const [[{ total }]] = await Promise.all([
+    db.select({ total: count() }).from(adminAuditLogTable),
+  ]);
+
+  res.json({ logs, total, page, limit });
+});
+
+/* ══════════════════════════════════════════════════════════════════════
+   FEATURE 2: System Health Monitor
+   ══════════════════════════════════════════════════════════════════════ */
+
+const SERVER_START_TIME = Date.now();
+
+router.get("/admin/health-detail", requireAdmin, async (req, res): Promise<void> => {
+  const mem = process.memoryUsage();
+  const uptime = Math.floor((Date.now() - SERVER_START_TIME) / 1000);
+
+  const [[sessionCount], [dbSize]] = await Promise.all([
+    db.select({ count: count() }).from(sql`session`),
+    db.execute(sql`SELECT pg_database_size(current_database()) as size`).then(r => r.rows),
+  ]);
+
+  const [[clicksToday], [usersToday]] = await Promise.all([
+    db.select({ count: count() }).from(clickEventsTable).where(sql`${clickEventsTable.timestamp} >= NOW() - INTERVAL '1 day'`),
+    db.select({ count: count() }).from(usersTable).where(sql`${usersTable.createdAt} >= NOW() - INTERVAL '1 day'`),
+  ]);
+
+  res.json({
+    uptime,
+    memory: {
+      rss: Math.round(mem.rss / 1024 / 1024),
+      heapUsed: Math.round(mem.heapUsed / 1024 / 1024),
+      heapTotal: Math.round(mem.heapTotal / 1024 / 1024),
+      external: Math.round(mem.external / 1024 / 1024),
+    },
+    activeSessions: (sessionCount as any).count,
+    dbSizeBytes: Number((dbSize as any).size),
+    dbSizeMb: Math.round(Number((dbSize as any).size) / 1024 / 1024),
+    clicksToday: (clicksToday as any).count,
+    usersToday: (usersToday as any).count,
+    nodeVersion: process.version,
+    platform: process.platform,
+    status: "healthy",
+  });
+});
+
+/* ══════════════════════════════════════════════════════════════════════
+   FEATURE 3: User Impersonation
+   ══════════════════════════════════════════════════════════════════════ */
+
+router.post("/admin/users/:id/impersonate", requireAdmin, async (req, res): Promise<void> => {
+  const userId = req.params.id;
+
+  const [user] = await db.select({ id: usersTable.id, name: usersTable.name, email: usersTable.email })
+    .from(usersTable).where(eq(usersTable.id, userId));
+  if (!user) { res.status(404).json({ error: "User not found" }); return; }
+
+  const [ws] = await db.select({ id: workspacesTable.id, slug: workspacesTable.slug })
+    .from(workspacesTable).where(eq(workspacesTable.userId, userId));
+
+  (req.session as any).impersonating = {
+    userId: user.id,
+    userName: user.name,
+    userEmail: user.email,
+    workspaceId: ws?.id ?? null,
+    workspaceSlug: ws?.slug ?? null,
+  };
+
+  await logAuditAction("impersonate_user", "user", userId, { userName: user.name }, req.ip);
+  res.json({ ok: true, user: { id: user.id, name: user.name, email: user.email } });
+});
+
+router.post("/admin/stop-impersonate", requireAdmin, async (req, res): Promise<void> => {
+  const imp = (req.session as any).impersonating;
+  if (imp) {
+    await logAuditAction("stop_impersonate", "user", imp.userId, { userName: imp.userName }, req.ip);
+  }
+  delete (req.session as any).impersonating;
+  res.json({ ok: true });
+});
+
+router.get("/admin/impersonation-status", requireAdmin, (req, res): void => {
+  const imp = (req.session as any).impersonating;
+  res.json({ impersonating: imp ?? null });
+});
+
+/* ══════════════════════════════════════════════════════════════════════
+   FEATURE 4: Bulk User Actions
+   ══════════════════════════════════════════════════════════════════════ */
+
+router.post("/admin/users/bulk", requireAdmin, async (req, res): Promise<void> => {
+  const { action, userIds, plan } = req.body as { action: string; userIds: string[]; plan?: string };
+
+  if (!action || !Array.isArray(userIds) || userIds.length === 0) {
+    res.status(400).json({ error: "action and userIds[] required" });
+    return;
+  }
+
+  let affected = 0;
+
+  switch (action) {
+    case "suspend":
+      await db.update(usersTable).set({ suspendedAt: new Date() }).where(inArray(usersTable.id, userIds));
+      for (const uid of userIds) {
+        await db.execute(sql`DELETE FROM session WHERE (sess::jsonb->>'userId')::text = ${uid}`);
+      }
+      affected = userIds.length;
+      await logAuditAction("bulk_suspend", "user", null, { count: affected, userIds }, req.ip);
+      break;
+
+    case "activate":
+      await db.update(usersTable).set({ suspendedAt: null }).where(inArray(usersTable.id, userIds));
+      affected = userIds.length;
+      await logAuditAction("bulk_activate", "user", null, { count: affected, userIds }, req.ip);
+      break;
+
+    case "delete":
+      for (const uid of userIds) {
+        await db.execute(sql`DELETE FROM session WHERE (sess::jsonb->>'userId')::text = ${uid}`);
+      }
+      await db.delete(usersTable).where(inArray(usersTable.id, userIds));
+      affected = userIds.length;
+      await logAuditAction("bulk_delete", "user", null, { count: affected, userIds }, req.ip);
+      break;
+
+    case "change_plan":
+      if (!plan || !["free", "pro", "business"].includes(plan)) {
+        res.status(400).json({ error: "Invalid plan" });
+        return;
+      }
+      const updates: Record<string, unknown> = { plan };
+      if (plan === "free") {
+        updates.lsSubscriptionId = null;
+        updates.lsCustomerId = null;
+        updates.lsSubscriptionStatus = null;
+        updates.planRenewsAt = null;
+        updates.planExpiresAt = null;
+      }
+      await db.update(usersTable).set(updates).where(inArray(usersTable.id, userIds));
+      affected = userIds.length;
+      await logAuditAction("bulk_plan_change", "user", null, { count: affected, plan, userIds }, req.ip);
+      break;
+
+    default:
+      res.status(400).json({ error: "Unknown action" });
+      return;
+  }
+
+  res.json({ ok: true, affected });
+});
+
+/* ══════════════════════════════════════════════════════════════════════
+   FEATURE 5: Link Health Checker
+   ══════════════════════════════════════════════════════════════════════ */
+
+router.post("/admin/links/health-check", requireAdmin, async (req, res): Promise<void> => {
+  const { linkIds } = req.body as { linkIds?: string[] };
+
+  let links;
+  if (linkIds && linkIds.length > 0) {
+    links = await db.select({ id: linksTable.id, slug: linksTable.slug, destinationUrl: linksTable.destinationUrl })
+      .from(linksTable).where(inArray(linksTable.id, linkIds));
+  } else {
+    links = await db.select({ id: linksTable.id, slug: linksTable.slug, destinationUrl: linksTable.destinationUrl })
+      .from(linksTable).where(eq(linksTable.enabled, true)).limit(50);
+  }
+
+  const results: { id: string; slug: string; url: string; status: number | null; ok: boolean; error?: string; checkedAt: string }[] = [];
+
+  for (const link of links) {
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 8000);
+      const r = await fetch(link.destinationUrl, {
+        method: "HEAD",
+        signal: controller.signal,
+        redirect: "follow",
+        headers: { "User-Agent": "Snipr-HealthChecker/1.0" },
+      });
+      clearTimeout(timeout);
+      results.push({
+        id: link.id, slug: link.slug, url: link.destinationUrl,
+        status: r.status, ok: r.status >= 200 && r.status < 400,
+        checkedAt: new Date().toISOString(),
+      });
+    } catch (e: any) {
+      results.push({
+        id: link.id, slug: link.slug, url: link.destinationUrl,
+        status: null, ok: false, error: e.name === "AbortError" ? "Timeout" : (e.message || "Network error"),
+        checkedAt: new Date().toISOString(),
+      });
+    }
+  }
+
+  await logAuditAction("link_health_check", "link", null, { checked: results.length, broken: results.filter(r => !r.ok).length }, req.ip);
+  res.json(results);
+});
+
+/* ══════════════════════════════════════════════════════════════════════
+   FEATURE 6: CSV Export
+   ══════════════════════════════════════════════════════════════════════ */
+
+function toCsv(headers: string[], rows: Record<string, unknown>[]): string {
+  const escape = (v: unknown) => {
+    const s = v === null || v === undefined ? "" : String(v);
+    return s.includes(",") || s.includes('"') || s.includes("\n") ? `"${s.replace(/"/g, '""')}"` : s;
+  };
+  const lines = [headers.join(",")];
+  for (const row of rows) {
+    lines.push(headers.map(h => escape(row[h])).join(","));
+  }
+  return lines.join("\n");
+}
+
+router.get("/admin/export/users", requireAdmin, async (req, res): Promise<void> => {
+  const rows = await db.execute(sql`
+    SELECT u.id, u.name, u.email, u.plan, u.suspended_at, u.created_at, u.email_verified,
+           w.name AS workspace_name, w.slug AS workspace_slug,
+           COUNT(DISTINCT l.id)::int AS total_links,
+           COUNT(ce.id)::int AS total_clicks
+    FROM users u
+    LEFT JOIN workspaces w ON w.user_id = u.id
+    LEFT JOIN links l ON l.workspace_id = w.id
+    LEFT JOIN click_events ce ON ce.link_id = l.id
+    GROUP BY u.id, w.name, w.slug
+    ORDER BY u.created_at DESC
+  `);
+  const csv = toCsv(["id","name","email","plan","suspended_at","created_at","email_verified","workspace_name","workspace_slug","total_links","total_clicks"], rows.rows as any[]);
+  res.setHeader("Content-Type", "text/csv");
+  res.setHeader("Content-Disposition", "attachment; filename=snipr-users.csv");
+  res.send(csv);
+});
+
+router.get("/admin/export/links", requireAdmin, async (req, res): Promise<void> => {
+  const rows = await db.execute(sql`
+    SELECT l.id, l.slug, l.destination_url, l.title, l.enabled, l.created_at, l.expires_at,
+           u.email AS owner_email, u.plan AS owner_plan, w.name AS workspace_name,
+           COUNT(ce.id)::int AS total_clicks
+    FROM links l
+    LEFT JOIN workspaces w ON w.id = l.workspace_id
+    LEFT JOIN users u ON u.id = w.user_id
+    LEFT JOIN click_events ce ON ce.link_id = l.id
+    GROUP BY l.id, u.email, u.plan, w.name
+    ORDER BY l.created_at DESC
+  `);
+  const csv = toCsv(["id","slug","destination_url","title","enabled","created_at","expires_at","owner_email","owner_plan","workspace_name","total_clicks"], rows.rows as any[]);
+  res.setHeader("Content-Type", "text/csv");
+  res.setHeader("Content-Disposition", "attachment; filename=snipr-links.csv");
+  res.send(csv);
+});
+
+router.get("/admin/export/clicks", requireAdmin, async (req, res): Promise<void> => {
+  const rows = await db.execute(sql`
+    SELECT ce.id, ce.timestamp, l.slug, ce.country, ce.city, ce.region, ce.device, ce.browser, ce.os, ce.referrer
+    FROM click_events ce
+    LEFT JOIN links l ON l.id = ce.link_id
+    ORDER BY ce.timestamp DESC
+    LIMIT 10000
+  `);
+  const csv = toCsv(["id","timestamp","slug","country","city","region","device","browser","os","referrer"], rows.rows as any[]);
+  res.setHeader("Content-Type", "text/csv");
+  res.setHeader("Content-Disposition", "attachment; filename=snipr-clicks.csv");
+  res.send(csv);
+});
+
+router.get("/admin/export/emails", requireAdmin, async (req, res): Promise<void> => {
+  const rows = await db.select({
+    id: emailLogsTable.id, to: emailLogsTable.to, subject: emailLogsTable.subject,
+    type: emailLogsTable.type, status: emailLogsTable.status, createdAt: emailLogsTable.createdAt,
+    error: emailLogsTable.error,
+  }).from(emailLogsTable).orderBy(desc(emailLogsTable.createdAt)).limit(5000);
+  const csv = toCsv(["id","to","subject","type","status","createdAt","error"], rows as any[]);
+  res.setHeader("Content-Type", "text/csv");
+  res.setHeader("Content-Disposition", "attachment; filename=snipr-emails.csv");
+  res.send(csv);
+});
+
+/* ══════════════════════════════════════════════════════════════════════
+   FEATURE 7: Announcement Banner
+   ══════════════════════════════════════════════════════════════════════ */
+
+router.get("/admin/announcement", requireAdmin, async (req, res): Promise<void> => {
+  const [row] = await db.select().from(platformSettingsTable).where(eq(platformSettingsTable.key, "announcement"));
+  if (!row) { res.json({ enabled: false, text: "", type: "info" }); return; }
+  try {
+    res.json(JSON.parse(row.value));
+  } catch {
+    res.json({ enabled: false, text: "", type: "info" });
+  }
+});
+
+router.post("/admin/announcement", requireAdmin, async (req, res): Promise<void> => {
+  const { enabled, text, type } = req.body as { enabled: boolean; text: string; type: string };
+  const value = JSON.stringify({ enabled: !!enabled, text: text || "", type: type || "info" });
+  await db.insert(platformSettingsTable)
+    .values({ key: "announcement", value })
+    .onConflictDoUpdate({ target: platformSettingsTable.key, set: { value } });
+  await logAuditAction("update_announcement", "platform", null, { enabled, text, type }, req.ip);
+  res.json({ ok: true });
+});
+
+router.get("/announcement", async (_req, res): Promise<void> => {
+  const [row] = await db.select().from(platformSettingsTable).where(eq(platformSettingsTable.key, "announcement"));
+  if (!row) { res.json({ enabled: false }); return; }
+  try {
+    const data = JSON.parse(row.value);
+    if (!data.enabled) { res.json({ enabled: false }); return; }
+    res.json(data);
+  } catch {
+    res.json({ enabled: false });
+  }
+});
+
+/* ══════════════════════════════════════════════════════════════════════
+   FEATURE 8: Rate Limit Dashboard
+   ══════════════════════════════════════════════════════════════════════ */
+
+router.get("/admin/rate-limits", requireAdmin, async (_req, res): Promise<void> => {
+  res.json({
+    limits: [
+      { name: "API General", path: "/api/*", windowMs: 60000, max: 200, description: "Standard API endpoints" },
+      { name: "Redirects", path: "/*", windowMs: 60000, max: 120, description: "Short link redirects" },
+      { name: "Password Reset", path: "/api/auth/forgot-password", windowMs: 900000, max: 5, description: "Password reset requests" },
+      { name: "Admin Login", path: "/api/admin/login", windowMs: 900000, max: 5, description: "Admin panel login" },
+    ],
+  });
+});
+
+/* ══════════════════════════════════════════════════════════════════════
+   FEATURE 9: Workspace Inspector
+   ══════════════════════════════════════════════════════════════════════ */
+
+router.get("/admin/users/:id/workspace-detail", requireAdmin, async (req, res): Promise<void> => {
+  const userId = req.params.id;
+
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.id, userId));
+  if (!user) { res.status(404).json({ error: "User not found" }); return; }
+
+  const [ws] = await db.select().from(workspacesTable).where(eq(workspacesTable.userId, userId));
+
+  let links: any[] = [];
+  let domains: any[] = [];
+  let members: any[] = [];
+  let totalClicks = 0;
+  let recentClicks: any[] = [];
+
+  if (ws) {
+    links = await db.execute(sql`
+      SELECT l.id, l.slug, l.destination_url, l.title, l.enabled, l.created_at,
+             COUNT(ce.id)::int AS total_clicks,
+             MAX(ce.timestamp) AS last_click_at
+      FROM links l
+      LEFT JOIN click_events ce ON ce.link_id = l.id
+      WHERE l.workspace_id = ${ws.id}
+      GROUP BY l.id
+      ORDER BY total_clicks DESC
+    `).then(r => r.rows);
+
+    domains = await db.select().from(domainsTable).where(eq(domainsTable.workspaceId, ws.id));
+
+    members = await db.execute(sql`
+      SELECT wm.role, u.name, u.email
+      FROM workspace_members wm
+      JOIN users u ON u.id = wm.user_id
+      WHERE wm.workspace_id = ${ws.id}
+    `).then(r => r.rows);
+
+    const [tc] = await db.select({ count: count() }).from(clickEventsTable)
+      .where(sql`${clickEventsTable.linkId} IN (SELECT id FROM links WHERE workspace_id = ${ws.id})`);
+    totalClicks = tc.count;
+
+    recentClicks = await db.execute(sql`
+      SELECT ce.timestamp, ce.country, ce.device, l.slug
+      FROM click_events ce
+      JOIN links l ON l.id = ce.link_id
+      WHERE l.workspace_id = ${ws.id}
+      ORDER BY ce.timestamp DESC
+      LIMIT 20
+    `).then(r => r.rows);
+  }
+
+  res.json({
+    user: { id: user.id, name: user.name, email: user.email, plan: user.plan, createdAt: user.createdAt, suspendedAt: user.suspendedAt, emailVerified: user.emailVerified },
+    workspace: ws ? { id: ws.id, name: ws.name, slug: ws.slug, createdAt: ws.createdAt } : null,
+    links,
+    domains,
+    members,
+    totalClicks,
+    recentClicks,
+    summary: {
+      totalLinks: links.length,
+      activeLinks: links.filter((l: any) => l.enabled).length,
+      totalClicks,
+      totalDomains: domains.length,
+      totalMembers: members.length,
+    },
+  });
+});
+
+/* ══════════════════════════════════════════════════════════════════════
+   FEATURE 10: Mass Email / Platform Notifications
+   ══════════════════════════════════════════════════════════════════════ */
+
+router.post("/admin/notifications/preview", requireAdmin, async (req, res): Promise<void> => {
+  const { planFilter, template, subject, body } = req.body as {
+    planFilter: string; template: string; subject: string; body: string;
+  };
+
+  const conditions = [];
+  if (planFilter && planFilter !== "all") {
+    conditions.push(eq(usersTable.plan, planFilter));
+  }
+
+  let query = db.select({ count: count() }).from(usersTable);
+  if (conditions.length > 0) query = query.where(and(...conditions)) as any;
+  const [{ count: recipientCount }] = await query;
+
+  res.json({ recipientCount, subject, template });
+});
+
+router.post("/admin/notifications/send", requireAdmin, async (req, res): Promise<void> => {
+  const { planFilter, template, subject, body } = req.body as {
+    planFilter: string; template: string; subject: string; body: string;
+  };
+
+  if (!subject || !body) {
+    res.status(400).json({ error: "Subject and body are required" });
+    return;
+  }
+
+  const conditions = [];
+  if (planFilter && planFilter !== "all") {
+    conditions.push(eq(usersTable.plan, planFilter));
+  }
+
+  let query = db.select({ id: usersTable.id, email: usersTable.email, name: usersTable.name }).from(usersTable);
+  if (conditions.length > 0) query = query.where(and(...conditions)) as any;
+  const users = await query;
+
+  const templateStyles: Record<string, { bgColor: string; accentColor: string; label: string }> = {
+    maintenance: { bgColor: "#FEF3C7", accentColor: "#D97706", label: "Maintenance Notice" },
+    feature: { bgColor: "#DBEAFE", accentColor: "#2563EB", label: "Feature Announcement" },
+    security: { bgColor: "#FEE2E2", accentColor: "#DC2626", label: "Security Alert" },
+    general: { bgColor: "#F3F4F6", accentColor: "#374151", label: "Platform Update" },
+  };
+  const style = templateStyles[template] || templateStyles.general;
+
+  const htmlTemplate = `
+    <div style="max-width:600px;margin:0 auto;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+      <div style="background:${style.bgColor};padding:16px 24px;border-radius:12px 12px 0 0;border-bottom:3px solid ${style.accentColor};">
+        <span style="font-size:12px;font-weight:700;color:${style.accentColor};text-transform:uppercase;letter-spacing:0.5px;">${style.label}</span>
+      </div>
+      <div style="padding:24px;background:#fff;border:1px solid #E5E7EB;border-top:0;border-radius:0 0 12px 12px;">
+        <h2 style="margin:0 0 16px;color:#0A0A0A;font-size:18px;">${subject}</h2>
+        <div style="color:#374151;font-size:14px;line-height:1.6;">${body.replace(/\n/g, "<br>")}</div>
+        <hr style="border:0;border-top:1px solid #E5E7EB;margin:24px 0;">
+        <p style="color:#9CA3AF;font-size:12px;margin:0;">Sent by Snipr Platform</p>
+      </div>
+    </div>
+  `;
+
+  let sent = 0;
+  let failed = 0;
+
+  for (const user of users) {
+    try {
+      await sendEmail({ to: user.email, subject, html: htmlTemplate, userId: user.id, type: `mass_${template}` });
+      sent++;
+    } catch {
+      failed++;
+    }
+  }
+
+  await logAuditAction("mass_email", "platform", null, {
+    template, subject, planFilter, recipientCount: users.length, sent, failed,
+  }, req.ip);
+
+  res.json({ ok: true, sent, failed, total: users.length });
 });
 
 export default router;

@@ -22,6 +22,8 @@ import {
   X,
   Settings,
   ChevronUp,
+  ShieldAlert,
+  Megaphone,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -68,6 +70,33 @@ export function ProtectedSidebar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
+  const [impersonating, setImpersonating] = useState<{ name: string } | null>(null);
+  const [announcement, setAnnouncement] = useState<{ message: string; type: string } | null>(null);
+
+  useEffect(() => {
+    fetch("/api/admin/impersonation-status", { credentials: "include" })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (data?.impersonating) setImpersonating({ name: data.impersonating.userName || "User" });
+      })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    fetch("/api/announcement")
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (data?.enabled && data?.text) setAnnouncement({ message: data.text, type: data.type || "info" });
+      })
+      .catch(() => {});
+  }, []);
+
+  async function stopImpersonation() {
+    try {
+      await fetch("/api/admin/stop-impersonate", { method: "POST", credentials: "include" });
+      window.location.href = "/admin";
+    } catch {}
+  }
 
   const initials = user?.name
     ? user.name.split(" ").map((n: string) => n[0]).slice(0, 2).join("").toUpperCase()
@@ -108,6 +137,33 @@ export function ProtectedSidebar() {
           <X className="w-5 h-5" />
         </button>
       </div>
+
+      {impersonating && (
+        <div className="mx-2.5 mt-2 px-3 py-2.5 bg-amber-50 border border-amber-200 rounded-xl">
+          <div className="flex items-center gap-2 text-amber-800">
+            <ShieldAlert className="w-4 h-4 shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="text-[11px] font-bold">Impersonating</p>
+              <p className="text-[10px] truncate">{impersonating.name}</p>
+            </div>
+          </div>
+          <button onClick={stopImpersonation}
+            className="mt-1.5 w-full px-2 py-1 text-[10px] font-semibold bg-amber-200 text-amber-800 rounded-lg hover:bg-amber-300 transition-colors">
+            Return to Admin
+          </button>
+        </div>
+      )}
+
+      {announcement && (
+        <div className={`mx-2.5 mt-2 px-3 py-2 rounded-xl flex items-center gap-2 text-xs ${
+          announcement.type === "warning" ? "bg-amber-50 text-amber-800 border border-amber-200"
+            : announcement.type === "success" ? "bg-green-50 text-green-800 border border-green-200"
+            : "bg-blue-50 text-blue-800 border border-blue-200"
+        }`}>
+          <Megaphone className="w-3.5 h-3.5 shrink-0" />
+          <span className="line-clamp-2">{announcement.message}</span>
+        </div>
+      )}
 
       <nav className="flex-1 px-2.5 pt-3 overflow-y-auto custom-scrollbar pb-4 space-y-4">
         {NAV_SECTIONS.map((section) => (

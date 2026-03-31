@@ -11,6 +11,21 @@ export async function apiFetch(path: string, opts: RequestInit = {}) {
   return r.json();
 }
 
+export async function apiFetchBlob(path: string) {
+  const r = await fetch(`${API}${path}`, { credentials: "include" });
+  if (!r.ok) throw new Error("Export failed");
+  return r.blob();
+}
+
+export function downloadBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 export function fmtDate(d: string) {
   return new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }

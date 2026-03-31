@@ -3,9 +3,9 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import {
   Search, CheckCircle, XCircle, Trash2, ExternalLink, RefreshCw,
   ToggleLeft, ToggleRight, ArrowUpDown, ChevronDown, Globe, Smartphone,
-  MousePointerClick, Users,
+  MousePointerClick, Users, Download, HeartPulse, Loader2,
 } from "lucide-react";
-import { apiFetch, fmtDate, fmtNum } from "../utils";
+import { apiFetch, apiFetchBlob, downloadBlob, fmtDate, fmtNum } from "../utils";
 
 interface PerformanceLink {
   id: string;
@@ -53,6 +53,8 @@ export default function LinksTab() {
   const [actionId, setActionId] = useState<string | null>(null);
   const [sortOpen, setSortOpen] = useState(false);
   const prevSearchRef = useRef(search);
+  const [healthChecking, setHealthChecking] = useState(false);
+  const [healthResults, setHealthResults] = useState<{ slug: string; url: string; status: number; ok: boolean; error?: string }[] | null>(null);
 
   const doLoad = useCallback(async (q: string, f: FilterStatus, s: SortKey) => {
     setLoading(true);
@@ -92,6 +94,22 @@ export default function LinksTab() {
       setLinks((l) => l.filter((x) => x.id !== id));
     } catch { alert("Failed to delete link."); }
     finally { setActionId(null); }
+  }
+
+  async function exportLinks() {
+    try {
+      const blob = await apiFetchBlob("/admin/export/links");
+      downloadBlob(blob, "snipr-links.csv");
+    } catch { alert("Export failed."); }
+  }
+
+  async function runHealthCheck() {
+    setHealthChecking(true);
+    try {
+      const data = await apiFetch("/admin/links/health-check", { method: "POST" });
+      setHealthResults(Array.isArray(data) ? data : data.results || []);
+    } catch { alert("Health check failed."); }
+    finally { setHealthChecking(false); }
   }
 
   const sortLabel: Record<SortKey, string> = {
@@ -135,12 +153,52 @@ export default function LinksTab() {
               </div>
             )}
           </div>
+          <button onClick={runHealthCheck} disabled={healthChecking} title="Health check"
+            className="p-2 rounded-xl border border-[#E4E4EC] bg-white hover:bg-[#F4F4F6] transition-all disabled:opacity-40">
+            {healthChecking ? <Loader2 className="w-3.5 h-3.5 text-[#8888A0] animate-spin" /> : <HeartPulse className="w-3.5 h-3.5 text-[#8888A0]" />}
+          </button>
+          <button onClick={exportLinks} title="Export CSV"
+            className="p-2 rounded-xl border border-[#E4E4EC] bg-white hover:bg-[#F4F4F6] transition-all">
+            <Download className="w-3.5 h-3.5 text-[#8888A0]" />
+          </button>
           <button onClick={() => doLoad(search, filter, sort)}
             className="p-2 rounded-xl border border-[#E4E4EC] bg-white hover:bg-[#F4F4F6] transition-all">
             <RefreshCw className="w-3.5 h-3.5 text-[#8888A0]" />
           </button>
         </div>
       </div>
+
+      {healthResults && (
+        <div className="bg-white rounded-2xl border border-[#E4E4EC] p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <HeartPulse className="w-4 h-4 text-[#728DA7]" />
+              <h3 className="text-sm font-semibold text-[#0A0A0A]">Health Check Results</h3>
+              <span className="text-[10px] text-[#8888A0]">
+                {healthResults.filter(r => r.ok).length}/{healthResults.length} healthy
+              </span>
+            </div>
+            <button onClick={() => setHealthResults(null)} className="text-xs text-[#8888A0] hover:text-[#3A3A3E]">Dismiss</button>
+          </div>
+          {healthResults.filter(r => !r.ok).length > 0 ? (
+            <div className="divide-y divide-[#F4F4F6] max-h-48 overflow-y-auto rounded-xl border border-red-100">
+              {healthResults.filter(r => !r.ok).map((r, i) => (
+                <div key={i} className="px-3 py-2 flex items-center justify-between text-xs bg-red-50/50">
+                  <div>
+                    <span className="font-semibold text-[#0A0A0A]">/{r.slug}</span>
+                    <span className="text-[#8888A0] ml-2 truncate">{r.url.substring(0, 40)}</span>
+                  </div>
+                  <span className="text-red-600 font-semibold">{r.error || `HTTP ${r.status}`}</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-xs text-green-600 font-medium flex items-center gap-1.5">
+              <CheckCircle className="w-3.5 h-3.5" /> All links are healthy!
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="text-xs text-[#8888A0]">{links.length} link{links.length !== 1 ? "s" : ""}</div>
 

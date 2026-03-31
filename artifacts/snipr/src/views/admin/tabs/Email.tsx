@@ -2,9 +2,9 @@
 import { useEffect, useState } from "react";
 import {
   Mail, Send, CheckCircle2, XCircle, AlertCircle, RefreshCw, Search,
-  ShieldCheck, Loader2, Clock, Users, MailCheck, MailX,
+  ShieldCheck, Loader2, Clock, Users, MailCheck, MailX, Download, Megaphone,
 } from "lucide-react";
-import { apiFetch, fmtDate, fmtNum } from "../utils";
+import { apiFetch, apiFetchBlob, downloadBlob, fmtDate, fmtNum } from "../utils";
 
 interface EmailStats {
   totalEmails: number;
@@ -54,8 +54,13 @@ export default function EmailTab() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
-  const [tab, setTab] = useState<"logs" | "unverified">("logs");
+  const [tab, setTab] = useState<"logs" | "unverified" | "mass">("logs");
   const [busy, setBusy] = useState<string | null>(null);
+  const [massSubject, setMassSubject] = useState("");
+  const [massBody, setMassBody] = useState("");
+  const [massTarget, setMassTarget] = useState<"all" | "free" | "pro" | "business">("all");
+  const [massTemplate, setMassTemplate] = useState<"general" | "maintenance" | "feature" | "security">("general");
+  const [massSending, setMassSending] = useState(false);
 
   async function loadAll() {
     setLoading(true);
@@ -97,6 +102,29 @@ export default function EmailTab() {
     finally { setBusy(null); }
   }
 
+  async function exportEmails() {
+    try {
+      const blob = await apiFetchBlob("/admin/export/emails");
+      downloadBlob(blob, "snipr-emails.csv");
+    } catch { alert("Export failed."); }
+  }
+
+  async function sendMassEmail() {
+    if (!massSubject.trim() || !massBody.trim()) { alert("Subject and body are required."); return; }
+    if (!confirm(`Send mass email to ${massTarget === "all" ? "ALL" : massTarget} users? This cannot be undone.`)) return;
+    setMassSending(true);
+    try {
+      const res = await apiFetch("/admin/notifications/send", {
+        method: "POST",
+        body: JSON.stringify({ subject: massSubject, body: massBody, planFilter: massTarget, template: massTemplate }),
+      });
+      alert(`Mass email sent! ${res.sent} delivered, ${res.failed} failed out of ${res.total} recipients.`);
+      setMassSubject(""); setMassBody("");
+      loadAll();
+    } catch { alert("Failed to send mass email."); }
+    finally { setMassSending(false); }
+  }
+
   const filteredLogs = logs.filter((l) => {
     const matchSearch = !search || l.to.toLowerCase().includes(search.toLowerCase()) || l.subject.toLowerCase().includes(search.toLowerCase());
     const matchType = typeFilter === "all" || l.type === typeFilter;
@@ -127,18 +155,26 @@ export default function EmailTab() {
 
       {/* Sub-tabs */}
       <div className="flex items-center gap-2">
-        {(["logs", "unverified"] as const).map((t) => (
+        {([
+          { key: "logs" as const, label: "Email Logs" },
+          { key: "unverified" as const, label: `Unverified (${unverified.length})` },
+          { key: "mass" as const, label: "Mass Email" },
+        ]).map((t) => (
           <button
-            key={t}
-            onClick={() => setTab(t)}
+            key={t.key}
+            onClick={() => setTab(t.key)}
             className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
-              tab === t ? "bg-[#0A0A0A] text-white" : "bg-white border border-[#E4E4EC] text-[#3A3A3E] hover:bg-[#F4F4F6]"
+              tab === t.key ? "bg-[#0A0A0A] text-white" : "bg-white border border-[#E4E4EC] text-[#3A3A3E] hover:bg-[#F4F4F6]"
             }`}
           >
-            {t === "logs" ? "Email Logs" : `Unverified Users (${unverified.length})`}
+            {t.label}
           </button>
         ))}
         <div className="flex-1" />
+        <button onClick={exportEmails} title="Export CSV"
+          className="p-2 rounded-xl border border-[#E4E4EC] bg-white hover:bg-[#F4F4F6] transition-all">
+          <Download className="w-3.5 h-3.5 text-[#8888A0]" />
+        </button>
         <button onClick={loadAll} className="p-2 rounded-xl border border-[#E4E4EC] bg-white hover:bg-[#F4F4F6] transition-all" title="Refresh">
           <RefreshCw className="w-3.5 h-3.5 text-[#8888A0]" />
         </button>
@@ -273,6 +309,68 @@ export default function EmailTab() {
                 ))}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {tab === "mass" && (
+        <div className="bg-white rounded-2xl border border-[#E4E4EC] p-6 space-y-5">
+          <div className="flex items-center gap-2 mb-2">
+            <Megaphone className="w-5 h-5 text-[#728DA7]" />
+            <h3 className="text-sm font-bold text-[#0A0A0A]">Send Mass Email</h3>
+          </div>
+          <div>
+            <label className="text-xs font-medium text-[#8888A0] uppercase mb-1.5 block">Target Audience</label>
+            <div className="flex gap-2">
+              {(["all", "free", "pro", "business"] as const).map(t => (
+                <button key={t} onClick={() => setMassTarget(t)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium capitalize transition-all ${
+                    massTarget === t ? "bg-[#0A0A0A] text-white" : "bg-[#F4F4F6] text-[#8888A0] hover:bg-[#E8EEF4]"
+                  }`}>
+                  {t === "all" ? "All Users" : `${t} Plan`}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <label className="text-xs font-medium text-[#8888A0] uppercase mb-1.5 block">Template Style</label>
+            <div className="flex gap-2">
+              {(["general", "feature", "maintenance", "security"] as const).map(t => (
+                <button key={t} onClick={() => setMassTemplate(t)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium capitalize transition-all ${
+                    massTemplate === t ? "bg-[#728DA7] text-white" : "bg-[#F4F4F6] text-[#8888A0] hover:bg-[#E8EEF4]"
+                  }`}>
+                  {t}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <label className="text-xs font-medium text-[#8888A0] uppercase mb-1.5 block">Subject</label>
+            <input
+              value={massSubject}
+              onChange={e => setMassSubject(e.target.value)}
+              placeholder="Enter email subject..."
+              className="w-full px-3 py-2.5 rounded-xl border border-[#E4E4EC] bg-white text-sm outline-none focus:border-[#728DA7] focus:ring-2 focus:ring-[#728DA7]/15 transition-all"
+            />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-[#8888A0] uppercase mb-1.5 block">Body (HTML supported)</label>
+            <textarea
+              value={massBody}
+              onChange={e => setMassBody(e.target.value)}
+              placeholder="Write your email content..."
+              rows={6}
+              className="w-full px-3 py-2.5 rounded-xl border border-[#E4E4EC] bg-white text-sm outline-none focus:border-[#728DA7] focus:ring-2 focus:ring-[#728DA7]/15 transition-all font-mono resize-none"
+            />
+          </div>
+          <div className="flex items-center gap-3 pt-2">
+            <button onClick={sendMassEmail} disabled={massSending || !massSubject.trim() || !massBody.trim()}
+              className="px-5 py-2.5 rounded-xl bg-[#0A0A0A] text-white text-sm font-semibold hover:bg-[#1A1A2E] disabled:opacity-40 transition-all flex items-center gap-2">
+              {massSending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+              Send Mass Email
+            </button>
+            <p className="text-[10px] text-[#8888A0]">This will send to all verified users in the selected audience.</p>
           </div>
         </div>
       )}

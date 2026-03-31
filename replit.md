@@ -153,6 +153,29 @@ artifacts-monorepo/
 - **DB columns**: `users.stripe_customer_id`, `users.stripe_subscription_id`, `users.stripe_subscription_status` (legacy LS columns kept for data preservation)
 - **Plans**: free ($0), pro ($19/mo), business ($49/mo)
 
+## Admin Panel — Advanced Features
+
+The admin panel (`/admin`) has 13 tabs: Overview, Users, Links, Domains, Analytics, Plans, Billing, Reports, Email, AI Insights, Audit Log, Settings, Guide.
+
+### 10 New Advanced Features (admin.ts)
+1. **Audit Log** — `admin_audit_log` table; `GET /admin/audit-log` with action/search filters; Tab: `AuditLog.tsx`
+2. **System Health Monitor** — `GET /admin/health-detail` (uptime, memory, DB size, sessions, etc.); Renders in Overview tab
+3. **User Impersonation** — `POST /admin/users/:id/impersonate`, `POST /admin/stop-impersonate`, `GET /admin/impersonation-status`; Amber banner in ProtectedSidebar when active
+4. **Bulk User Actions** — `POST /admin/users/bulk` (suspend/activate/delete/change_plan); Checkbox selection + bulk action bar in Users tab
+5. **Link Health Checker** — `POST /admin/links/health-check` (checks destination URLs); HeartPulse button + results panel in Links tab
+6. **CSV Export** — `GET /admin/export/{users,links,clicks,emails}`; Download buttons in Users, Links, Email tabs; Uses `apiFetchBlob` + `downloadBlob` utils
+7. **Announcement Banner** — `GET/POST /admin/announcement` (admin), `GET /announcement` (public); Configurable in Settings tab; Renders in ProtectedSidebar for all users; Backend uses `text` field (not `message`)
+8. **Rate Limit Dashboard** — `GET /admin/rate-limits`; Displays configured rate limits in Settings tab; Backend returns `{ name, path, windowMs, max, description }`
+9. **Workspace Inspector** — `GET /admin/users/:id/workspace-detail`; Modal in Users tab showing links, members, domains, clicks
+10. **Mass Email** — `POST /admin/notifications/send` with `{ planFilter, template, subject, body }`; Templates: general/maintenance/feature/security; Sub-tab in Email tab
+
+### Admin API Contracts (critical alignment notes)
+- Health check returns array directly (not `{ results: [] }`)
+- Announcement uses `text` field (not `message`)
+- Rate limits return `{ name, path, windowMs, max, description }` (no `currentUsage`)
+- Mass email route is `/admin/notifications/send` (not `/admin/mass-email`)
+- Mass email response: `{ ok, sent, failed, total }`
+
 ## Database Schema
 
 - `users` — id, name, email, password_hash, stripe_customer_id, stripe_subscription_id, stripe_subscription_status, plan, timestamps
@@ -165,6 +188,7 @@ artifacts-monorepo/
 - `folders` — id, workspace_id, name, color, timestamps
 - `link_tags` — link_id, tag_id (junction)
 - `link_rules` — id, link_id, type, destination_url, conditions (JSONB), label, priority, timestamps
+- `admin_audit_log` — id, action, target_type, target_id, details (JSONB), admin_ip, created_at
 
 ## Smart Routing Logic (redirect.ts)
 

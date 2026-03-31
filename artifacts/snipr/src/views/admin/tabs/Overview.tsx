@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import {
   Users, Link2, BarChart3, Globe, TrendingUp,
   RefreshCw, ArrowUpRight, UserPlus, Zap, ShoppingCart, Crown,
+  Server, Database, Cpu, HardDrive, Activity, Clock,
 } from "lucide-react";
 import {
   AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
@@ -14,6 +15,17 @@ interface Stats {
   activeLinks: number; totalClicks: number; totalConversions: number;
   totalDomains: number; suspendedUsers: number;
   newUsersThisWeek: number; newLinksThisWeek: number; clicksThisWeek: number;
+}
+
+interface HealthData {
+  uptime: number;
+  memory: { rss: number; heapUsed: number; heapTotal: number; external: number };
+  activeSessions: number;
+  dbSizeMb: number;
+  clicksToday: number;
+  usersToday: number;
+  nodeVersion: string;
+  status: string;
 }
 interface RecentUser { id: string; name: string; email: string; createdAt: string; }
 interface TopLink { slug: string; destination_url: string; clicks: number; }
@@ -76,8 +88,16 @@ export default function Overview() {
   const [topLinks, setTopLinks] = useState<TopLink[]>([]);
   const [topUsers, setTopUsers] = useState<TopUser[]>([]);
   const [chartData, setChartData] = useState<PlatformDay[]>([]);
+  const [health, setHealth] = useState<HealthData | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+
+  async function loadHealth() {
+    try {
+      const h = await apiFetch("/admin/health-detail");
+      setHealth(h);
+    } catch {}
+  }
 
   async function load() {
     try {
@@ -99,7 +119,11 @@ export default function Overview() {
     }
   }
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); loadHealth(); }, []);
+  useEffect(() => {
+    const interval = setInterval(loadHealth, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   async function refresh() {
     setRefreshing(true);
@@ -149,6 +173,72 @@ export default function Overview() {
         <Kpi label="Suspended" value={stats.suspendedUsers}
           icon={Users} accent="#DC2626" bg="#FEF2F2" />
       </div>
+
+      {health && (
+        <div className="bg-white rounded-2xl border border-[#E4E4EC] p-5">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <Server className="w-4 h-4 text-[#728DA7]" />
+              <h3 className="text-sm font-semibold text-[#0A0A0A]">System Health</h3>
+              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold ${
+                health.status === "healthy" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
+              }`}>
+                <span className={`w-1.5 h-1.5 rounded-full ${health.status === "healthy" ? "bg-green-500 animate-pulse" : "bg-red-500"}`} />
+                {health.status === "healthy" ? "Healthy" : "Degraded"}
+              </span>
+            </div>
+            <span className="text-[10px] text-[#8888A0]">Auto-refreshes every 30s</span>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+            <div className="rounded-xl bg-[#F8F8FC] p-3">
+              <div className="flex items-center gap-1.5 mb-1">
+                <Clock className="w-3 h-3 text-[#8888A0]" />
+                <span className="text-[10px] text-[#8888A0] font-semibold uppercase">Uptime</span>
+              </div>
+              <span className="text-sm font-bold text-[#0A0A0A]">
+                {health.uptime >= 86400 ? `${Math.floor(health.uptime / 86400)}d ` : ""}
+                {Math.floor((health.uptime % 86400) / 3600)}h {Math.floor((health.uptime % 3600) / 60)}m
+              </span>
+            </div>
+            <div className="rounded-xl bg-[#F8F8FC] p-3">
+              <div className="flex items-center gap-1.5 mb-1">
+                <Cpu className="w-3 h-3 text-[#8888A0]" />
+                <span className="text-[10px] text-[#8888A0] font-semibold uppercase">Memory</span>
+              </div>
+              <span className="text-sm font-bold text-[#0A0A0A]">{health.memory.heapUsed}MB</span>
+              <span className="text-[10px] text-[#8888A0] ml-1">/ {health.memory.heapTotal}MB</span>
+            </div>
+            <div className="rounded-xl bg-[#F8F8FC] p-3">
+              <div className="flex items-center gap-1.5 mb-1">
+                <Database className="w-3 h-3 text-[#8888A0]" />
+                <span className="text-[10px] text-[#8888A0] font-semibold uppercase">DB Size</span>
+              </div>
+              <span className="text-sm font-bold text-[#0A0A0A]">{health.dbSizeMb}MB</span>
+            </div>
+            <div className="rounded-xl bg-[#F8F8FC] p-3">
+              <div className="flex items-center gap-1.5 mb-1">
+                <Activity className="w-3 h-3 text-[#8888A0]" />
+                <span className="text-[10px] text-[#8888A0] font-semibold uppercase">Sessions</span>
+              </div>
+              <span className="text-sm font-bold text-[#0A0A0A]">{health.activeSessions}</span>
+            </div>
+            <div className="rounded-xl bg-[#F8F8FC] p-3">
+              <div className="flex items-center gap-1.5 mb-1">
+                <BarChart3 className="w-3 h-3 text-[#8888A0]" />
+                <span className="text-[10px] text-[#8888A0] font-semibold uppercase">Clicks 24h</span>
+              </div>
+              <span className="text-sm font-bold text-[#0A0A0A]">{fmtNum(health.clicksToday)}</span>
+            </div>
+            <div className="rounded-xl bg-[#F8F8FC] p-3">
+              <div className="flex items-center gap-1.5 mb-1">
+                <HardDrive className="w-3 h-3 text-[#8888A0]" />
+                <span className="text-[10px] text-[#8888A0] font-semibold uppercase">Node</span>
+              </div>
+              <span className="text-sm font-bold text-[#0A0A0A]">{health.nodeVersion}</span>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Platform traffic area chart */}
       <div className="bg-white rounded-2xl border border-[#E4E4EC] p-5">

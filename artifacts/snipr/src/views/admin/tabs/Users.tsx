@@ -4,8 +4,10 @@ import {
   Search, UserX, UserCheck, Trash2, RefreshCw,
   ArrowUpDown, BarChart3, Link2, TrendingUp,
   ChevronDown, MousePointerClick, Eye, Crown,
+  LogIn, CheckSquare, Square, Download, X,
+  Globe, Users as UsersIcon, Zap,
 } from "lucide-react";
-import { apiFetch, fmtDate, fmtNum } from "../utils";
+import { apiFetch, apiFetchBlob, downloadBlob, fmtDate, fmtNum } from "../utils";
 import UserProfile from "./UserProfile";
 
 interface PerformanceUser {
@@ -68,6 +70,17 @@ function MiniBar({ value, max }: { value: number; max: number }) {
 
 const PLAN_OPTIONS = ["free", "pro", "business"] as const;
 
+interface WorkspaceDetail {
+  user: { id: string; name: string; email: string; plan: string; createdAt: string; suspendedAt: string | null; emailVerified: boolean };
+  workspace: { id: string; name: string; slug: string; createdAt: string } | null;
+  links: { id: string; slug: string; destination_url: string; title: string | null; enabled: boolean; total_clicks: number; last_click_at: string | null }[];
+  domains: { id: string; domain: string; verified: boolean }[];
+  members: { name: string; email: string; role: string }[];
+  totalClicks: number;
+  recentClicks: { timestamp: string; country: string; device: string; slug: string }[];
+  summary: { totalLinks: number; activeLinks: number; totalClicks: number; totalDomains: number; totalMembers: number };
+}
+
 export default function UsersTab() {
   const [users, setUsers] = useState<PerformanceUser[]>([]);
   const [loading, setLoading] = useState(true);
@@ -81,6 +94,10 @@ export default function UsersTab() {
   const [planPopoverId, setPlanPopoverId] = useState<string | null>(null);
   const planPopoverRef = useRef<HTMLDivElement>(null);
   const prevSearchRef = useRef(search);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [bulkAction, setBulkAction] = useState<string | null>(null);
+  const [inspectorData, setInspectorData] = useState<WorkspaceDetail | null>(null);
+  const [inspectorLoading, setInspectorLoading] = useState(false);
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
@@ -150,6 +167,50 @@ export default function UsersTab() {
     finally { setActionId(null); setPlanPopoverId(null); }
   }
 
+  function toggleSelect(id: string) {
+    setSelected((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  }
+  function toggleSelectAll() {
+    setSelected((s) => s.size === filtered.length ? new Set() : new Set(filtered.map(u => u.id)));
+  }
+
+  async function doBulkAction(action: string, plan?: string) {
+    const ids = [...selected];
+    if (ids.length === 0) return;
+    if (!confirm(`${action} ${ids.length} user(s)? This cannot be undone.`)) return;
+    setBulkAction(action);
+    try {
+      await apiFetch("/admin/users/bulk", { method: "POST", body: JSON.stringify({ action, userIds: ids, plan }) });
+      setSelected(new Set());
+      doLoad(search, plan as any || ("all" as PlanFilter), sort);
+    } catch { alert(`Failed to ${action}.`); }
+    finally { setBulkAction(null); }
+  }
+
+  async function impersonate(id: string, name: string) {
+    if (!confirm(`Impersonate "${name}"? You'll view the platform as this user.`)) return;
+    try {
+      await apiFetch(`/admin/users/${id}/impersonate`, { method: "POST" });
+      window.open("/dashboard", "_blank");
+    } catch { alert("Failed to impersonate."); }
+  }
+
+  async function openInspector(id: string) {
+    setInspectorLoading(true);
+    try {
+      const data = await apiFetch(`/admin/users/${id}/workspace-detail`);
+      setInspectorData(data);
+    } catch { alert("Failed to load workspace details."); }
+    finally { setInspectorLoading(false); }
+  }
+
+  async function exportUsers() {
+    try {
+      const blob = await apiFetchBlob("/admin/export/users");
+      downloadBlob(blob, "snipr-users.csv");
+    } catch { alert("Export failed."); }
+  }
+
   const filtered = users.filter((u) =>
     status === "suspended" ? !!u.suspended_at :
     status === "active" ? !u.suspended_at : true
@@ -209,12 +270,31 @@ export default function UsersTab() {
               </div>
             )}
           </div>
+          <button onClick={exportUsers} title="Export CSV"
+            className="p-2 rounded-xl border border-[#E4E4EC] bg-white hover:bg-[#F4F4F6] transition-all">
+            <Download className="w-3.5 h-3.5 text-[#8888A0]" />
+          </button>
           <button onClick={() => doLoad(search, plan, sort)}
             className="p-2 rounded-xl border border-[#E4E4EC] bg-white hover:bg-[#F4F4F6] transition-all">
             <RefreshCw className={`w-3.5 h-3.5 text-[#8888A0] ${loading ? "animate-spin" : ""}`} />
           </button>
         </div>
       </div>
+
+      {selected.size > 0 && (
+        <div className="flex items-center gap-2 px-4 py-2.5 bg-[#EEF3F7] rounded-xl border border-[#728DA7]/20">
+          <span className="text-xs font-semibold text-[#4A7A94]">{selected.size} selected</span>
+          <div className="flex-1" />
+          <button onClick={() => doBulkAction("suspend")} disabled={!!bulkAction}
+            className="px-2.5 py-1 rounded-lg text-xs font-medium bg-amber-50 text-amber-700 hover:bg-amber-100 disabled:opacity-40">Suspend</button>
+          <button onClick={() => doBulkAction("activate")} disabled={!!bulkAction}
+            className="px-2.5 py-1 rounded-lg text-xs font-medium bg-green-50 text-green-700 hover:bg-green-100 disabled:opacity-40">Activate</button>
+          <button onClick={() => doBulkAction("delete")} disabled={!!bulkAction}
+            className="px-2.5 py-1 rounded-lg text-xs font-medium bg-red-50 text-red-700 hover:bg-red-100 disabled:opacity-40">Delete</button>
+          <button onClick={() => setSelected(new Set())}
+            className="px-2.5 py-1 rounded-lg text-xs font-medium text-[#8888A0] hover:bg-white">Clear</button>
+        </div>
+      )}
 
       <div className="text-xs text-[#8888A0]">{filtered.length} user{filtered.length !== 1 ? "s" : ""}</div>
 
@@ -223,6 +303,13 @@ export default function UsersTab() {
           <table className="w-full text-sm min-w-[900px]">
             <thead>
               <tr className="bg-[#F8F8FC] border-b border-[#E4E4EC]">
+                <th className="px-3 py-3 w-8">
+                  <button onClick={toggleSelectAll} className="text-[#8888A0] hover:text-[#728DA7]">
+                    {selected.size === filtered.length && filtered.length > 0
+                      ? <CheckSquare className="w-4 h-4 text-[#728DA7]" />
+                      : <Square className="w-4 h-4" />}
+                  </button>
+                </th>
                 {["User", "Plan", "Links", "Total Clicks", "Avg/Link", "7d Clicks", "Last Active", "Status", ""].map((h) => (
                   <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-[#8888A0] uppercase tracking-wide whitespace-nowrap">{h}</th>
                 ))}
@@ -238,7 +325,12 @@ export default function UsersTab() {
                 <tr><td colSpan={9} className="px-4 py-12 text-center text-[#8888A0]">No users found</td></tr>
               )}
               {!loading && filtered.map((u, idx) => (
-                <tr key={u.id} className="hover:bg-[#F8F8FC] transition-colors group">
+                <tr key={u.id} className={`hover:bg-[#F8F8FC] transition-colors group ${selected.has(u.id) ? "bg-[#EEF3F7]/50" : ""}`}>
+                  <td className="px-3 py-3.5">
+                    <button onClick={() => toggleSelect(u.id)} className="text-[#8888A0] hover:text-[#728DA7]">
+                      {selected.has(u.id) ? <CheckSquare className="w-4 h-4 text-[#728DA7]" /> : <Square className="w-4 h-4" />}
+                    </button>
+                  </td>
                   <td className="px-4 py-3.5">
                     <div className="flex items-center gap-3">
                       <div className="relative w-8 h-8 rounded-full bg-[#E8EEF4] flex items-center justify-center text-[#728DA7] text-xs font-bold shrink-0">
@@ -283,6 +375,14 @@ export default function UsersTab() {
                       <button onClick={() => setProfileUserId(u.id)} title="View analytics"
                         className="p-1.5 rounded-lg hover:bg-[#EEF3F7] text-[#8888A0] hover:text-[#728DA7] transition-all">
                         <Eye className="w-3.5 h-3.5" />
+                      </button>
+                      <button onClick={() => impersonate(u.id, u.name)} title="Impersonate"
+                        className="p-1.5 rounded-lg hover:bg-blue-50 text-[#8888A0] hover:text-blue-600 transition-all">
+                        <LogIn className="w-3.5 h-3.5" />
+                      </button>
+                      <button onClick={() => openInspector(u.id)} title="Workspace inspector"
+                        className="p-1.5 rounded-lg hover:bg-teal-50 text-[#8888A0] hover:text-teal-600 transition-all">
+                        <Globe className="w-3.5 h-3.5" />
                       </button>
                       {/* Plan change popover */}
                       <div className="relative">
@@ -337,6 +437,92 @@ export default function UsersTab() {
           </table>
         </div>
       </div>
+
+      {inspectorData && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40" onClick={() => setInspectorData(null)}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[85vh] overflow-y-auto m-4" onClick={(e) => e.stopPropagation()}>
+            <div className="sticky top-0 bg-white border-b border-[#E4E4EC] px-6 py-4 flex items-center justify-between rounded-t-2xl z-10">
+              <div>
+                <h3 className="text-base font-bold text-[#0A0A0A]">Workspace Inspector</h3>
+                <p className="text-xs text-[#8888A0]">{inspectorData.user.name} — {inspectorData.user.email}</p>
+              </div>
+              <button onClick={() => setInspectorData(null)} className="p-2 rounded-xl hover:bg-[#F4F4F6] text-[#8888A0]"><X className="w-4 h-4" /></button>
+            </div>
+            <div className="p-6 space-y-5">
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+                {[
+                  { label: "Links", val: inspectorData.summary.totalLinks },
+                  { label: "Active", val: inspectorData.summary.activeLinks },
+                  { label: "Clicks", val: inspectorData.summary.totalClicks },
+                  { label: "Domains", val: inspectorData.summary.totalDomains },
+                  { label: "Members", val: inspectorData.summary.totalMembers },
+                ].map((s) => (
+                  <div key={s.label} className="rounded-xl bg-[#F8F8FC] p-3 text-center">
+                    <div className="text-lg font-bold text-[#0A0A0A]">{s.val}</div>
+                    <div className="text-[10px] text-[#8888A0] font-semibold uppercase">{s.label}</div>
+                  </div>
+                ))}
+              </div>
+              {inspectorData.workspace && (
+                <div className="rounded-xl border border-[#E4E4EC] p-4">
+                  <h4 className="text-xs font-semibold text-[#8888A0] uppercase mb-2">Workspace</h4>
+                  <div className="text-sm font-medium text-[#0A0A0A]">{inspectorData.workspace.name}</div>
+                  <div className="text-xs text-[#8888A0]">Slug: {inspectorData.workspace.slug} · Created: {fmtDate(inspectorData.workspace.createdAt)}</div>
+                </div>
+              )}
+              {inspectorData.links.length > 0 && (
+                <div className="rounded-xl border border-[#E4E4EC] overflow-hidden">
+                  <h4 className="text-xs font-semibold text-[#8888A0] uppercase px-4 py-2.5 bg-[#F8F8FC]">Links ({inspectorData.links.length})</h4>
+                  <div className="divide-y divide-[#F4F4F6] max-h-48 overflow-y-auto">
+                    {inspectorData.links.map((l) => (
+                      <div key={l.id} className="px-4 py-2.5 flex items-center justify-between text-xs">
+                        <div className="min-w-0">
+                          <span className="font-semibold text-[#0A0A0A]">/{l.slug}</span>
+                          <span className="text-[#8888A0] ml-2 truncate">{l.destination_url.substring(0, 50)}</span>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${l.enabled ? "bg-green-50 text-green-700" : "bg-red-50 text-red-600"}`}>
+                            {l.enabled ? "ON" : "OFF"}
+                          </span>
+                          <span className="font-semibold text-[#0A0A0A]">{fmtNum(l.total_clicks)} clicks</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {inspectorData.members.length > 0 && (
+                <div className="rounded-xl border border-[#E4E4EC] overflow-hidden">
+                  <h4 className="text-xs font-semibold text-[#8888A0] uppercase px-4 py-2.5 bg-[#F8F8FC]">Members ({inspectorData.members.length})</h4>
+                  <div className="divide-y divide-[#F4F4F6]">
+                    {inspectorData.members.map((m, i) => (
+                      <div key={i} className="px-4 py-2.5 flex items-center justify-between text-xs">
+                        <div><span className="font-medium text-[#0A0A0A]">{m.name}</span><span className="text-[#8888A0] ml-2">{m.email}</span></div>
+                        <span className="px-1.5 py-0.5 rounded-full bg-[#F4F4F6] text-[9px] font-bold text-[#8888A0] uppercase">{m.role}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {inspectorData.domains.length > 0 && (
+                <div className="rounded-xl border border-[#E4E4EC] overflow-hidden">
+                  <h4 className="text-xs font-semibold text-[#8888A0] uppercase px-4 py-2.5 bg-[#F8F8FC]">Domains ({inspectorData.domains.length})</h4>
+                  <div className="divide-y divide-[#F4F4F6]">
+                    {inspectorData.domains.map((d) => (
+                      <div key={d.id} className="px-4 py-2.5 flex items-center justify-between text-xs">
+                        <span className="font-medium text-[#0A0A0A]">{d.domain}</span>
+                        <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${d.verified ? "bg-green-50 text-green-700" : "bg-amber-50 text-amber-700"}`}>
+                          {d.verified ? "Verified" : "Pending"}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {!loading && filtered.length > 0 && (() => {
         const sortedByClicks = [...filtered].sort((a, b) => Number(b.total_clicks) - Number(a.total_clicks));
