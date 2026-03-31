@@ -78391,7 +78391,7 @@ router2.get("/auth/context", requireAuth, async (req, res) => {
     ip: ip.replace(/(\d+)\.(\d+)\.(\d+)\.(\d+)/, "$1.$2.***.$4")
   });
 });
-router2.post("/auth/verify-email", async (req, res) => {
+async function handleVerifyEmail(req, res) {
   const token = req.body?.token || req.query.token;
   if (!token) {
     res.status(400).json({ error: "Token is required" });
@@ -78419,7 +78419,9 @@ router2.post("/auth/verify-email", async (req, res) => {
     email: user.email
   }).catch((err) => logger.error({ err }, "Failed to send welcome email"));
   res.json({ ok: true, message: "Email verified successfully" });
-});
+}
+router2.get("/auth/verify-email", handleVerifyEmail);
+router2.post("/auth/verify-email", handleVerifyEmail);
 router2.post("/auth/resend-verification", requireAuth, async (req, res) => {
   const [user] = await db.select().from(usersTable).where(eq(usersTable.id, req.session.userId));
   if (!user) {

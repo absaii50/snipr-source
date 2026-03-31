@@ -237,7 +237,7 @@ router.get("/auth/context", requireAuth, async (req, res): Promise<void> => {
 });
 
 /* ── Email Verification ──────────────────────────────────────────── */
-router.post("/auth/verify-email", async (req, res): Promise<void> => {
+async function handleVerifyEmail(req: import("express").Request, res: import("express").Response): Promise<void> {
   const token = (req.body?.token || req.query.token) as string;
   if (!token) {
     res.status(400).json({ error: "Token is required" });
@@ -280,7 +280,11 @@ router.post("/auth/verify-email", async (req, res): Promise<void> => {
   }).catch((err) => logger.error({ err }, "Failed to send welcome email"));
 
   res.json({ ok: true, message: "Email verified successfully" });
-});
+}
+
+// Support both GET (old email links) and POST (new frontend) for backward compat
+router.get("/auth/verify-email", handleVerifyEmail);
+router.post("/auth/verify-email", handleVerifyEmail);
 
 router.post("/auth/resend-verification", requireAuth, async (req, res): Promise<void> => {
   const [user] = await db
