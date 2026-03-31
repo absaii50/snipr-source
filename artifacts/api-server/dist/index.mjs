@@ -51948,6 +51948,20 @@ var LoginResponse = objectType({
     slug: stringType()
   })
 });
+var ForgotPasswordBody = objectType({
+  email: stringType().email()
+});
+var ForgotPasswordResponse = objectType({
+  message: stringType()
+});
+var resetPasswordBodyPasswordMin = 8;
+var ResetPasswordBody = objectType({
+  token: stringType(),
+  password: stringType().min(resetPasswordBodyPasswordMin)
+});
+var ResetPasswordResponse = objectType({
+  message: stringType()
+});
 var LogoutResponse = objectType({
   message: stringType()
 });
@@ -51982,14 +51996,11 @@ var CreateLinkBody = objectType({
   slug: stringType().nullish().describe("Custom slug. If null, auto-generated."),
   destinationUrl: stringType().url(),
   title: stringType().nullish(),
-  expiresAt: coerce.date().nullish(),
+  expiresAt: dateType().nullish(),
   folderId: stringType().nullish(),
-  /** Required: a verified custom domain must be supplied. */
-  domainId: stringType().min(1),
   clickLimit: numberType().nullish(),
   fallbackUrl: stringType().nullish(),
-  password: stringType().nullish(),
-  isCloaked: booleanType().nullish()
+  password: stringType().nullish()
 });
 var GetLinkParams = objectType({
   id: coerce.string()
@@ -52003,11 +52014,9 @@ var GetLinkResponse = objectType({
   enabled: booleanType(),
   expiresAt: dateType().nullish(),
   folderId: stringType().nullish(),
-  domainId: stringType().nullish(),
   clickLimit: numberType().nullish(),
   fallbackUrl: stringType().nullish(),
   hasPassword: booleanType(),
-  isCloaked: booleanType(),
   createdAt: dateType(),
   updatedAt: dateType()
 });
@@ -52019,14 +52028,11 @@ var UpdateLinkBody = objectType({
   destinationUrl: stringType().url().nullish(),
   title: stringType().nullish(),
   enabled: booleanType().nullish(),
-  expiresAt: coerce.date().nullish(),
+  expiresAt: dateType().nullish(),
   folderId: stringType().nullish(),
-  /** Must be a verified custom domain. Cannot be set to null. */
-  domainId: stringType().min(1).optional(),
   clickLimit: numberType().nullish(),
   fallbackUrl: stringType().nullish(),
-  password: stringType().nullish().describe("Set to empty string to remove password"),
-  isCloaked: booleanType().nullish()
+  password: stringType().nullish().describe("Set to empty string to remove password")
 });
 var UpdateLinkResponse = objectType({
   id: stringType(),
@@ -52037,11 +52043,9 @@ var UpdateLinkResponse = objectType({
   enabled: booleanType(),
   expiresAt: dateType().nullish(),
   folderId: stringType().nullish(),
-  domainId: stringType().nullish(),
   clickLimit: numberType().nullish(),
   fallbackUrl: stringType().nullish(),
   hasPassword: booleanType(),
-  isCloaked: booleanType(),
   createdAt: dateType(),
   updatedAt: dateType()
 });
@@ -72783,6 +72787,8 @@ var usersTable = pgTable("users", {
   passwordHash: text("password_hash").notNull(),
   emailVerified: boolean("email_verified").notNull().default(false),
   emailVerificationToken: text("email_verification_token"),
+  passwordResetToken: text("password_reset_token"),
+  passwordResetExpiresAt: timestamp("password_reset_expires_at", { withTimezone: true }),
   suspendedAt: timestamp("suspended_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => /* @__PURE__ */ new Date()),
@@ -78000,6 +78006,33 @@ function getVerificationEmailHtml(name, verifyUrl) {
     </p>
   `);
 }
+function getPasswordResetEmailHtml(name, resetUrl) {
+  return layout(`
+    <div style="text-align:center;padding-bottom:16px;">
+      <div style="display:inline-block;width:56px;height:56px;background:#FEF3C7;border-radius:50%;line-height:56px;font-size:28px;">
+        &#128274;
+      </div>
+    </div>
+    <h1 style="color:${BRAND.dark};font-size:24px;font-weight:700;margin:0 0 8px;text-align:center;letter-spacing:-0.5px;">
+      Reset your password
+    </h1>
+    <p style="color:${BRAND.text};font-size:15px;line-height:1.6;margin:0 0 4px;">
+      Hi ${name},
+    </p>
+    <p style="color:${BRAND.text};font-size:15px;line-height:1.6;margin:0;">
+      We received a request to reset the password for your Snipr account. Click the button below to set a new password.
+    </p>
+    ${button("Reset Password", resetUrl)}
+    <p style="color:${BRAND.muted};font-size:12px;line-height:1.5;margin:16px 0 0;text-align:center;">
+      Or copy and paste this link:<br>
+      <a href="${resetUrl}" style="color:${BRAND.primary};word-break:break-all;">${resetUrl}</a>
+    </p>
+    <hr style="border:none;border-top:1px solid #E4E4EC;margin:24px 0;">
+    <p style="color:${BRAND.muted};font-size:12px;line-height:1.5;margin:0;">
+      This link will expire in 1 hour. If you didn't request a password reset, you can safely ignore this email.
+    </p>
+  `);
+}
 function getWelcomeEmailHtml(name, dashboardUrl) {
   return layout(`
     <div style="text-align:center;padding-bottom:16px;">
@@ -78106,6 +78139,17 @@ async function sendVerificationEmail(user) {
     html,
     userId: user.id,
     type: "verification"
+  });
+}
+async function sendPasswordResetEmail(user) {
+  const resetUrl = `${FRONTEND_URL}/reset-password?token=${user.passwordResetToken}`;
+  const html = getPasswordResetEmailHtml(user.name, resetUrl);
+  await sendEmail({
+    to: user.email,
+    subject: "Reset your password - Snipr",
+    html,
+    userId: user.id,
+    type: "password_reset"
   });
 }
 async function sendWelcomeEmail(user) {
@@ -78371,6 +78415,51 @@ router2.post("/auth/resend-verification", requireAuth, async (req, res) => {
     emailVerificationToken: newToken
   });
   res.json({ ok: true, message: "Verification email sent" });
+});
+router2.post("/auth/forgot-password", async (req, res) => {
+  const { email: email3 } = req.body;
+  if (!email3 || typeof email3 !== "string") {
+    res.status(400).json({ error: "Email is required" });
+    return;
+  }
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.email, email3.toLowerCase().trim()));
+  if (!user) {
+    res.json({ ok: true, message: "If an account exists with this email, a reset link has been sent." });
+    return;
+  }
+  const resetToken = crypto6.randomUUID();
+  const expiresAt = new Date(Date.now() + 60 * 60 * 1e3);
+  await db.update(usersTable).set({ passwordResetToken: resetToken, passwordResetExpiresAt: expiresAt }).where(eq(usersTable.id, user.id));
+  sendPasswordResetEmail({
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    passwordResetToken: resetToken
+  }).catch((err) => logger.error({ err }, "Failed to send password reset email"));
+  res.json({ ok: true, message: "If an account exists with this email, a reset link has been sent." });
+});
+router2.post("/auth/reset-password", async (req, res) => {
+  const { token, password } = req.body;
+  if (!token || typeof token !== "string") {
+    res.status(400).json({ error: "Reset token is required" });
+    return;
+  }
+  if (!password || typeof password !== "string" || password.length < 8) {
+    res.status(400).json({ error: "Password must be at least 8 characters" });
+    return;
+  }
+  const newHash = await bcryptjs_default.hash(password, 10);
+  const updated = await db.update(usersTable).set({ passwordHash: newHash, passwordResetToken: null, passwordResetExpiresAt: null }).where(
+    and(
+      eq(usersTable.passwordResetToken, token),
+      gt(usersTable.passwordResetExpiresAt, /* @__PURE__ */ new Date())
+    )
+  ).returning({ id: usersTable.id });
+  if (updated.length === 0) {
+    res.status(400).json({ error: "Invalid or expired reset link. Please request a new one." });
+    return;
+  }
+  res.json({ ok: true, message: "Password has been reset successfully. You can now sign in." });
 });
 router2.patch("/auth/profile", requireAuth, async (req, res) => {
   const { name, email: email3 } = req.body;
@@ -89729,6 +89818,14 @@ var apiLimiter = rate_limit_default({
   legacyHeaders: false,
   message: { error: "Too many requests. Please slow down." }
 });
+var passwordResetLimiter = rate_limit_default({
+  windowMs: 15 * 60 * 1e3,
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many password reset requests. Please try again later." },
+  skip: (req) => req.method !== "POST" || req.path !== "/auth/forgot-password" && req.path !== "/auth/reset-password"
+});
 var adminLoginLimiter = rate_limit_default({
   windowMs: 15 * 60 * 1e3,
   // 15-minute window
@@ -89739,6 +89836,7 @@ var adminLoginLimiter = rate_limit_default({
   message: { error: "Too many login attempts. Please try again later." },
   skip: (req) => req.method !== "POST" || req.path !== "/admin/login"
 });
+app.use("/api/", passwordResetLimiter);
 app.use("/api/", adminLoginLimiter);
 app.use("/api/", apiLimiter);
 app.use("/api", routes_default);

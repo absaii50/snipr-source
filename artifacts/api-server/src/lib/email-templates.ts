@@ -88,6 +88,34 @@ export function getVerificationEmailHtml(name: string, verifyUrl: string): strin
   `);
 }
 
+export function getPasswordResetEmailHtml(name: string, resetUrl: string): string {
+  return layout(`
+    <div style="text-align:center;padding-bottom:16px;">
+      <div style="display:inline-block;width:56px;height:56px;background:#FEF3C7;border-radius:50%;line-height:56px;font-size:28px;">
+        &#128274;
+      </div>
+    </div>
+    <h1 style="color:${BRAND.dark};font-size:24px;font-weight:700;margin:0 0 8px;text-align:center;letter-spacing:-0.5px;">
+      Reset your password
+    </h1>
+    <p style="color:${BRAND.text};font-size:15px;line-height:1.6;margin:0 0 4px;">
+      Hi ${name},
+    </p>
+    <p style="color:${BRAND.text};font-size:15px;line-height:1.6;margin:0;">
+      We received a request to reset the password for your Snipr account. Click the button below to set a new password.
+    </p>
+    ${button("Reset Password", resetUrl)}
+    <p style="color:${BRAND.muted};font-size:12px;line-height:1.5;margin:16px 0 0;text-align:center;">
+      Or copy and paste this link:<br>
+      <a href="${resetUrl}" style="color:${BRAND.primary};word-break:break-all;">${resetUrl}</a>
+    </p>
+    <hr style="border:none;border-top:1px solid #E4E4EC;margin:24px 0;">
+    <p style="color:${BRAND.muted};font-size:12px;line-height:1.5;margin:0;">
+      This link will expire in 1 hour. If you didn't request a password reset, you can safely ignore this email.
+    </p>
+  `);
+}
+
 export function getWelcomeEmailHtml(name: string, dashboardUrl: string): string {
   return layout(`
     <div style="text-align:center;padding-bottom:16px;">

@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
-import { eq } from "drizzle-orm";
+import { eq, and, gt } from "drizzle-orm";
 import geoip from "geoip-lite";
 import { db, usersTable, workspacesTable, workspaceMembersTable } from "@workspace/db";
 import {
@@ -9,7 +9,7 @@ import {
   LoginBody,
 } from "@workspace/api-zod";
 import { requireAuth } from "../lib/auth";
-import { sendVerificationEmail, sendWelcomeEmail } from "../lib/email";
+import { sendVerificationEmail, sendWelcomeEmail, sendPasswordResetEmail } from "../lib/email";
 import { logger } from "../lib/logger";
 
 const router: IRouter = Router();
@@ -304,6 +304,78 @@ router.post("/auth/resend-verification", requireAuth, async (req, res): Promise<
   });
 
   res.json({ ok: true, message: "Verification email sent" });
+});
+
+/* ── Forgot Password ────────────────────────────────────────── */
+router.post("/auth/forgot-password", async (req, res): Promise<void> => {
+  const { email } = req.body;
+
+  if (!email || typeof email !== "string") {
+    res.status(400).json({ error: "Email is required" });
+    return;
+  }
+
+  const [user] = await db
+    .select()
+    .from(usersTable)
+    .where(eq(usersTable.email, email.toLowerCase().trim()));
+
+  if (!user) {
+    res.json({ ok: true, message: "If an account exists with this email, a reset link has been sent." });
+    return;
+  }
+
+  const resetToken = crypto.randomUUID();
+  const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
+
+  await db
+    .update(usersTable)
+    .set({ passwordResetToken: resetToken, passwordResetExpiresAt: expiresAt })
+    .where(eq(usersTable.id, user.id));
+
+  sendPasswordResetEmail({
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    passwordResetToken: resetToken,
+  }).catch((err) => logger.error({ err }, "Failed to send password reset email"));
+
+  res.json({ ok: true, message: "If an account exists with this email, a reset link has been sent." });
+});
+
+/* ── Reset Password ─────────────────────────────────────────── */
+router.post("/auth/reset-password", async (req, res): Promise<void> => {
+  const { token, password } = req.body;
+
+  if (!token || typeof token !== "string") {
+    res.status(400).json({ error: "Reset token is required" });
+    return;
+  }
+
+  if (!password || typeof password !== "string" || password.length < 8) {
+    res.status(400).json({ error: "Password must be at least 8 characters" });
+    return;
+  }
+
+  const newHash = await bcrypt.hash(password, 10);
+
+  const updated = await db
+    .update(usersTable)
+    .set({ passwordHash: newHash, passwordResetToken: null, passwordResetExpiresAt: null })
+    .where(
+      and(
+        eq(usersTable.passwordResetToken, token),
+        gt(usersTable.passwordResetExpiresAt, new Date())
+      )
+    )
+    .returning({ id: usersTable.id });
+
+  if (updated.length === 0) {
+    res.status(400).json({ error: "Invalid or expired reset link. Please request a new one." });
+    return;
+  }
+
+  res.json({ ok: true, message: "Password has been reset successfully. You can now sign in." });
 });
 
 /* ── Profile Update ──────────────────────────────────────────── */

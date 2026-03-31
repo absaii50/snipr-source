@@ -116,7 +116,15 @@ const apiLimiter = rateLimit({
   message: { error: "Too many requests. Please slow down." },
 });
 
-// SECURITY: Rate limit admin login endpoint separately (strict)
+const passwordResetLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many password reset requests. Please try again later." },
+  skip: (req) => req.method !== "POST" || (req.path !== "/auth/forgot-password" && req.path !== "/auth/reset-password"),
+});
+
 const adminLoginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15-minute window
   max: 5, // Only 5 attempts per 15 minutes
@@ -126,7 +134,8 @@ const adminLoginLimiter = rateLimit({
   skip: (req) => req.method !== "POST" || req.path !== "/admin/login",
 });
 
-app.use("/api/", adminLoginLimiter); // Apply strict rate limiting first
+app.use("/api/", passwordResetLimiter);
+app.use("/api/", adminLoginLimiter);
 app.use("/api/", apiLimiter);
 app.use("/api", router);
 

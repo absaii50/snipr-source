@@ -60,8 +60,10 @@ artifacts-monorepo/
 ### Public
 - `/` — Landing page
 - `/pricing` — Pricing tiers
-- `/login` — Email/password login
+- `/login` — Email/password login (includes "Forgot password?" link)
 - `/signup` — Account registration
+- `/forgot-password` — Request password reset email
+- `/reset-password?token=...` — Set new password via emailed token (1-hour expiry)
 
 ### Authenticated App (Sidebar layout)
 - `/live` — Real-Time Intelligence: live SSE-powered feed with expandable visitor detail rows (click any event → full details: location, device, OS, browser, referrer, QR status, timestamp). 5 KPI cards (Active Now, Session Total, Mobile count + %, Desktop count + %, Countries). Right sidebar: Device Breakdown (mobile/desktop/tablet progress bars + browser list + OS list), Realtime Countries (ranked with flags, progress bars, percentages), Top Active Links (ranked with colored progress bars). All panels have icon + explanation empty states. Auto-reconnects on disconnect.
@@ -86,6 +88,8 @@ artifacts-monorepo/
 - `POST /api/auth/login` — Cookie-based session auth
 - `POST /api/auth/logout` — Destroy session
 - `PATCH /api/auth/profile` — Update name/email (re-verifies email if changed)
+- `POST /api/auth/forgot-password` — Request password reset email (never reveals if email exists)
+- `POST /api/auth/reset-password` — Reset password with token from email (1-hour expiry)
 - `POST /api/auth/change-password` — Change password (requires current password)
 - `DELETE /api/auth/account` — Delete account (requires password confirmation)
 - `GET /api/auth/me` — Get current user + workspace

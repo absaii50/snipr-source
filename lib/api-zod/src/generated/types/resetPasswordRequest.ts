@@ -6,11 +6,8 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface Folder {
-  id: string;
-  workspaceId: string;
-  name: string;
-  color: string;
-  createdAt: Date;
-  updatedAt: Date;
+export interface ResetPasswordRequest {
+  token: string;
+  /** @minLength 8 */
+  password: string;
 }

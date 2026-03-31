@@ -1,7 +1,7 @@
 import { Resend } from "resend";
 import { db, emailLogsTable } from "@workspace/db";
 import { logger } from "./logger";
-import { getVerificationEmailHtml, getWelcomeEmailHtml } from "./email-templates";
+import { getVerificationEmailHtml, getWelcomeEmailHtml, getPasswordResetEmailHtml } from "./email-templates";
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
 const FRONTEND_URL = process.env.FRONTEND_URL || "https://snipr.sh";
@@ -101,6 +101,24 @@ export async function sendVerificationEmail(user: {
     html,
     userId: user.id,
     type: "verification",
+  });
+}
+
+export async function sendPasswordResetEmail(user: {
+  id: string;
+  name: string;
+  email: string;
+  passwordResetToken: string;
+}): Promise<void> {
+  const resetUrl = `${FRONTEND_URL}/reset-password?token=${user.passwordResetToken}`;
+  const html = getPasswordResetEmailHtml(user.name, resetUrl);
+
+  await sendEmail({
+    to: user.email,
+    subject: "Reset your password - Snipr",
+    html,
+    userId: user.id,
+    type: "password_reset",
   });
 }
 
