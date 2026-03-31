@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { db, usersTable } from "@workspace/db";
-import { getStripeSync, getUncachableStripeClient } from "./stripeClient";
+import { getStripeClient, getWebhookSecret } from "./stripeClient";
 import { logger } from "./logger";
 
 export class WebhookHandlers {
@@ -14,10 +14,10 @@ export class WebhookHandlers {
       );
     }
 
-    const sync = await getStripeSync();
-    await sync.processWebhook(payload, signature);
+    const stripe = getStripeClient();
+    const webhookSecret = getWebhookSecret();
 
-    const event = JSON.parse(payload.toString());
+    const event = stripe.webhooks.constructEvent(payload, signature, webhookSecret);
     await WebhookHandlers.handleUserPlanUpdates(event);
   }
 
@@ -42,7 +42,7 @@ export class WebhookHandlers {
 
       if (!user || !subscriptionId) return;
 
-      const stripe = await getUncachableStripeClient();
+      const stripe = getStripeClient();
       const sub = await stripe.subscriptions.retrieve(subscriptionId as string);
       const priceId = sub.items?.data[0]?.price?.id;
 
@@ -125,7 +125,7 @@ export class WebhookHandlers {
 
   static async planFromPriceId(priceId: string): Promise<"free" | "pro" | "business"> {
     try {
-      const stripe = await getUncachableStripeClient();
+      const stripe = getStripeClient();
       const price = await stripe.prices.retrieve(priceId, { expand: ["product"] });
       const product = price.product as any;
       if (product?.metadata?.plan === "pro") return "pro";

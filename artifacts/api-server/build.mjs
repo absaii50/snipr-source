@@ -103,7 +103,6 @@ async function buildAll() {
       "puppeteer-core",
       "electron",
       "geoip-lite",
-      "stripe-replit-sync",
     ],
     sourcemap: "linked",
     plugins: [
