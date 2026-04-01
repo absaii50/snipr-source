@@ -449,6 +449,19 @@ const BOT_UA_PATTERN = new RegExp(
 const PREFETCH_HEADERS = ["purpose", "x-purpose", "x-moz", "sec-purpose"] as const;
 const PREFETCH_VALUES = /prefetch|prerender|preview/i;
 
+// ─── Real Browser Detection ─────────────────────────────────────────────
+// In-app browsers (WhatsApp, Instagram, Telegram, Facebook, LinkedIn, etc.)
+// have the app name in their UA but ALSO include full browser engine strings.
+// Pure bots do NOT have Mozilla/5.0 + browser engine.
+//
+// Example: WhatsApp in-app browser (REAL user — must count):
+//   "Mozilla/5.0 (iPhone; ...) AppleWebKit/605.1.15 ... Mobile/15E148 WhatsApp/23.20"
+//
+// Example: WhatsApp preview bot (NOT a user — must block):
+//   "WhatsApp/2.23.20.0"
+
+const REAL_BROWSER_PATTERN = /^Mozilla\/5\.0\s.+(?:AppleWebKit|Chrome|Firefox|Safari|Edg|OPR|Opera|Trident|Gecko)/i;
+
 // ─── Main Detection Function ────────────────────────────────────────────
 
 /**
@@ -466,26 +479,24 @@ export function isBot(req: Request): boolean {
   const ua = (req.headers["user-agent"] ?? "") as string;
   if (!ua || ua.length < 10) return true;
 
-  // 4. Check against comprehensive bot UA pattern
-  if (BOT_UA_PATTERN.test(ua)) return true;
-
-  // 5. Prefetch / Prerender headers
+  // 4. Prefetch / Prerender headers — check BEFORE browser detection
+  //    because even real browsers can send prefetch requests
   for (const header of PREFETCH_HEADERS) {
     const value = req.headers[header];
     if (value && PREFETCH_VALUES.test(value as string)) return true;
   }
 
-  // 6. Sec-Fetch headers (modern browsers) — "prefetch" or "prerender" purpose
-  const secFetchDest = req.headers["sec-fetch-dest"] as string | undefined;
-  const secFetchMode = req.headers["sec-fetch-mode"] as string | undefined;
-  if (secFetchDest === "empty" && secFetchMode === "no-cors") {
-    // Likely a prefetch/beacon, not a real navigation
-    // Real user navigations have sec-fetch-mode: "navigate"
-  }
+  // 5. Real browser check — if UA has Mozilla/5.0 + browser engine,
+  //    it's a real user (possibly in an in-app browser like WhatsApp,
+  //    Instagram, Telegram, Facebook, LinkedIn, etc.). ALLOW these.
+  if (REAL_BROWSER_PATTERN.test(ua)) return false;
 
-  // 7. X-Forwarded-For with known bot IP ranges (AWS, GCP, etc.)
-  //    Not checked here to keep it fast — UA check covers 99.9% of cases
+  // 6. Check against comprehensive bot UA pattern
+  //    Only reaches here for non-browser UAs (pure bots, CLI tools, etc.)
+  if (BOT_UA_PATTERN.test(ua)) return true;
 
+  // 7. If UA doesn't match a real browser AND doesn't match a known bot,
+  //    allow it (could be an unusual but legitimate browser)
   return false;
 }
 
