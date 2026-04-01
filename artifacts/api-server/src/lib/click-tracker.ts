@@ -6,6 +6,7 @@ import { Request } from "express";
 import { logger } from "./logger";
 import { fireIntegrations } from "./integrations-fire";
 import { broadcast } from "./realtime-bus";
+import { isBot } from "./bot-detector";
 
 type Link = typeof linksTable.$inferSelect;
 type ClickPayload = typeof clickEventsTable.$inferInsert;
@@ -51,24 +52,6 @@ function parseReferrer(referrer: string | undefined): string | null {
   } catch {
     return referrer;
   }
-}
-
-/* ── Bot / Prefetch Filter ────────────────────────────────────────────── */
-
-const BOT_UA_PATTERN = /bot|crawl|spider|slurp|facebookexternalhit|twitterbot|linkedinbot|whatsapp|telegram|discordbot|slack|preview|prefetch|wget|curl|python|java|ruby|go-http|axios|node-fetch|lighthouse|headless|phantom|puppeteer|playwright|chrome-lighthouse|googleweblight|adsbot|mediapartners|applebot|baiduspider|yandexbot|sogou|duckduckbot|exabot|ia_archiver|msnbot|semrushbot|ahrefsbot|dotbot|rogerbot|360spider|seznambot|blexbot|petalbot/i;
-
-function isBot(req: Request): boolean {
-  const ua = req.headers["user-agent"] ?? "";
-  // Skip empty UAs
-  if (!ua) return true;
-  // Skip known bots by UA
-  if (BOT_UA_PATTERN.test(ua)) return true;
-  // Skip browser prefetch requests
-  const purpose = req.headers["purpose"] ?? req.headers["x-purpose"] ?? req.headers["x-moz"] ?? "";
-  if (/prefetch/i.test(purpose as string)) return true;
-  // Skip HEAD requests — browsers send HEAD to check a URL before following
-  if (req.method === "HEAD") return true;
-  return false;
 }
 
 /* ── Batch Write Queue ────────────────────────────────────────────────── */
