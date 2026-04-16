@@ -79553,12 +79553,13 @@ router4.get("/analytics/links/:id", requireAuth, async (req, res) => {
       lte(clickEventsTable.timestamp, toDate)
     )
   );
-  const [tCountries, tReferrers, tBrowsers, tDevices, tOs] = await Promise.all([
+  const [tCountries, tReferrers, tBrowsers, tDevices, tOs, tCities] = await Promise.all([
     topN(workspaceId, clickEventsTable.country, fromDate, toDate, id),
     topN(workspaceId, clickEventsTable.referrer, fromDate, toDate, id),
     topN(workspaceId, clickEventsTable.browser, fromDate, toDate, id),
     topN(workspaceId, clickEventsTable.device, fromDate, toDate, id),
-    topN(workspaceId, clickEventsTable.os, fromDate, toDate, id)
+    topN(workspaceId, clickEventsTable.os, fromDate, toDate, id),
+    topN(workspaceId, clickEventsTable.city, fromDate, toDate, id, 15)
   ]);
   res.json({
     totalClicks: Number(stats?.totalClicks ?? 0),
@@ -79569,7 +79570,8 @@ router4.get("/analytics/links/:id", requireAuth, async (req, res) => {
     topReferrers: tReferrers,
     topBrowsers: tBrowsers,
     topDevices: tDevices,
-    topOs: tOs
+    topOs: tOs,
+    topCities: tCities
   });
 });
 router4.get("/analytics/links/:id/timeseries", requireAuth, async (req, res) => {
