@@ -1,3 +1,20 @@
 <svg width="180" height="180" viewBox="0 0 180 180" fill="none" xmlns="http://www.w3.org/2000/svg">
-<rect width="180" height="180" rx="36" fill="#FF3C00"/>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="180" y2="180" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#1A1A1E"/>
+      <stop offset="100%" stop-color="#09090B"/>
+    </linearGradient>
+    <linearGradient id="mark" x1="40" y1="40" x2="140" y2="140" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#8B5CF6"/>
+      <stop offset="100%" stop-color="#06B6D4"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="180" height="180" rx="40" fill="url(#bg)"/>
+
+  <g transform="translate(18 18) scale(6)" stroke="url(#mark)" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M13.5 10.5 L10.5 7.5 a3.5 3.5 0 1 0 -4.95 4.95 L8.5 15.5" stroke-width="2"/>
+    <path d="M10.5 13.5 L13.5 16.5 a3.5 3.5 0 1 0 4.95 -4.95 L15.5 8.5" stroke-width="2"/>
+    <path d="M10 14 L14 10" stroke-width="2" stroke-dasharray="0.5 3"/>
+  </g>
 </svg>
