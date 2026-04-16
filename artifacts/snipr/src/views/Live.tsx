@@ -11,6 +11,7 @@ import {
 import { formatDistanceToNow } from "date-fns";
 import { BrowserIcon } from "@/components/icons/BrowserIcon";
 import { OsIcon } from "@/components/icons/OsIcon";
+import { CountryFlag } from "@/components/icons/CountryFlag";
 
 /* ───────────────────── Types ───────────────────── */
 interface ClickEvent {
@@ -34,21 +35,6 @@ function DeviceIcon({ device, className }: { device: string | null; className?: 
   if (device === "mobile") return <Smartphone className={cls} />;
   if (device === "tablet") return <Tablet className={cls} />;
   return <Monitor className={cls} />;
-}
-
-function countryFlag(code: string | null) {
-  if (!code || code.length !== 2) return <span className="text-[16px]">🌐</span>;
-  return (
-    <img
-      src={`https://flagcdn.com/w20/${code.toLowerCase()}.png`}
-      srcSet={`https://flagcdn.com/w40/${code.toLowerCase()}.png 2x`}
-      width={20}
-      height={15}
-      alt={code}
-      className="rounded-[2px] object-cover"
-      onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
-    />
-  );
 }
 
 function slugColor(slug: string): string {
@@ -524,7 +510,7 @@ export default function Live() {
                               </div>
                               <div className="flex items-center gap-2 mt-0.5 flex-wrap text-[11px] text-[#71717A]">
                                 <span className="flex items-center gap-1">
-                                  {countryFlag(ev.country)}
+                                  <CountryFlag code={ev.country} width={20} />
                                   <span className="hidden sm:inline">{ev.city ? `${ev.city}, ` : ""}{ev.country ? countryName(ev.country) : "Unknown"}</span>
                                   <span className="sm:hidden">{ev.country ?? "—"}</span>
                                 </span>
@@ -556,7 +542,7 @@ export default function Live() {
                               </div>
                               <div className="grid grid-cols-2 gap-x-4 gap-y-3 p-4">
                                 <DetailRow icon={<MapPin className="w-3.5 h-3.5 text-[#10B981]" />} label="Location" value={`${ev.city ? ev.city + ", " : ""}${ev.country ? countryName(ev.country) : "Unknown"}`} />
-                                <DetailRow icon={<span className="flex items-center w-5">{countryFlag(ev.country)}</span>} label="Country" value={ev.country ?? "N/A"} />
+                                <DetailRow icon={<span className="flex items-center w-5"><CountryFlag code={ev.country} width={20} /></span>} label="Country" value={ev.country ?? "N/A"} />
                                 <DetailRow icon={<DeviceIcon device={ev.device} className="w-3.5 h-3.5 text-[#8B5CF6]" />} label="Device" value={ev.device ?? "desktop"} />
                                 <DetailRow icon={<OsIcon os={ev.os} size={14} className="text-[#71717A]" />} label="OS" value={ev.os ?? "Unknown"} />
                                 <DetailRow icon={<BrowserIcon browser={ev.browser} size={14} className="text-[#71717A]" />} label="Browser" value={ev.browser ?? "Unknown"} />
@@ -690,7 +676,7 @@ export default function Live() {
                         return (
                           <div key={country} className="flex items-center gap-3 px-5 py-3 hover:bg-[#27272A]/50 transition-colors" style={{ borderBottom: `1px solid ${cardBorder}` }}>
                             <span className="text-[10px] font-bold text-[#52525B] w-4 shrink-0 tabular-nums">#{i + 1}</span>
-                            <span className="flex items-center shrink-0 w-5">{countryFlag(country)}</span>
+                            <span className="flex items-center shrink-0 w-5"><CountryFlag code={country} width={20} /></span>
                             <div className="flex-1 min-w-0">
                               <div className="flex justify-between items-center mb-1">
                                 <span className="text-[12px] font-semibold text-[#E4E4E7]">{country === "Unknown" ? "Unknown" : countryName(country)}</span>

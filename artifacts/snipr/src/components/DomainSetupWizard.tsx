@@ -4,7 +4,7 @@ import {
   Globe, CheckCircle2, Copy, CheckCircle, Loader2, X, ArrowRight, ArrowLeft,
   ShieldCheck, PartyPopper, Link2, AlertTriangle, ExternalLink,
   Monitor, Info, Clock, ChevronDown, ChevronUp, HelpCircle, RefreshCw, Wifi,
-  AlertCircle, Zap, Target, ArrowUpRight, RotateCcw,
+  AlertCircle, Zap, Target, ArrowUpRight, RotateCcw, Check, Minus,
 } from "lucide-react";
 
 interface DomainSetupWizardProps {
@@ -213,7 +213,7 @@ function TxtResolvers({ resolvers }: { resolvers: { name: string; flag: string; 
               className={`inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
                 r.ok ? "bg-[rgba(52,211,153,0.1)] text-[#34D399]" : "bg-[#27272A] text-[#71717A]"
               }`}>
-              {r.flag} {r.ok ? "✓" : "–"}
+              {r.flag} {r.ok ? <Check className="w-2.5 h-2.5" strokeWidth={3} /> : <Minus className="w-2.5 h-2.5" strokeWidth={3} />}
             </span>
           ))}
         </div>
@@ -535,7 +535,7 @@ export default function DomainSetupWizard({
                     <div>
                       <p className="text-[14px] font-bold text-[#FAFAFA]">Short links only</p>
                       <p className="text-[12px] text-[#71717A] mt-0.5">This domain isn't used for anything else</p>
-                      <p className="text-[11px] text-emerald-600 font-medium mt-1.5">✓ Simplest setup</p>
+                      <p className="text-[11px] text-emerald-600 font-medium mt-1.5 inline-flex items-center gap-1"><Check className="w-3 h-3" strokeWidth={2.5} /> Simplest setup</p>
                     </div>
                   </div>
                 </button>
@@ -551,7 +551,7 @@ export default function DomainSetupWizard({
                     <div>
                       <p className="text-[14px] font-bold text-[#FAFAFA]">Domain with an existing website</p>
                       <p className="text-[12px] text-[#71717A] mt-0.5">There's already a site on this domain</p>
-                      <p className="text-[11px] text-amber-600 font-medium mt-1.5">⚠ We'll suggest a safe subdomain</p>
+                      <p className="text-[11px] text-amber-600 font-medium mt-1.5 inline-flex items-center gap-1"><AlertTriangle className="w-3 h-3" strokeWidth={2.5} /> We&apos;ll suggest a safe subdomain</p>
                     </div>
                   </div>
                 </button>
@@ -669,7 +669,7 @@ export default function DomainSetupWizard({
               {showTtlTip && (
                 <div className="px-4 py-3 rounded-xl bg-[#18181B] border border-[#27272A] text-xs text-[#A1A1AA] space-y-1.5">
                   <p>TTL (Time To Live) controls how quickly your DNS change takes effect worldwide.</p>
-                  <p>💡 <strong>Set TTL to 300</strong> (5 minutes) before adding the record — you'll see results faster.</p>
+                  <p className="inline-flex items-start gap-1.5"><Zap className="w-3 h-3 text-[#FBBF24] shrink-0 mt-0.5" /> <span><strong>Set TTL to 300</strong> (5 minutes) before adding the record — you&apos;ll see results faster.</span></p>
                   <p className="text-[#3F3F46]">After your domain is verified, you can raise TTL to 3600+ for better performance.</p>
                 </div>
               )}

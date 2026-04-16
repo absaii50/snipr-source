@@ -30,6 +30,7 @@ import {
   Smartphone,
   Chrome,
 } from "lucide-react";
+import { CountryFlag } from "@/components/icons/CountryFlag";
 import dynamic from "next/dynamic";
 const LinkAnalyticsChart = dynamic(
   () => import("@/components/charts/LinkAnalyticsChart"),
@@ -84,12 +85,6 @@ const PERIODS: PeriodDef[] = [
   },
 ];
 
-const COUNTRY_FLAGS: Record<string, string> = {
-  US: "🇺🇸", GB: "🇬🇧", DE: "🇩🇪", FR: "🇫🇷", CA: "🇨🇦", AU: "🇦🇺", IN: "🇮🇳", BR: "🇧🇷",
-  JP: "🇯🇵", KR: "🇰🇷", CN: "🇨🇳", MX: "🇲🇽", IT: "🇮🇹", ES: "🇪🇸", NL: "🇳🇱", RU: "🇷🇺",
-  PL: "🇵🇱", SE: "🇸🇪", NO: "🇳🇴", DK: "🇩🇰", FI: "🇫🇮", TR: "🇹🇷", ID: "🇮🇩", TH: "🇹🇭",
-  SG: "🇸🇬", ZA: "🇿🇦", NG: "🇳🇬", EG: "🇪🇬", AR: "🇦🇷", CL: "🇨🇱", CO: "🇨🇴", PT: "🇵🇹",
-};
 
 export default function LinkAnalytics() {
   const rawParams = useParams();
@@ -319,7 +314,6 @@ export default function LinkAnalytics() {
                 </thead>
                 <tbody>
                   {events.map((event, idx) => {
-                    const flag = event.country ? (COUNTRY_FLAGS[event.country] ?? null) : null;
                     return (
                       <tr key={event.id} className={`transition-colors hover:bg-[#27272A]/50 ${idx !== events.length - 1 ? "border-b border-[#27272A]" : ""}`}>
                         <td className="px-5 py-3 whitespace-nowrap text-[12px] text-[#A1A1AA] tabular-nums">
@@ -327,7 +321,7 @@ export default function LinkAnalytics() {
                         </td>
                         <td className="px-5 py-3">
                           <div className="flex items-center gap-1.5">
-                            {flag && <span className="text-[13px]">{flag}</span>}
+                            {event.country && <CountryFlag code={event.country} width={18} />}
                             <div className="flex flex-col">
                               <span className="text-[12px] font-medium text-[#FAFAFA]">{event.country || "Unknown"}</span>
                               {event.city && <span className="text-[11px] text-[#71717A]">{event.city}</span>}
@@ -467,12 +461,12 @@ function TopList({ title, data, isLoading, compact = false, icon, color = "#8B5C
           <div className="space-y-2.5">
             {data.map((item, idx) => {
               const pct = (item.count / max) * 100;
-              const flag = title === "Countries" ? (COUNTRY_FLAGS[item.label] ?? null) : null;
+              const showFlag = title === "Countries" && item.label && item.label.length === 2;
               return (
                 <div key={item.label || 'unknown'} className="group">
                   <div className="flex justify-between items-center mb-1">
                     <div className="flex items-center gap-1.5 min-w-0">
-                      {flag && <span className="text-[12px] shrink-0">{flag}</span>}
+                      {showFlag && <CountryFlag code={item.label} width={16} />}
                       {idx < 3 && (
                         <span className="text-[10px] font-semibold w-4 h-4 rounded flex items-center justify-center shrink-0" style={{ color, backgroundColor: `${color}10` }}>
                           {idx + 1}

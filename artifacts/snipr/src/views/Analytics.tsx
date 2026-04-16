@@ -29,6 +29,7 @@ const AnalyticsAreaChart = dynamic(
 import { format, parseISO, subDays } from "date-fns";
 import { BrowserIcon } from "@/components/icons/BrowserIcon";
 import { OsIcon } from "@/components/icons/OsIcon";
+import { CountryFlag } from "@/components/icons/CountryFlag";
 
 const iso = (d: Date) => d.toISOString().split("T")[0];
 
@@ -98,21 +99,6 @@ const PERIODS: PeriodDef[] = [
     tsInterval: "day", staleMs: 5 * 60 * 1000,
   },
 ];
-
-function countryFlag(code: string | null) {
-  if (!code || code.length !== 2) return <span className="text-[16px]">🌐</span>;
-  return (
-    <img
-      src={`https://flagcdn.com/w20/${code.toLowerCase()}.png`}
-      srcSet={`https://flagcdn.com/w40/${code.toLowerCase()}.png 2x`}
-      width={20}
-      height={15}
-      alt={code}
-      className="rounded-[2px] object-cover"
-      onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
-    />
-  );
-}
 
 function countryName(code: string | null): string {
   if (!code) return "Unknown";
@@ -422,7 +408,7 @@ export default function Analytics() {
                   return (
                     <div key={c.label} className="flex items-center gap-3 px-5 py-3 hover:bg-[#27272A]/50 transition-colors">
                       <span className="text-[10px] font-bold text-[#3F3F46] w-4 shrink-0">#{i + 1}</span>
-                      <span className="flex items-center shrink-0 w-5">{countryFlag(c.label)}</span>
+                      <span className="flex items-center shrink-0 w-5"><CountryFlag code={c.label} width={20} /></span>
                       <div className="flex-1 min-w-0">
                         <div className="flex justify-between items-center mb-1">
                           <span className="text-[13px] font-semibold text-[#FAFAFA]">{countryName(c.label)}</span>
@@ -518,7 +504,7 @@ export default function Analytics() {
                         {topCountries.map((c: { label: string; count: number }) => (
                           <div key={c.label} className="flex items-center justify-between">
                             <span className="text-[11px] text-[#A1A1AA] flex items-center gap-1.5">
-                              <span className="flex items-center w-5">{countryFlag(c.label)}</span>
+                              <span className="flex items-center w-5"><CountryFlag code={c.label} width={20} /></span>
                               {countryName(c.label)}
                             </span>
                             <span className="text-[11px] font-semibold text-[#A1A1AA]">{c.count}</span>

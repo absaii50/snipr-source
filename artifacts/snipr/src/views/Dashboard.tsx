@@ -20,6 +20,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { format, parseISO, subDays, formatDistanceToNow } from "date-fns";
 import dynamic from "next/dynamic";
 import { LinkModal } from "@/components/LinkModal";
+import { CountryFlag } from "@/components/icons/CountryFlag";
 
 const DashboardAreaChart = dynamic(() => import("@/components/charts/DashboardAreaChart"), { ssr: false });
 const DeviceDonutChart  = dynamic(() => import("@/components/charts/DeviceDonutChart"),   { ssr: false });
@@ -62,21 +63,6 @@ function fmtAgo(date: string | Date) {
   try {
     return formatDistanceToNow(new Date(date), { addSuffix: true });
   } catch { return "recently"; }
-}
-
-function getFlagEmoji(code: string) {
-  if (!code || code.length !== 2) return <span className="text-[16px]">🌍</span>;
-  return (
-    <img
-      src={`https://flagcdn.com/w20/${code.toLowerCase()}.png`}
-      srcSet={`https://flagcdn.com/w40/${code.toLowerCase()}.png 2x`}
-      width={20}
-      height={15}
-      alt={code}
-      className="rounded-[2px] object-cover"
-      onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
-    />
-  );
 }
 
 function cleanReferrer(r: string) {
@@ -475,7 +461,7 @@ export default function Dashboard() {
           {/* ── INSIGHT ROW ── */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             <InsightCard label="Top Link" value={topLinkEntry ? fmtNum(topLinkClicks) : "\u2014"} sub={topLinkEntry ? topLinkDisplay : "No clicks yet"} icon={<TrendingUp className="w-4 h-4" />} accent="#8B5CF6" />
-            <InsightCard label="Top Country" value={topCountryEntry ? (COUNTRY[topCountryEntry.label] ?? topCountryEntry.label) : "\u2014"} sub={topCountryEntry ? `${fmtNum(topCountryEntry.count)} visits \u00B7 ${topCountryPct}%` : "No data yet"} icon={topCountryEntry ? <span className="flex items-center">{getFlagEmoji(topCountryEntry.label)}</span> : <Globe className="w-4 h-4" />} accent="#F59E0B" />
+            <InsightCard label="Top Country" value={topCountryEntry ? (COUNTRY[topCountryEntry.label] ?? topCountryEntry.label) : "\u2014"} sub={topCountryEntry ? `${fmtNum(topCountryEntry.count)} visits \u00B7 ${topCountryPct}%` : "No data yet"} icon={topCountryEntry ? <span className="flex items-center"><CountryFlag code={topCountryEntry.label} width={20} /></span> : <Globe className="w-4 h-4" />} accent="#F59E0B" />
             <InsightCard label="Domains" value={String(domainCount)} sub={domainCount > 0 ? "Custom configured" : "None configured"} icon={<Globe className="w-4 h-4" />} accent="#10B981" cta={domainCount === 0 ? <Link href="/domains" className="text-[11px] font-semibold text-[#8B5CF6] hover:underline mt-1 inline-block">Set up &rarr;</Link> : undefined} />
             <InsightCard label="All-time" value={allStats == null ? "\u2014" : fmtNum(allTime)} sub="Lifetime clicks" icon={<MousePointerClick className="w-4 h-4" />} accent="#06B6D4" />
           </div>
@@ -544,7 +530,7 @@ export default function Dashboard() {
                             <div key={c.label} className="group flex items-center gap-3 py-2.5 px-3 -mx-3 rounded-lg transition-colors hover:bg-[#27272A]/50">
                               <span className={`text-[11px] font-bold tabular-nums w-4 text-center shrink-0 ${isTop3 ? "text-[#10B981]" : "text-[#3F3F46]"}`}>{idx + 1}</span>
                               <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${isTop3 ? "bg-[#10B981]/10 border border-[#10B981]/15" : "bg-[#27272A] border border-[#3F3F46]/30"}`}>
-                                {getFlagEmoji(c.label)}
+                                <CountryFlag code={c.label} width={20} />
                               </div>
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center justify-between mb-1">
@@ -644,7 +630,7 @@ export default function Dashboard() {
                         {recentClicks.slice(0, 6).map((click: ClickEvent, idx: number) => (
                           <div key={click.id || idx} className="group flex items-center gap-2.5 py-2 px-2.5 -mx-2.5 rounded-lg transition-colors hover:bg-[#27272A]/50">
                             <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 bg-[#27272A] border border-[#3F3F46]/30">
-                              {click.country ? getFlagEmoji(click.country) : <Globe className="w-3 h-3 text-[#52525B]" />}
+                              {click.country ? <CountryFlag code={click.country} width={16} /> : <Globe className="w-3 h-3 text-[#52525B]" />}
                             </div>
                             <div className="flex-1 min-w-0">
                               <p className="text-[12px] font-semibold text-[#FAFAFA] truncate leading-tight">
