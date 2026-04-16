@@ -1,7 +1,8 @@
 "use client";
 import { useEffect, useState, useCallback } from "react";
-import { Search, RefreshCw, Shield, ChevronDown, Clock, User, Link2, Globe, Settings, Mail, Zap, Calendar } from "lucide-react";
-import { apiFetch, fmtTime } from "../utils";
+import { Search, RefreshCw, Shield, ChevronDown, Clock, User, Link2, Globe, Settings, Mail, Zap, Calendar, Download } from "lucide-react";
+import { apiFetch, apiFetchBlob, downloadBlob, fmtTime } from "../utils";
+import { useToast } from "../Toast";
 
 interface AuditEntry {
   id: string;
@@ -55,6 +56,7 @@ const ACTION_FILTER_OPTIONS = [
 ];
 
 export default function AuditLogTab() {
+  const { toast } = useToast();
   const [logs, setLogs] = useState<AuditEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -113,8 +115,12 @@ export default function AuditLogTab() {
               </div>
             )}
           </div>
+          <button onClick={async () => { try { const b = await apiFetchBlob("/admin/export/audit"); downloadBlob(b, "snipr-audit-log.csv"); toast("Audit log exported"); } catch { toast("Export failed", "error"); } }}
+            className="p-2 rounded-xl border border-[#E2E8F0] bg-white hover:bg-[#F4F4F6] transition-all" title="Export CSV">
+            <Download className="w-3.5 h-3.5 text-[#8888A0]" />
+          </button>
           <button onClick={doLoad}
-            className="p-2 rounded-xl border border-[#E2E8F0] bg-white hover:bg-[#F4F4F6] transition-all">
+            className="p-2 rounded-xl border border-[#E2E8F0] bg-white hover:bg-[#F4F4F6] transition-all" title="Refresh">
             <RefreshCw className={`w-3.5 h-3.5 text-[#8888A0] ${loading ? "animate-spin" : ""}`} />
           </button>
         </div>

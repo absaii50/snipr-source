@@ -1551,6 +1551,20 @@ router.post("/admin/users/bulk", requireAdmin, async (req, res): Promise<void> =
       await logAuditAction("bulk_plan_change", "user", null, { count: affected, plan, userIds }, req.ip);
       break;
 
+    case "resend_verification":
+      for (const uid of userIds) {
+        try {
+          const [user] = await db.select({ email: usersTable.email, name: usersTable.name, emailVerified: usersTable.emailVerified })
+            .from(usersTable).where(eq(usersTable.id, uid));
+          if (user && !user.emailVerified) {
+            await sendVerificationEmail(uid, user.email, user.name);
+            affected++;
+          }
+        } catch { /* skip failed sends */ }
+      }
+      await logAuditAction("bulk_resend_verification", "user", null, { count: affected, userIds }, req.ip);
+      break;
+
     default:
       res.status(400).json({ error: "Unknown action" });
       return;
@@ -1723,6 +1737,34 @@ router.get("/admin/export/emails", requireAdmin, async (req, res): Promise<void>
   const csv = toCsv(["id","to","subject","type","status","createdAt","error"], rows as Record<string, unknown>[]);
   res.setHeader("Content-Type", "text/csv");
   res.setHeader("Content-Disposition", "attachment; filename=snipr-emails.csv");
+  res.send(csv);
+});
+
+router.get("/admin/export/domains", requireAdmin, async (req, res): Promise<void> => {
+  const rows = await db.execute(sql`
+    SELECT d.id, d.domain, d.verified, d.is_platform_domain, d.created_at,
+           w.name AS workspace_name, u.email AS owner_email
+    FROM domains d
+    LEFT JOIN workspaces w ON w.id = d.workspace_id
+    LEFT JOIN users u ON u.id = w.user_id
+    ORDER BY d.created_at DESC
+  `);
+  const csv = toCsv(["id","domain","verified","is_platform_domain","created_at","workspace_name","owner_email"], rows.rows as Record<string, unknown>[]);
+  res.setHeader("Content-Type", "text/csv");
+  res.setHeader("Content-Disposition", "attachment; filename=snipr-domains.csv");
+  res.send(csv);
+});
+
+router.get("/admin/export/audit", requireAdmin, async (req, res): Promise<void> => {
+  const rows = await db.select({
+    id: adminAuditLogTable.id, action: adminAuditLogTable.action,
+    targetType: adminAuditLogTable.targetType, targetId: adminAuditLogTable.targetId,
+    details: adminAuditLogTable.details, adminIp: adminAuditLogTable.adminIp,
+    createdAt: adminAuditLogTable.createdAt,
+  }).from(adminAuditLogTable).orderBy(desc(adminAuditLogTable.createdAt)).limit(5000);
+  const csv = toCsv(["id","action","targetType","targetId","details","adminIp","createdAt"], rows as Record<string, unknown>[]);
+  res.setHeader("Content-Type", "text/csv");
+  res.setHeader("Content-Disposition", "attachment; filename=snipr-audit-log.csv");
   res.send(csv);
 });
 

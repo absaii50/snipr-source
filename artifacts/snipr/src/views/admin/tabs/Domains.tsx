@@ -3,9 +3,9 @@ import { useEffect, useState } from "react";
 import {
   Search, CheckCircle2, Clock, Trash2, RefreshCw, Globe, AlertCircle,
   ChevronDown, ChevronRight, Copy, CheckCircle, Loader2, ShieldCheck, ShieldOff,
-  Wifi, WifiOff, Plus, X,
+  Wifi, WifiOff, Plus, X, Download,
 } from "lucide-react";
-import { apiFetch, fmtDate } from "../utils";
+import { apiFetch, apiFetchBlob, downloadBlob, fmtDate } from "../utils";
 import { useToast } from "../Toast";
 import { ConfirmModal } from "../Toast";
 import DomainSetupWizard from "@/components/DomainSetupWizard";
@@ -524,7 +524,7 @@ function AddDomainModal({ onClose, onAdded }: { onClose: () => void; onAdded: (c
             </button>
             <button
               type="submit"
-              disabled={loading || !domain.trim() || !workspaceId}
+              disabled={loading || !domain.trim() || (!isPlatformDomain && !workspaceId)}
               className="flex-1 py-2.5 rounded-xl bg-[#0A0A0A] text-white text-sm font-semibold hover:bg-[#1A1A1A] active:scale-[0.98] transition-all disabled:opacity-40 disabled:cursor-not-allowed"
             >
               {loading ? "Adding..." : "Add Domain"}
@@ -642,6 +642,10 @@ export default function DomainsTab() {
               className="w-full pl-9 pr-3.5 py-2 rounded-xl border border-[#E2E8F0] bg-white text-sm outline-none focus:border-[#728DA7] focus:ring-2 focus:ring-[#728DA7]/15 transition-all"
             />
           </div>
+          <button onClick={async () => { try { const b = await apiFetchBlob("/admin/export/domains"); downloadBlob(b, "snipr-domains.csv"); toast("Domains exported"); } catch { toast("Export failed", "error"); } }}
+            className="p-2 rounded-xl border border-[#E2E8F0] bg-white hover:bg-[#F4F4F6] transition-all" title="Export CSV">
+            <Download className="w-3.5 h-3.5 text-[#8888A0]" />
+          </button>
           <button onClick={load} className="p-2 rounded-xl border border-[#E2E8F0] bg-white hover:bg-[#F4F4F6] transition-all" title="Refresh">
             <RefreshCw className="w-3.5 h-3.5 text-[#8888A0]" />
           </button>

@@ -371,6 +371,8 @@ export default function UsersTab() {
               </div>
             )}
           </div>
+          <button onClick={() => doBulkAction("resend_verification")} disabled={!!bulkAction}
+            className="px-2.5 py-1 rounded-lg text-xs font-medium bg-cyan-50 text-cyan-700 hover:bg-cyan-100 disabled:opacity-40">Resend Verify</button>
           <button onClick={() => exportSelectedUsers()} disabled={!!bulkAction}
             className="px-2.5 py-1 rounded-lg text-xs font-medium bg-blue-50 text-blue-700 hover:bg-blue-100 disabled:opacity-40">
             <Download className="w-3 h-3 inline mr-0.5" />Export
