@@ -38,27 +38,25 @@ function isoDate(d: Date) {
 }
 
 const EVENT_COLORS: Record<string, { bg: string; text: string; border: string }> = {
-  purchase: { bg: "rgba(52,211,153,0.1)", text: "#34D399", border: "rgba(52,211,153,0.25)" },
+  purchase: { bg: "rgba(16,185,129,0.1)", text: "#10B981", border: "rgba(16,185,129,0.25)" },
   signup: { bg: "rgba(96,165,250,0.1)", text: "#60A5FA", border: "rgba(96,165,250,0.25)" },
   add_to_cart: { bg: "rgba(251,191,36,0.1)", text: "#FBBF24", border: "rgba(251,191,36,0.25)" },
   download: { bg: "rgba(167,139,250,0.1)", text: "#A78BFA", border: "rgba(167,139,250,0.25)" },
-  inquiry: { bg: "rgba(56,189,248,0.1)", text: "#38BDF8", border: "rgba(56,189,248,0.25)" },
+  inquiry: { bg: "rgba(6,182,212,0.1)", text: "#06B6D4", border: "rgba(6,182,212,0.25)" },
   star: { bg: "rgba(250,204,21,0.1)", text: "#FACC15", border: "rgba(250,204,21,0.25)" },
   follow: { bg: "rgba(244,114,182,0.1)", text: "#F472B6", border: "rgba(244,114,182,0.25)" },
 };
 
-const DEFAULT_EVENT_COLOR = { bg: "rgba(255,255,255,0.03)", text: "#E2E8F0", border: "rgba(255,255,255,0.06)" };
+const DEFAULT_EVENT_COLOR = { bg: "rgba(255,255,255,0.03)", text: "#E4E4E7", border: "#27272A" };
 
 function getEventColor(event: string) {
   return EVENT_COLORS[event] || DEFAULT_EVENT_COLOR;
 }
 
-const glassCard = {
-  background: "rgba(17,24,39,0.65)",
-  backdropFilter: "blur(16px)",
-  WebkitBackdropFilter: "blur(16px)",
-  border: "1px solid rgba(255,255,255,0.06)",
-  borderRadius: "16px",
+const solidCard = {
+  background: "#18181B",
+  border: "1px solid #27272A",
+  borderRadius: "12px",
 };
 
 export default function Conversions() {
@@ -158,11 +156,11 @@ export default function Conversions() {
   };
 
   const SortIcon = ({ col }: { col: SortCol }) => {
-    if (sortCol !== col) return <ArrowUpDown className="w-3 h-3 text-[#94A3B8]" />;
+    if (sortCol !== col) return <ArrowUpDown className="w-3 h-3 text-[#A1A1AA]" />;
     return sortDir === "asc" ? (
-      <ArrowUp className="w-3 h-3 text-[#818CF8]" />
+      <ArrowUp className="w-3 h-3 text-[#8B5CF6]" />
     ) : (
-      <ArrowDown className="w-3 h-3 text-[#818CF8]" />
+      <ArrowDown className="w-3 h-3 text-[#8B5CF6]" />
     );
   };
 
@@ -194,15 +192,15 @@ export default function Conversions() {
     {
       label: "Total Conversions",
       value: isLoadingRevenue ? null : totalConversions.toLocaleString(),
-      icon: <Target className="w-4 h-4 text-[#818CF8]" />,
-      iconBg: "rgba(129,140,248,0.12)",
+      icon: <Target className="w-4 h-4 text-[#8B5CF6]" />,
+      iconBg: "rgba(139,92,246,0.12)",
     },
     {
       label: "Total Revenue",
       value: isLoadingRevenue ? null : formatCurrency(totalRevenue),
-      icon: <DollarSign className="w-4 h-4 text-[#34D399]" />,
-      iconBg: "rgba(52,211,153,0.12)",
-      valueColor: "text-[#34D399]",
+      icon: <DollarSign className="w-4 h-4 text-[#10B981]" />,
+      iconBg: "rgba(16,185,129,0.12)",
+      valueColor: "text-[#10B981]",
     },
     {
       label: "Avg. Order Value",
@@ -215,7 +213,7 @@ export default function Conversions() {
       value: isLoadingRevenue ? null : topLinkSlug ? `/${topLinkSlug}` : "—",
       icon: <Activity className="w-4 h-4 text-[#FB923C]" />,
       iconBg: "rgba(251,146,60,0.12)",
-      valueColor: topLinkSlug ? "text-[#94A3B8] font-mono text-lg" : undefined,
+      valueColor: topLinkSlug ? "text-[#A1A1AA] font-mono text-lg" : undefined,
     },
   ];
 
@@ -226,43 +224,41 @@ export default function Conversions() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             <div
-              className="w-11 h-11 rounded-[14px] flex items-center justify-center flex-shrink-0"
-              style={{ background: "linear-gradient(135deg, #818CF8, #A78BFA)" }}
+              className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
+              style={{ background: "linear-gradient(135deg, #8B5CF6, #A78BFA)" }}
             >
               <Target className="w-5 h-5 text-white" />
             </div>
             <div>
               <div className="flex items-center gap-3">
-                <h1 className="font-[family-name:var(--font-space-grotesk)] text-[28px] font-extrabold tracking-tight text-[#F1F5F9]">Conversions</h1>
+                <h1 className="font-[family-name:var(--font-space-grotesk)] text-[28px] font-extrabold tracking-tight text-[#FAFAFA]">Conversions</h1>
                 {totalConversions > 0 && !isLoadingRevenue && (
                   <span
-                    className="text-xs font-bold px-2.5 py-1 rounded-full"
-                    style={{ background: "rgba(255,255,255,0.03)", color: "#64748B", border: "1px solid rgba(255,255,255,0.06)" }}
+                    className="text-xs font-bold px-2.5 py-1 rounded-full bg-[#27272A] text-[#71717A] border border-[#27272A]"
                   >
                     {totalConversions}
                   </span>
                 )}
               </div>
-              <p className="text-[#94A3B8] mt-1">
+              <p className="text-[#A1A1AA] mt-1">
                 Track events and revenue driven by your short links.
               </p>
             </div>
           </div>
 
           <div
-            className="flex items-center p-1"
-            style={{ ...glassCard, borderRadius: "14px" }}
+            className="flex items-center p-1 rounded-lg bg-[#18181B] border border-[#27272A]"
           >
             {PERIODS.map((p) => (
               <button
                 key={p.key}
                 onClick={() => setPeriod(p.key)}
-                className={`px-3.5 py-1.5 text-xs font-semibold rounded-[14px] transition-all ${
+                className={`px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-all ${
                   period === p.key
-                    ? "text-[#A5B4FC] shadow-sm"
-                    : "text-[#94A3B8] hover:text-[#64748B]"
+                    ? "text-[#A78BFA] shadow-sm"
+                    : "text-[#A1A1AA] hover:text-[#71717A]"
                 }`}
-                style={period === p.key ? { background: "rgba(129,140,248,0.12)" } : undefined}
+                style={period === p.key ? { background: "rgba(139,92,246,0.12)" } : undefined}
               >
                 {p.label}
               </button>
@@ -272,51 +268,50 @@ export default function Conversions() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {kpis.map(({ label, value, icon, iconBg, valueColor }) => (
-            <div key={label} className="p-5" style={glassCard}>
+            <div key={label} className="p-5 rounded-xl bg-[#18181B] border border-[#27272A]">
               <div className="flex items-center justify-between mb-3">
-                <p className="text-[11px] font-semibold text-[#94A3B8] uppercase tracking-wide">{label}</p>
+                <p className="text-[11px] font-semibold text-[#A1A1AA] uppercase tracking-wide">{label}</p>
                 <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: iconBg }}>{icon}</div>
               </div>
               {value === null ? (
-                <div className="h-7 w-20 rounded-lg animate-pulse" style={{ background: "rgba(255,255,255,0.03)" }} />
+                <div className="h-7 w-20 rounded-lg animate-pulse bg-[#27272A]" />
               ) : (
-                <p className={`text-[28px] font-extrabold truncate ${valueColor ?? "text-[#F1F5F9]"}`}>{value}</p>
+                <p className={`text-[28px] font-extrabold truncate ${valueColor ?? "text-[#FAFAFA]"}`}>{value}</p>
               )}
             </div>
           ))}
         </div>
 
         {hasError ? (
-          <div style={{ ...glassCard, border: "1px solid rgba(248,113,113,0.3)" }}>
+          <div className="rounded-xl bg-[#18181B] border border-[#F87171]/30">
             <div className="py-16 flex flex-col items-center gap-3 text-center">
-              <div className="w-14 h-14 rounded-2xl flex items-center justify-center" style={{ background: "rgba(248,113,113,0.1)" }}>
+              <div className="w-14 h-14 rounded-xl flex items-center justify-center bg-[#F87171]/10">
                 <Target className="w-7 h-7 text-[#F87171]" />
               </div>
-              <h3 className="text-lg font-bold font-[family-name:var(--font-space-grotesk)] text-[#F1F5F9]">Failed to load conversions</h3>
-              <p className="text-sm text-[#64748B] max-w-md">Something went wrong. Please try refreshing.</p>
+              <h3 className="text-lg font-bold font-[family-name:var(--font-space-grotesk)] text-[#FAFAFA]">Failed to load conversions</h3>
+              <p className="text-sm text-[#71717A] max-w-md">Something went wrong. Please try refreshing.</p>
             </div>
           </div>
         ) : (
-          <div style={{ ...glassCard, overflow: "hidden" }}>
+          <div className="rounded-xl bg-[#18181B] border border-[#27272A] overflow-hidden">
             <div
               className="px-5 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
-              style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}
+              style={{ borderBottom: "1px solid #27272A" }}
             >
               <div>
-                <h2 className="text-sm font-bold font-[family-name:var(--font-space-grotesk)] text-[#F1F5F9]">Recent Conversions</h2>
-                <p className="text-xs text-[#94A3B8] mt-0.5">
+                <h2 className="text-sm font-bold font-[family-name:var(--font-space-grotesk)] text-[#FAFAFA]">Recent Conversions</h2>
+                <p className="text-xs text-[#A1A1AA] mt-0.5">
                   {periodDef.days ? `Last ${periodDef.days} days` : "All time"} · showing up to 200 events
                 </p>
               </div>
               <div className="flex items-center gap-2 flex-wrap">
                 <div className="relative max-w-[200px]">
-                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#94A3B8]" />
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#A1A1AA]" />
                   <Input
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="Search..."
-                    className="pl-8 h-8 text-xs rounded-[14px] text-[#E2E8F0] placeholder:text-[#64748B] focus:ring-[#818CF8]/15"
-                    style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }}
+                    className="pl-8 h-8 text-xs rounded-lg text-[#E4E4E7] placeholder:text-[#71717A] bg-[#09090B] border-[#27272A] focus:border-[#8B5CF6]/40 focus:ring-2 focus:ring-[#8B5CF6]/10"
                   />
                 </div>
 
@@ -324,8 +319,7 @@ export default function Conversions() {
                   <Button
                     variant="outline"
                     size="sm"
-                    className="h-8 text-xs rounded-[14px] gap-1.5 text-[#E2E8F0]"
-                    style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)" }}
+                    className="h-8 text-xs rounded-lg gap-1.5 text-[#E4E4E7] bg-[#27272A] border-[#3F3F46]"
                     onClick={() => setShowEventDropdown(!showEventDropdown)}
                   >
                     <Filter className="w-3 h-3" />
@@ -336,16 +330,15 @@ export default function Conversions() {
                     <>
                       <div className="fixed inset-0 z-40" onClick={() => setShowEventDropdown(false)} />
                       <div
-                        className="absolute right-0 top-full mt-1 z-50 p-1 min-w-[160px]"
-                        style={{ ...glassCard, borderRadius: "14px", background: "rgba(17,24,39,0.95)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)" }}
+                        className="absolute right-0 top-full mt-1 z-50 p-1 min-w-[160px] rounded-xl bg-[#18181B] border border-[#27272A]"
                       >
                         <button
                           onClick={() => { setEventFilter(null); setShowEventDropdown(false); }}
-                          className={`w-full text-left px-3 py-1.5 text-xs rounded-[10px] text-[#E2E8F0] ${
+                          className={`w-full text-left px-3 py-1.5 text-xs rounded-lg text-[#E4E4E7] ${
                             !eventFilter ? "font-semibold" : ""
                           }`}
-                          style={!eventFilter ? { background: "rgba(129,140,248,0.12)" } : undefined}
-                          onMouseEnter={(e) => { if (eventFilter) (e.target as HTMLElement).style.background = "rgba(255,255,255,0.03)"; }}
+                          style={!eventFilter ? { background: "rgba(139,92,246,0.12)" } : undefined}
+                          onMouseEnter={(e) => { if (eventFilter) (e.target as HTMLElement).style.background = "#27272A"; }}
                           onMouseLeave={(e) => { if (eventFilter) (e.target as HTMLElement).style.background = "transparent"; }}
                         >
                           All Events
@@ -354,11 +347,11 @@ export default function Conversions() {
                           <button
                             key={ev}
                             onClick={() => { setEventFilter(ev); setShowEventDropdown(false); }}
-                            className={`w-full text-left px-3 py-1.5 text-xs rounded-[10px] capitalize text-[#E2E8F0] ${
+                            className={`w-full text-left px-3 py-1.5 text-xs rounded-lg capitalize text-[#E4E4E7] ${
                               eventFilter === ev ? "font-semibold" : ""
                             }`}
-                            style={eventFilter === ev ? { background: "rgba(129,140,248,0.12)" } : undefined}
-                            onMouseEnter={(e) => { if (eventFilter !== ev) (e.target as HTMLElement).style.background = "rgba(255,255,255,0.03)"; }}
+                            style={eventFilter === ev ? { background: "rgba(139,92,246,0.12)" } : undefined}
+                            onMouseEnter={(e) => { if (eventFilter !== ev) (e.target as HTMLElement).style.background = "#27272A"; }}
                             onMouseLeave={(e) => { if (eventFilter !== ev) (e.target as HTMLElement).style.background = "transparent"; }}
                           >
                             {ev.replace(/_/g, " ")}
@@ -373,7 +366,7 @@ export default function Conversions() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="h-8 text-xs rounded-[14px] gap-1 text-[#94A3B8]"
+                    className="h-8 text-xs rounded-lg gap-1 text-[#A1A1AA]"
                     onClick={() => { setEventFilter(null); setSearchQuery(""); }}
                   >
                     <X className="w-3 h-3" /> Clear
@@ -385,7 +378,7 @@ export default function Conversions() {
             <div className="overflow-x-auto">
               <table className="w-full text-sm text-left">
                 <thead>
-                  <tr style={{ background: "rgba(255,255,255,0.03)", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+                  <tr className="bg-[#09090B]/50" style={{ borderBottom: "1px solid #27272A" }}>
                     {([
                       { col: "date" as SortCol, label: "Date", align: "" },
                       { col: "link" as SortCol, label: "Link", align: "" },
@@ -396,7 +389,7 @@ export default function Conversions() {
                     ] as const).map(({ col, label, align }) => (
                       <th
                         key={label}
-                        className={`px-5 py-3 text-xs font-semibold text-[#94A3B8] uppercase tracking-wide ${align} ${col ? "cursor-pointer select-none hover:text-[#64748B]" : ""}`}
+                        className={`px-5 py-3 text-xs font-semibold text-[#A1A1AA] uppercase tracking-wide ${align} ${col ? "cursor-pointer select-none hover:text-[#71717A]" : ""}`}
                         onClick={col ? () => handleSort(col) : undefined}
                       >
                         <span className="inline-flex items-center gap-1">
@@ -407,18 +400,18 @@ export default function Conversions() {
                     ))}
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[rgba(255,255,255,0.06)]">
+                <tbody className="divide-y divide-[#27272A]">
                   {isLoadingConversions ? (
                     <tr>
                       <td colSpan={6} className="px-6 py-16 text-center">
-                        <Loader2 className="w-6 h-6 animate-spin text-[#94A3B8] mx-auto" />
+                        <Loader2 className="w-6 h-6 animate-spin text-[#A1A1AA] mx-auto" />
                       </td>
                     </tr>
                   ) : filteredConversions.length === 0 && (searchQuery || eventFilter) ? (
                     <tr>
                       <td colSpan={6} className="py-12 text-center">
-                        <Search className="w-6 h-6 text-[#94A3B8] mx-auto mb-2" />
-                        <p className="text-sm text-[#64748B]">
+                        <Search className="w-6 h-6 text-[#A1A1AA] mx-auto mb-2" />
+                        <p className="text-sm text-[#71717A]">
                           No conversions match your filters
                         </p>
                         <Button
@@ -435,12 +428,12 @@ export default function Conversions() {
                     <tr>
                       <td colSpan={6}>
                         <div className="py-16 flex flex-col items-center gap-4 text-center px-6">
-                          <div className="w-14 h-14 rounded-2xl flex items-center justify-center" style={{ background: "rgba(129,140,248,0.12)" }}>
-                            <TerminalSquare className="w-7 h-7 text-[#818CF8]" />
+                          <div className="w-14 h-14 rounded-xl flex items-center justify-center bg-[#8B5CF6]/12">
+                            <TerminalSquare className="w-7 h-7 text-[#8B5CF6]" />
                           </div>
                           <div>
-                            <p className="text-base font-bold font-[family-name:var(--font-space-grotesk)] text-[#F1F5F9]">No conversions tracked yet</p>
-                            <p className="text-sm text-[#64748B] mt-1 max-w-sm mx-auto">
+                            <p className="text-base font-bold font-[family-name:var(--font-space-grotesk)] text-[#FAFAFA]">No conversions tracked yet</p>
+                            <p className="text-sm text-[#71717A] mt-1 max-w-sm mx-auto">
                               Send a POST request to start recording conversion events from your checkout or signup flow.
                             </p>
                           </div>
@@ -452,15 +445,15 @@ export default function Conversions() {
                       const rev = parseFloat(conv.revenue || "0");
                       const ec = getEventColor(conv.eventName);
                       return (
-                        <tr key={conv.id} className="transition-colors hover:bg-[rgba(255,255,255,0.03)]">
-                          <td className="px-5 py-3 text-xs text-[#64748B] whitespace-nowrap">
+                        <tr key={conv.id} className="transition-colors hover:bg-[#27272A]/50">
+                          <td className="px-5 py-3 text-xs text-[#71717A] whitespace-nowrap">
                             {format(new Date(conv.createdAt), "MMM d, yyyy")}
-                            <span className="text-[#94A3B8] ml-1.5">
+                            <span className="text-[#A1A1AA] ml-1.5">
                               {format(new Date(conv.createdAt), "HH:mm")}
                             </span>
                           </td>
                           <td className="px-5 py-3">
-                            <span className="text-xs font-semibold text-[#818CF8] font-mono">
+                            <span className="text-xs font-semibold text-[#8B5CF6] font-mono">
                               /{conv.slug ?? "—"}
                             </span>
                           </td>
@@ -472,13 +465,13 @@ export default function Conversions() {
                               {conv.eventName.replace(/_/g, " ")}
                             </span>
                           </td>
-                          <td className="px-5 py-3 text-xs text-[#64748B]">
+                          <td className="px-5 py-3 text-xs text-[#71717A]">
                             {conv.utmCampaign ?? "—"}
                           </td>
-                          <td className="px-5 py-3 text-xs text-[#64748B]">
+                          <td className="px-5 py-3 text-xs text-[#71717A]">
                             {conv.utmSource ?? "—"}
                           </td>
-                          <td className={`px-5 py-3 text-right text-sm font-bold ${rev > 0 ? "text-[#34D399]" : "text-[#94A3B8]"}`}>
+                          <td className={`px-5 py-3 text-right text-sm font-bold ${rev > 0 ? "text-[#10B981]" : "text-[#A1A1AA]"}`}>
                             {rev > 0 ? formatCurrency(rev, conv.currency) : "—"}
                           </td>
                         </tr>
@@ -491,8 +484,8 @@ export default function Conversions() {
 
             {filteredConversions.length > 0 && (
               <div
-                className="px-5 py-3 flex items-center justify-between text-xs text-[#64748B]"
-                style={{ borderTop: "1px solid rgba(255,255,255,0.06)", background: "rgba(255,255,255,0.03)" }}
+                className="px-5 py-3 flex items-center justify-between text-xs text-[#71717A] bg-[#09090B]/50"
+                style={{ borderTop: "1px solid #27272A" }}
               >
                 <span>
                   Showing {filteredConversions.length} conversion{filteredConversions.length !== 1 ? "s" : ""}
@@ -506,49 +499,47 @@ export default function Conversions() {
           </div>
         )}
 
-        <div style={{ ...glassCard, overflow: "hidden" }}>
+        <div className="rounded-xl bg-[#18181B] border border-[#27272A] overflow-hidden">
           <div
             className="px-5 py-4 flex items-center justify-between"
-            style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}
+            style={{ borderBottom: "1px solid #27272A" }}
           >
             <div className="flex items-center gap-2">
               <div
                 className="w-7 h-7 rounded-lg flex items-center justify-center"
-                style={{ background: "linear-gradient(135deg, #818CF8, #A5B4FC)" }}
+                style={{ background: "linear-gradient(135deg, #8B5CF6, #A78BFA)" }}
               >
                 <Zap className="w-4 h-4 text-white" />
               </div>
               <div>
-                <h2 className="text-sm font-bold font-[family-name:var(--font-space-grotesk)] text-[#F1F5F9]">Quick Integration</h2>
-                <p className="text-xs text-[#94A3B8]">Send conversion events via API</p>
+                <h2 className="text-sm font-bold font-[family-name:var(--font-space-grotesk)] text-[#FAFAFA]">Quick Integration</h2>
+                <p className="text-xs text-[#A1A1AA]">Send conversion events via API</p>
               </div>
             </div>
             <Button
               variant="outline"
               size="sm"
-              className="h-8 text-xs rounded-[14px] gap-1.5 text-[#E2E8F0]"
-              style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)" }}
+              className="h-8 text-xs rounded-lg gap-1.5 text-[#E4E4E7] bg-[#27272A] border-[#3F3F46]"
               onClick={handleCopySnippet}
             >
               {copiedSnippet ? (
-                <><Check className="w-3 h-3 text-[#34D399]" /> Copied</>
+                <><Check className="w-3 h-3 text-[#10B981]" /> Copied</>
               ) : (
                 <><Copy className="w-3 h-3" /> Copy</>
               )}
             </Button>
           </div>
           <pre
-            className="text-[#d1d1d6] text-xs font-mono p-5 overflow-x-auto leading-relaxed rounded-b-[14px]"
-            style={{ background: "#0B1120" }}
+            className="text-[#d1d1d6] text-xs font-mono p-5 overflow-x-auto leading-relaxed bg-[#09090B]"
           >
             {curlSnippet}
           </pre>
         </div>
 
-        <div className="p-5" style={glassCard}>
+        <div className="p-5 rounded-xl bg-[#18181B] border border-[#27272A]">
           <div className="flex items-center gap-2 mb-4">
-            <Info className="w-4 h-4 text-[#818CF8]" />
-            <p className="text-xs font-bold text-[#F1F5F9] uppercase tracking-wider font-[family-name:var(--font-space-grotesk)]">How conversion tracking works</p>
+            <Info className="w-4 h-4 text-[#8B5CF6]" />
+            <p className="text-xs font-bold text-[#FAFAFA] uppercase tracking-wider font-[family-name:var(--font-space-grotesk)]">How conversion tracking works</p>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 text-xs">
             {[
@@ -570,18 +561,17 @@ export default function Conversions() {
             ].map(({ step, title, body }) => (
               <div
                 key={step}
-                className="flex gap-3 p-4 rounded-[14px]"
-                style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}
+                className="flex gap-3 p-4 rounded-lg bg-[#09090B] border border-[#27272A]"
               >
                 <div
                   className="w-6 h-6 rounded-full text-white text-xs font-bold flex items-center justify-center flex-shrink-0 mt-0.5"
-                  style={{ background: "linear-gradient(135deg, #818CF8, #A78BFA)" }}
+                  style={{ background: "linear-gradient(135deg, #8B5CF6, #A78BFA)" }}
                 >
                   {step}
                 </div>
                 <div>
-                  <p className="font-semibold text-[#E2E8F0]">{title}</p>
-                  <p className="text-[#64748B] mt-1 leading-relaxed">{body}</p>
+                  <p className="font-semibold text-[#E4E4E7]">{title}</p>
+                  <p className="text-[#71717A] mt-1 leading-relaxed">{body}</p>
                 </div>
               </div>
             ))}

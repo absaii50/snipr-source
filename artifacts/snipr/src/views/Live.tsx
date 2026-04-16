@@ -50,7 +50,7 @@ function countryFlag(code: string | null) {
 }
 
 function slugColor(slug: string): string {
-  const colors = ["#818CF8", "#A78BFA", "#34D399", "#FB923C", "#F87171", "#38BDF8", "#94A3B8"];
+  const colors = ["#8B5CF6", "#A78BFA", "#34D399", "#FB923C", "#F87171", "#38BDF8", "#A1A1AA"];
   let hash = 0;
   for (let i = 0; i < slug.length; i++) hash = slug.charCodeAt(i) + ((hash << 5) - hash);
   return colors[Math.abs(hash) % colors.length];
@@ -138,19 +138,17 @@ function DonutRing({ segments, size = 80 }: { segments: { value: number; color: 
 }
 
 /* ────────────────── Dark-Theme Styles ────────────────── */
-const darkBg = "#0B0F1A";
-const cardBg = "rgba(17,24,39,0.65)";
-const cardBorder = "rgba(255,255,255,0.06)";
+const darkBg = "#09090B";
+const cardBg = "#18181B";
+const cardBorder = "#27272A";
 const cardStyle = {
   background: cardBg,
-  backdropFilter: "blur(16px)",
-  WebkitBackdropFilter: "blur(16px)",
   border: `1px solid ${cardBorder}`,
-  borderRadius: "16px",
+  borderRadius: "12px",
 } as const;
 
 const cardHeaderStyle = {
-  background: "rgba(255,255,255,0.03)",
+  background: "rgba(255,255,255,0.02)",
   borderBottom: `1px solid ${cardBorder}`,
 } as const;
 
@@ -368,7 +366,7 @@ export default function Live() {
   const toggleExpand = useCallback((id: string) => { setExpandedId(prev => prev === id ? null : id); }, []);
 
   // Velocity color
-  const velColor = velocity === 0 ? "#64748B" : velocity < 5 ? "#38BDF8" : velocity < 15 ? "#34D399" : velocity < 40 ? "#FB923C" : "#F87171";
+  const velColor = velocity === 0 ? "#71717A" : velocity < 5 ? "#38BDF8" : velocity < 15 ? "#34D399" : velocity < 40 ? "#FB923C" : "#F87171";
 
   /* ── Time-decay opacity: events > 3min get dimmer ── */
   function eventOpacity(ts: string) {
@@ -385,7 +383,7 @@ export default function Live() {
       <div style={{ background: darkBg, minHeight: "100vh" }} className="relative overflow-hidden">
         {/* Ambient glow blobs */}
         <div className="pointer-events-none absolute inset-0 overflow-hidden">
-          <div className="absolute -top-32 -left-32 w-[500px] h-[500px] rounded-full opacity-[0.07]" style={{ background: "radial-gradient(circle, #818CF8, transparent 70%)" }} />
+          <div className="absolute -top-32 -left-32 w-[500px] h-[500px] rounded-full opacity-[0.07]" style={{ background: "radial-gradient(circle, #8B5CF6, transparent 70%)" }} />
           <div className="absolute top-1/3 -right-40 w-[600px] h-[600px] rounded-full opacity-[0.05]" style={{ background: "radial-gradient(circle, #34D399, transparent 70%)" }} />
           <div className="absolute bottom-0 left-1/3 w-[400px] h-[400px] rounded-full opacity-[0.04]" style={{ background: "radial-gradient(circle, #FB923C, transparent 70%)" }} />
         </div>
@@ -395,22 +393,22 @@ export default function Live() {
           {/* ── Header ── */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 flex items-center justify-center shrink-0 relative rounded-2xl" style={{ background: "linear-gradient(135deg, #818CF8, #6366F1)" }}>
+              <div className="w-12 h-12 flex items-center justify-center shrink-0 relative rounded-xl" style={{ background: "linear-gradient(135deg, #8B5CF6, #7C3AED)" }}>
                 <Radio className="w-6 h-6 text-white" />
                 {status === "connected" && (
                   <span className="absolute -top-0.5 -right-0.5 flex h-3 w-3">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#34D399] opacity-50" />
-                    <span className="relative inline-flex rounded-full h-3 w-3 bg-[#34D399] border-2 border-[#0B0F1A]" />
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#10B981] opacity-50" />
+                    <span className="relative inline-flex rounded-full h-3 w-3 bg-[#10B981] border-2 border-[#09090B]" />
                   </span>
                 )}
               </div>
               <div>
                 <div className="flex items-center gap-2.5">
-                  <p className="text-[10px] font-bold tracking-[0.22em] uppercase text-[#64748B]">Real-Time</p>
+                  <p className="text-[10px] font-bold tracking-[0.22em] uppercase text-[#71717A]">Real-Time</p>
                   <StatusBadge status={status} />
                 </div>
-                <h1 className="text-[28px] font-[family-name:var(--font-space-grotesk)] font-black tracking-tight text-[#F1F5F9] leading-none">Live Tracking</h1>
-                <p className="text-[13px] text-[#64748B] mt-1">Monitor every click as it happens — last 5 minutes</p>
+                <h1 className="text-[28px] font-[family-name:var(--font-space-grotesk)] font-black tracking-tight text-[#FAFAFA] leading-none">Live Tracking</h1>
+                <p className="text-[13px] text-[#71717A] mt-1">Monitor every click as it happens — last 5 minutes</p>
               </div>
             </div>
           </div>
@@ -424,8 +422,8 @@ export default function Live() {
               sub="last 5 min"
               icon={<Zap className="w-4 h-4 text-white" />}
               gradient="linear-gradient(135deg, #34D399, #10B981)"
-              glow="#34D399"
-              sparkline={<MiniSparkline data={sparkData} color="#34D399" />}
+              glow="#10B981"
+              sparkline={<MiniSparkline data={sparkData} color="#10B981" />}
               pulse={recentEvents.length > 0}
             />
             {/* Velocity */}
@@ -461,8 +459,8 @@ export default function Live() {
               value={uniqueCountries}
               sub={uniqueCountries === 1 ? "region" : "regions"}
               icon={<Globe className="w-4 h-4 text-white" />}
-              gradient="linear-gradient(135deg, #38BDF8, #0EA5E9)"
-              glow="#38BDF8"
+              gradient="linear-gradient(135deg, #38BDF8, #06B6D4)"
+              glow="#06B6D4"
             />
           </div>
 
@@ -470,36 +468,36 @@ export default function Live() {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
 
             {/* ── Activity Feed (left 7col) ── */}
-            <div className="lg:col-span-7 overflow-hidden flex flex-col" style={cardStyle}>
+            <div className="lg:col-span-7 overflow-hidden flex flex-col rounded-xl bg-[#18181B] border border-[#27272A]">
               <div className="px-5 py-3.5 flex items-center justify-between" style={cardHeaderStyle}>
-                <h3 className="font-semibold text-[14px] text-[#F1F5F9] flex items-center gap-2">
-                  <div className="w-7 h-7 rounded-[10px] flex items-center justify-center" style={{ background: "linear-gradient(135deg, #818CF8, #6366F1)" }}>
+                <h3 className="font-semibold text-[14px] text-[#FAFAFA] flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: "linear-gradient(135deg, #8B5CF6, #7C3AED)" }}>
                     <Activity className="w-3.5 h-3.5 text-white" />
                   </div>
                   Live Activity Feed
                 </h3>
-                <span className="text-[11px] text-[#64748B] font-medium tabular-nums">
+                <span className="text-[11px] text-[#71717A] font-medium tabular-nums">
                   {recentEvents.length === 0 ? "Waiting for clicks..." : `${recentEvents.length} events · 5 min`}
                 </span>
               </div>
 
-              <div className="flex-1 overflow-y-auto max-h-[640px]" style={{ scrollbarWidth: "thin", scrollbarColor: "#1E293B transparent" }}>
+              <div className="flex-1 overflow-y-auto max-h-[640px]" style={{ scrollbarWidth: "thin", scrollbarColor: "#27272A transparent" }}>
                 {recentEvents.length === 0 ? (
                   <div className="flex flex-col items-center justify-center gap-4 py-24 px-6 text-center">
                     <div className="relative">
-                      <div className="w-16 h-16 rounded-2xl flex items-center justify-center" style={{ background: "rgba(129,140,248,0.1)" }}>
-                        <Signal className="w-8 h-8 text-[#818CF8]" />
+                      <div className="w-16 h-16 rounded-xl flex items-center justify-center bg-[#8B5CF6]/10">
+                        <Signal className="w-8 h-8 text-[#8B5CF6]" />
                       </div>
                       {status === "connected" && (
                         <span className="absolute -top-1 -right-1 flex h-3.5 w-3.5">
-                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#34D399] opacity-40" />
-                          <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-[#34D399] border-2 border-[#111827]" />
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#10B981] opacity-40" />
+                          <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-[#10B981] border-2 border-[#18181B]" />
                         </span>
                       )}
                     </div>
                     <div>
-                      <p className="text-[15px] font-semibold text-[#E2E8F0]">Listening for clicks</p>
-                      <p className="text-[13px] text-[#64748B] mt-1 max-w-xs">
+                      <p className="text-[15px] font-semibold text-[#E4E4E7]">Listening for clicks</p>
+                      <p className="text-[13px] text-[#71717A] mt-1 max-w-xs">
                         {status === "connected"
                           ? "No clicks in the last 5 minutes. Visit any of your short links to see live data."
                           : "Connecting to the live stream..."}
@@ -521,7 +519,7 @@ export default function Live() {
                           <button
                             onClick={() => toggleExpand(ev._id)}
                             aria-expanded={isExpanded}
-                            className="w-full flex items-center gap-3 px-5 py-3.5 hover:bg-[rgba(255,255,255,0.03)] transition-colors text-left"
+                            className="w-full flex items-center gap-3 px-5 py-3.5 hover:bg-[#27272A]/50 transition-colors text-left"
                           >
                             {/* Slug badge */}
                             <div
@@ -533,52 +531,52 @@ export default function Live() {
 
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-1.5 flex-wrap">
-                                <span className="text-[13px] font-semibold text-[#E2E8F0]">/{ev.slug}</span>
+                                <span className="text-[13px] font-semibold text-[#E4E4E7]">/{ev.slug}</span>
                                 {ev.isQr && (
-                                  <span className="inline-flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: "rgba(251,146,60,0.15)", color: "#FB923C", border: "1px solid rgba(251,146,60,0.2)" }}>
+                                  <span className="inline-flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-[#FB923C]/15 text-[#FB923C] border border-[#FB923C]/20">
                                     <QrCode className="w-2.5 h-2.5" /> QR
                                   </span>
                                 )}
                               </div>
-                              <div className="flex items-center gap-2 mt-0.5 flex-wrap text-[11px] text-[#64748B]">
+                              <div className="flex items-center gap-2 mt-0.5 flex-wrap text-[11px] text-[#71717A]">
                                 <span className="flex items-center gap-1">
                                   {countryFlag(ev.country)}
                                   <span className="hidden sm:inline">{ev.city ? `${ev.city}, ` : ""}{ev.country ? countryName(ev.country) : "Unknown"}</span>
                                   <span className="sm:hidden">{ev.country ?? "—"}</span>
                                 </span>
-                                <span className="text-[#334155]">·</span>
+                                <span className="text-[#3F3F46]">·</span>
                                 <span className="flex items-center gap-1">
                                   <DeviceIcon device={ev.device} className="w-3 h-3" />
                                   {ev.device ?? "desktop"}
                                 </span>
-                                <span className="hidden sm:inline text-[#334155]">·</span>
+                                <span className="hidden sm:inline text-[#3F3F46]">·</span>
                                 <span className="hidden sm:inline">{ev.browser ?? "Unknown"}</span>
                               </div>
                             </div>
 
                             <div className="flex items-center gap-2 shrink-0">
-                              <span className="text-[10px] text-[#475569] whitespace-nowrap hidden sm:inline tabular-nums">
+                              <span className="text-[10px] text-[#52525B] whitespace-nowrap hidden sm:inline tabular-nums">
                                 {formatDistanceToNow(new Date(ev.timestamp), { addSuffix: true })}
                               </span>
                               {isExpanded
-                                ? <ChevronUp className="w-3.5 h-3.5 text-[#475569]" />
-                                : <ChevronDown className="w-3.5 h-3.5 text-[#475569]" />
+                                ? <ChevronUp className="w-3.5 h-3.5 text-[#52525B]" />
+                                : <ChevronDown className="w-3.5 h-3.5 text-[#52525B]" />
                               }
                             </div>
                           </button>
 
                           {isExpanded && (
-                            <div className="mx-5 mb-3 rounded-xl overflow-hidden" style={{ background: "rgba(255,255,255,0.03)", border: `1px solid ${cardBorder}` }}>
-                              <div className="px-4 py-2.5" style={{ background: "rgba(255,255,255,0.02)", borderBottom: `1px solid ${cardBorder}` }}>
-                                <p className="text-[10px] font-bold text-[#64748B] uppercase tracking-[0.12em]">Visitor Details</p>
+                            <div className="mx-5 mb-3 rounded-xl overflow-hidden bg-[#09090B] border border-[#27272A]">
+                              <div className="px-4 py-2.5 bg-[#18181B]/50" style={{ borderBottom: `1px solid ${cardBorder}` }}>
+                                <p className="text-[10px] font-bold text-[#71717A] uppercase tracking-[0.12em]">Visitor Details</p>
                               </div>
                               <div className="grid grid-cols-2 gap-x-4 gap-y-3 p-4">
-                                <DetailRow icon={<MapPin className="w-3.5 h-3.5 text-[#34D399]" />} label="Location" value={`${ev.city ? ev.city + ", " : ""}${ev.country ? countryName(ev.country) : "Unknown"}`} />
+                                <DetailRow icon={<MapPin className="w-3.5 h-3.5 text-[#10B981]" />} label="Location" value={`${ev.city ? ev.city + ", " : ""}${ev.country ? countryName(ev.country) : "Unknown"}`} />
                                 <DetailRow icon={<span className="flex items-center w-5">{countryFlag(ev.country)}</span>} label="Country" value={ev.country ?? "N/A"} />
-                                <DetailRow icon={<DeviceIcon device={ev.device} className="w-3.5 h-3.5 text-[#818CF8]" />} label="Device" value={ev.device ?? "desktop"} />
+                                <DetailRow icon={<DeviceIcon device={ev.device} className="w-3.5 h-3.5 text-[#8B5CF6]" />} label="Device" value={ev.device ?? "desktop"} />
                                 <DetailRow icon={<span className="text-[14px]">{osIcon(ev.os)}</span>} label="OS" value={ev.os ?? "Unknown"} />
                                 <DetailRow icon={<span className="text-[14px]">{browserIcon(ev.browser)}</span>} label="Browser" value={ev.browser ?? "Unknown"} />
-                                <DetailRow icon={<Navigation className="w-3.5 h-3.5 text-[#94A3B8]" />} label="Referrer" value={ev.referrer ?? "Direct"} />
+                                <DetailRow icon={<Navigation className="w-3.5 h-3.5 text-[#A1A1AA]" />} label="Referrer" value={ev.referrer ?? "Direct"} />
                                 <DetailRow icon={<Clock className="w-3.5 h-3.5 text-[#FB923C]" />} label="Time" value={new Date(ev.timestamp).toLocaleString()} />
                                 <DetailRow icon={<QrCode className="w-3.5 h-3.5 text-[#A78BFA]" />} label="QR Scan" value={ev.isQr ? "Yes" : "No"} />
                               </div>
@@ -596,20 +594,20 @@ export default function Live() {
             <div className="lg:col-span-5 space-y-4">
 
               {/* Devices & Browsers */}
-              <div className="overflow-hidden" style={cardStyle}>
+              <div className="overflow-hidden rounded-xl bg-[#18181B] border border-[#27272A]">
                 <div className="px-5 py-3.5 flex items-center gap-2" style={cardHeaderStyle}>
-                  <div className="w-7 h-7 rounded-[10px] flex items-center justify-center" style={{ background: "linear-gradient(135deg, #FB923C, #F59E0B)" }}>
+                  <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: "linear-gradient(135deg, #FB923C, #F59E0B)" }}>
                     <Smartphone className="w-3.5 h-3.5 text-white" />
                   </div>
-                  <h3 className="font-semibold text-[14px] text-[#F1F5F9]">Devices & Browsers</h3>
+                  <h3 className="font-semibold text-[14px] text-[#FAFAFA]">Devices & Browsers</h3>
                 </div>
                 <div className="p-5">
                   {deviceTotal === 0 ? (
                     <div className="text-center py-8">
-                      <div className="w-12 h-12 rounded-2xl flex items-center justify-center mx-auto mb-2" style={{ background: "rgba(251,146,60,0.08)" }}>
+                      <div className="w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-2 bg-[#FB923C]/10">
                         <Smartphone className="w-6 h-6 text-[#FB923C]/40" />
                       </div>
-                      <p className="text-[13px] text-[#475569]">Device data appears after first click</p>
+                      <p className="text-[13px] text-[#52525B]">Device data appears after first click</p>
                     </div>
                   ) : (
                     <div className="space-y-4">
@@ -617,22 +615,22 @@ export default function Live() {
                       <div className="flex items-center gap-5">
                         <DonutRing segments={[
                           { value: deviceCounts.mobile, color: "#FB923C" },
-                          { value: deviceCounts.desktop, color: "#818CF8" },
+                          { value: deviceCounts.desktop, color: "#8B5CF6" },
                           { value: deviceCounts.tablet, color: "#A78BFA" },
                         ]} />
                         <div className="space-y-2.5 flex-1">
                           {[
                             { label: "Mobile", count: deviceCounts.mobile, color: "#FB923C", icon: <Smartphone className="w-3.5 h-3.5" /> },
-                            { label: "Desktop", count: deviceCounts.desktop, color: "#818CF8", icon: <Monitor className="w-3.5 h-3.5" /> },
+                            { label: "Desktop", count: deviceCounts.desktop, color: "#8B5CF6", icon: <Monitor className="w-3.5 h-3.5" /> },
                             { label: "Tablet", count: deviceCounts.tablet, color: "#A78BFA", icon: <Tablet className="w-3.5 h-3.5" /> },
                           ].map(d => {
                             const pct = deviceTotal > 0 ? Math.round((d.count / deviceTotal) * 100) : 0;
                             return (
                               <div key={d.label} className="flex items-center justify-between">
-                                <span className="flex items-center gap-2 text-[12px] text-[#94A3B8]" style={{ color: d.color }}>
+                                <span className="flex items-center gap-2 text-[12px] text-[#A1A1AA]" style={{ color: d.color }}>
                                   {d.icon} {d.label}
                                 </span>
-                                <span className="text-[12px] font-bold text-[#E2E8F0] tabular-nums">{d.count} <span className="text-[#475569] font-normal">({pct}%)</span></span>
+                                <span className="text-[12px] font-bold text-[#E4E4E7] tabular-nums">{d.count} <span className="text-[#52525B] font-normal">({pct}%)</span></span>
                               </div>
                             );
                           })}
@@ -642,14 +640,14 @@ export default function Live() {
                       {/* Browsers */}
                       {browserCounts.length > 0 && (
                         <div className="pt-3" style={{ borderTop: `1px solid ${cardBorder}` }}>
-                          <p className="text-[10px] font-bold text-[#475569] uppercase tracking-[0.12em] mb-2.5">Browsers</p>
+                          <p className="text-[10px] font-bold text-[#52525B] uppercase tracking-[0.12em] mb-2.5">Browsers</p>
                           <div className="space-y-2">
                             {browserCounts.map(([browser, count]) => (
                               <div key={browser} className="flex items-center justify-between">
-                                <span className="text-[12px] text-[#94A3B8] flex items-center gap-2">
+                                <span className="text-[12px] text-[#A1A1AA] flex items-center gap-2">
                                   <span className="text-[13px]">{browserIcon(browser)}</span> {browser}
                                 </span>
-                                <span className="text-[12px] font-semibold text-[#E2E8F0] tabular-nums">{count}</span>
+                                <span className="text-[12px] font-semibold text-[#E4E4E7] tabular-nums">{count}</span>
                               </div>
                             ))}
                           </div>
@@ -659,14 +657,14 @@ export default function Live() {
                       {/* OS */}
                       {osCounts.length > 0 && (
                         <div className="pt-3" style={{ borderTop: `1px solid ${cardBorder}` }}>
-                          <p className="text-[10px] font-bold text-[#475569] uppercase tracking-[0.12em] mb-2.5">Operating Systems</p>
+                          <p className="text-[10px] font-bold text-[#52525B] uppercase tracking-[0.12em] mb-2.5">Operating Systems</p>
                           <div className="space-y-2">
                             {osCounts.map(([os, count]) => (
                               <div key={os} className="flex items-center justify-between">
-                                <span className="text-[12px] text-[#94A3B8] flex items-center gap-2">
+                                <span className="text-[12px] text-[#A1A1AA] flex items-center gap-2">
                                   <span className="text-[13px]">{osIcon(os)}</span> {os}
                                 </span>
-                                <span className="text-[12px] font-semibold text-[#E2E8F0] tabular-nums">{count}</span>
+                                <span className="text-[12px] font-semibold text-[#E4E4E7] tabular-nums">{count}</span>
                               </div>
                             ))}
                           </div>
@@ -678,16 +676,16 @@ export default function Live() {
               </div>
 
               {/* Countries */}
-              <div className="overflow-hidden" style={cardStyle}>
+              <div className="overflow-hidden rounded-xl bg-[#18181B] border border-[#27272A]">
                 <div className="px-5 py-3.5 flex items-center justify-between" style={cardHeaderStyle}>
                   <div className="flex items-center gap-2">
-                    <div className="w-7 h-7 rounded-[10px] flex items-center justify-center" style={{ background: "linear-gradient(135deg, #34D399, #10B981)" }}>
+                    <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: "linear-gradient(135deg, #34D399, #10B981)" }}>
                       <Globe className="w-3.5 h-3.5 text-white" />
                     </div>
-                    <h3 className="font-semibold text-[14px] text-[#F1F5F9]">Countries</h3>
+                    <h3 className="font-semibold text-[14px] text-[#FAFAFA]">Countries</h3>
                   </div>
                   {uniqueCountries > 0 && (
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: "rgba(52,211,153,0.1)", color: "#34D399", border: "1px solid rgba(52,211,153,0.2)" }}>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#10B981]/10 text-[#10B981] border border-[#10B981]/20">
                       {uniqueCountries}
                     </span>
                   )}
@@ -695,10 +693,10 @@ export default function Live() {
                 <div>
                   {countryCounts.length === 0 ? (
                     <div className="text-center py-8 px-4">
-                      <div className="w-12 h-12 rounded-2xl flex items-center justify-center mx-auto mb-2" style={{ background: "rgba(52,211,153,0.08)" }}>
-                        <Globe className="w-6 h-6 text-[#34D399]/40" />
+                      <div className="w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-2 bg-[#10B981]/10">
+                        <Globe className="w-6 h-6 text-[#10B981]/40" />
                       </div>
-                      <p className="text-[13px] text-[#475569]">Country data appears after first click</p>
+                      <p className="text-[13px] text-[#52525B]">Country data appears after first click</p>
                     </div>
                   ) : (
                     <div>
@@ -706,15 +704,15 @@ export default function Live() {
                         const maxCount = countryCounts[0][1];
                         const pct = recentEvents.length > 0 ? Math.round((count / recentEvents.length) * 100) : 0;
                         return (
-                          <div key={country} className="flex items-center gap-3 px-5 py-3 hover:bg-[rgba(255,255,255,0.02)] transition-colors" style={{ borderBottom: `1px solid ${cardBorder}` }}>
-                            <span className="text-[10px] font-bold text-[#475569] w-4 shrink-0 tabular-nums">#{i + 1}</span>
+                          <div key={country} className="flex items-center gap-3 px-5 py-3 hover:bg-[#27272A]/50 transition-colors" style={{ borderBottom: `1px solid ${cardBorder}` }}>
+                            <span className="text-[10px] font-bold text-[#52525B] w-4 shrink-0 tabular-nums">#{i + 1}</span>
                             <span className="flex items-center shrink-0 w-5">{countryFlag(country)}</span>
                             <div className="flex-1 min-w-0">
                               <div className="flex justify-between items-center mb-1">
-                                <span className="text-[12px] font-semibold text-[#E2E8F0]">{country === "Unknown" ? "Unknown" : countryName(country)}</span>
-                                <span className="text-[11px] font-bold text-[#E2E8F0] tabular-nums">{count} <span className="text-[#475569] font-normal">({pct}%)</span></span>
+                                <span className="text-[12px] font-semibold text-[#E4E4E7]">{country === "Unknown" ? "Unknown" : countryName(country)}</span>
+                                <span className="text-[11px] font-bold text-[#E4E4E7] tabular-nums">{count} <span className="text-[#52525B] font-normal">({pct}%)</span></span>
                               </div>
-                              <div className="h-[3px] rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.06)" }}>
+                              <div className="h-[3px] rounded-full overflow-hidden bg-[#27272A]">
                                 <div className="h-full rounded-full transition-all duration-700" style={{ width: `${(count / maxCount) * 100}%`, background: "linear-gradient(90deg, #34D399, #10B981)" }} />
                               </div>
                             </div>
@@ -729,27 +727,27 @@ export default function Live() {
               {/* Top Links + Referrers side-by-side on lg */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-4">
                 {/* Top Links */}
-                <div className="overflow-hidden" style={cardStyle}>
+                <div className="overflow-hidden rounded-xl bg-[#18181B] border border-[#27272A]">
                   <div className="px-5 py-3.5 flex items-center gap-2" style={cardHeaderStyle}>
-                    <div className="w-7 h-7 rounded-[10px] flex items-center justify-center" style={{ background: "linear-gradient(135deg, #818CF8, #6366F1)" }}>
+                    <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: "linear-gradient(135deg, #8B5CF6, #7C3AED)" }}>
                       <Layers className="w-3.5 h-3.5 text-white" />
                     </div>
-                    <h3 className="font-semibold text-[14px] text-[#F1F5F9]">Top Active Links</h3>
+                    <h3 className="font-semibold text-[14px] text-[#FAFAFA]">Top Active Links</h3>
                   </div>
                   <div>
                     {slugCounts.length === 0 ? (
                       <div className="text-center py-8 px-4">
-                        <div className="w-12 h-12 rounded-2xl flex items-center justify-center mx-auto mb-2" style={{ background: "rgba(129,140,248,0.08)" }}>
-                          <Layers className="w-6 h-6 text-[#818CF8]/40" />
+                        <div className="w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-2 bg-[#8B5CF6]/10">
+                          <Layers className="w-6 h-6 text-[#8B5CF6]/40" />
                         </div>
-                        <p className="text-[13px] text-[#475569]">Link activity appears after first click</p>
+                        <p className="text-[13px] text-[#52525B]">Link activity appears after first click</p>
                       </div>
                     ) : (
                       <div>
                         {slugCounts.map(([slug, count], i) => {
                           const maxCount = slugCounts[0][1];
                           return (
-                            <div key={slug} className="flex items-center gap-3 px-5 py-3 hover:bg-[rgba(255,255,255,0.02)] transition-colors" style={{ borderBottom: `1px solid ${cardBorder}` }}>
+                            <div key={slug} className="flex items-center gap-3 px-5 py-3 hover:bg-[#27272A]/50 transition-colors" style={{ borderBottom: `1px solid ${cardBorder}` }}>
                               <div
                                 className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-[10px] font-bold shrink-0"
                                 style={{ background: slugColor(slug), boxShadow: `0 0 10px ${slugColor(slug)}30` }}
@@ -757,12 +755,12 @@ export default function Live() {
                                 {slug.slice(0, 2).toUpperCase()}
                               </div>
                               <div className="flex-1 min-w-0">
-                                <p className="text-[12px] font-semibold text-[#E2E8F0] truncate">/{slug}</p>
-                                <div className="mt-1 h-[3px] rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.06)" }}>
+                                <p className="text-[12px] font-semibold text-[#E4E4E7] truncate">/{slug}</p>
+                                <div className="mt-1 h-[3px] rounded-full overflow-hidden bg-[#27272A]">
                                   <div className="h-full rounded-full transition-all duration-700" style={{ width: `${(count / maxCount) * 100}%`, background: `linear-gradient(90deg, ${slugColor(slug)}, ${slugColor(slug)}88)` }} />
                                 </div>
                               </div>
-                              <span className="text-[12px] font-bold text-[#E2E8F0] shrink-0 tabular-nums">{count}</span>
+                              <span className="text-[12px] font-bold text-[#E4E4E7] shrink-0 tabular-nums">{count}</span>
                             </div>
                           );
                         })}
@@ -773,18 +771,18 @@ export default function Live() {
 
                 {/* Referrers */}
                 {referrerCounts.length > 0 && recentEvents.length > 0 && (
-                  <div className="overflow-hidden" style={cardStyle}>
+                  <div className="overflow-hidden rounded-xl bg-[#18181B] border border-[#27272A]">
                     <div className="px-5 py-3.5 flex items-center gap-2" style={cardHeaderStyle}>
-                      <div className="w-7 h-7 rounded-[10px] flex items-center justify-center" style={{ background: "linear-gradient(135deg, #38BDF8, #0EA5E9)" }}>
+                      <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: "linear-gradient(135deg, #38BDF8, #06B6D4)" }}>
                         <ArrowUpRight className="w-3.5 h-3.5 text-white" />
                       </div>
-                      <h3 className="font-semibold text-[14px] text-[#F1F5F9]">Top Referrers</h3>
+                      <h3 className="font-semibold text-[14px] text-[#FAFAFA]">Top Referrers</h3>
                     </div>
                     <div>
                       {referrerCounts.map(([ref, count]) => (
-                        <div key={ref} className="flex items-center justify-between px-5 py-3 hover:bg-[rgba(255,255,255,0.02)] transition-colors" style={{ borderBottom: `1px solid ${cardBorder}` }}>
-                          <span className="text-[12px] text-[#94A3B8] truncate mr-3">{ref}</span>
-                          <span className="text-[12px] font-semibold text-[#E2E8F0] shrink-0 tabular-nums">{count}</span>
+                        <div key={ref} className="flex items-center justify-between px-5 py-3 hover:bg-[#27272A]/50 transition-colors" style={{ borderBottom: `1px solid ${cardBorder}` }}>
+                          <span className="text-[12px] text-[#A1A1AA] truncate mr-3">{ref}</span>
+                          <span className="text-[12px] font-semibold text-[#E4E4E7] shrink-0 tabular-nums">{count}</span>
                         </div>
                       ))}
                     </div>
@@ -805,16 +803,16 @@ export default function Live() {
 
 function StatusBadge({ status }: { status: "connecting" | "connected" | "disconnected" }) {
   const cfg = {
-    connected: { label: "LIVE", bg: "rgba(52,211,153,0.12)", color: "#34D399", border: "rgba(52,211,153,0.25)" },
+    connected: { label: "LIVE", bg: "rgba(16,185,129,0.12)", color: "#10B981", border: "rgba(16,185,129,0.25)" },
     connecting: { label: "Connecting...", bg: "rgba(251,146,60,0.12)", color: "#FB923C", border: "rgba(251,146,60,0.25)" },
     disconnected: { label: "Reconnecting...", bg: "rgba(248,113,113,0.12)", color: "#F87171", border: "rgba(248,113,113,0.25)" },
   }[status];
   return (
     <span
-      className="inline-flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-0.5 rounded-[14px]"
+      className="inline-flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-0.5 rounded-lg"
       style={{ background: cfg.bg, color: cfg.color, border: `1px solid ${cfg.border}` }}
     >
-      {status === "connected" && <span className="w-1.5 h-1.5 rounded-full bg-[#34D399] animate-pulse" />}
+      {status === "connected" && <span className="w-1.5 h-1.5 rounded-full bg-[#10B981] animate-pulse" />}
       {status === "connecting" && <RefreshCw className="w-2.5 h-2.5 animate-spin" />}
       {status === "disconnected" && <WifiOff className="w-2.5 h-2.5" />}
       {cfg.label}
@@ -828,23 +826,20 @@ function KpiCard({ label, value, sub, icon, gradient, glow, sparkline, pulse }: 
   sparkline?: React.ReactNode; pulse?: boolean;
 }) {
   return (
-    <div className="p-4 relative overflow-hidden group" style={{
-      ...cardStyle as any,
-      boxShadow: `0 0 0 1px ${cardBorder}, 0 0 20px ${glow}08`,
-    }}>
+    <div className="p-4 relative overflow-hidden group rounded-xl bg-[#18181B] border border-[#27272A]">
       {/* Subtle glow on hover */}
       <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" style={{ background: `radial-gradient(circle at 50% 50%, ${glow}08, transparent 70%)` }} />
       <div className="relative z-10">
         <div className="flex items-center justify-between mb-3">
-          <p className="text-[10px] font-bold text-[#64748B] uppercase tracking-[0.12em]">{label}</p>
-          <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: gradient, boxShadow: `0 0 12px ${glow}30` }}>
+          <p className="text-[10px] font-bold text-[#71717A] uppercase tracking-[0.12em]">{label}</p>
+          <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: gradient, boxShadow: `0 0 12px ${glow}30` }}>
             {icon}
           </div>
         </div>
         <div className="flex items-end justify-between gap-2">
           <div>
             <div className="flex items-end gap-1.5">
-              <span className="text-[28px] font-extrabold text-[#F1F5F9] leading-none tabular-nums">{value}</span>
+              <span className="text-[28px] font-extrabold text-[#FAFAFA] leading-none tabular-nums">{value}</span>
               {pulse && (
                 <span className="relative flex h-2.5 w-2.5 mb-1">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-40" style={{ background: glow }} />
@@ -852,7 +847,7 @@ function KpiCard({ label, value, sub, icon, gradient, glow, sparkline, pulse }: 
                 </span>
               )}
             </div>
-            <p className="text-[11px] text-[#475569] mt-1">{sub}</p>
+            <p className="text-[11px] text-[#52525B] mt-1">{sub}</p>
           </div>
           {sparkline}
         </div>
@@ -866,8 +861,8 @@ function DetailRow({ icon, label, value }: { icon: React.ReactNode; label: strin
     <div className="flex items-start gap-2.5">
       <div className="mt-0.5 shrink-0">{icon}</div>
       <div className="min-w-0">
-        <p className="text-[10px] font-bold text-[#475569] uppercase tracking-[0.08em]">{label}</p>
-        <p className="text-[12px] font-medium text-[#E2E8F0] break-all">{value}</p>
+        <p className="text-[10px] font-bold text-[#52525B] uppercase tracking-[0.08em]">{label}</p>
+        <p className="text-[12px] font-medium text-[#E4E4E7] break-all">{value}</p>
       </div>
     </div>
   );

@@ -47,9 +47,9 @@ const PLAN_META = {
     monthlyPrice: "$12",
     annualPrice: "$115",
     icon: Star,
-    color: "#818CF8",
-    gradient: "from-[#818CF8] to-[#4A6E8E]",
-    bg: "rgba(129,140,248,0.12)",
+    color: "#8B5CF6",
+    gradient: "from-[#8B5CF6] to-[#4A6E8E]",
+    bg: "rgba(139,92,246,0.12)",
     features: ["5M clicks/month", "3 custom domains", "Link cloaking", "Geo & device routing rules", "UTM builder", "AI-powered insights"],
     clicks: "5M",
   },
@@ -84,7 +84,7 @@ const PLAN_META = {
     gradient: "from-[#FB923C] to-[#A37038]",
     bg: "rgba(251,146,60,0.12)",
     features: ["Unlimited clicks", "Unlimited domains & workspaces", "Custom AI reporting", "SLA & uptime guarantee", "Custom onboarding", "24/7 dedicated support"],
-    clicks: "∞",
+    clicks: "\u221E",
   },
 };
 
@@ -177,23 +177,20 @@ export default function Billing() {
         {/* Header */}
         <div className="flex items-center gap-4">
           <div
-            className="w-12 h-12 rounded-[14px] flex items-center justify-center shrink-0"
-            style={{ background: "linear-gradient(135deg, #818CF8, #A78BFA)" }}
+            className="w-12 h-12 rounded-lg flex items-center justify-center shrink-0"
+            style={{ background: "linear-gradient(135deg, #8B5CF6, #7C3AED)" }}
           >
             <CreditCard className="w-5 h-5 text-white" />
           </div>
           <div>
-            <h1 className="text-[28px] font-[family-name:var(--font-space-grotesk)] font-extrabold tracking-[-0.02em] text-[#F1F5F9]">Billing & Subscription</h1>
-            <p className="text-[13px] text-[#94A3B8] mt-0.5">Manage your plan, payments, and usage.</p>
+            <h1 className="text-[28px] font-[family-name:var(--font-space-grotesk)] font-extrabold tracking-[-0.02em] text-[#FAFAFA]">Billing & Subscription</h1>
+            <p className="text-[13px] text-[#A1A1AA] mt-0.5">Manage your plan, payments, and usage.</p>
           </div>
         </div>
 
         {/* Success / confirming banner */}
         {upgraded && sub?.plan === "free" && !loading && (
-          <div
-            className="flex items-center gap-3 px-5 py-4"
-            style={{ background: "rgba(251,191,36,0.1)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", border: "1px solid rgba(252,211,77,0.2)", borderRadius: "20px" }}
-          >
+          <div className="flex items-center gap-3 px-5 py-4 bg-[#F59E0B]/10 border border-[#F59E0B]/20 rounded-xl">
             <RefreshCw className="w-5 h-5 text-[#FB923C] shrink-0 animate-spin" />
             <div>
               <div className="text-[14px] font-semibold text-[#FB923C]">Confirming your payment...</div>
@@ -202,10 +199,7 @@ export default function Billing() {
           </div>
         )}
         {upgraded && sub && sub.plan !== "free" && (
-          <div
-            className="flex items-center gap-3 px-5 py-4"
-            style={{ background: "rgba(52,211,153,0.1)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", border: "1px solid rgba(52,211,153,0.2)", borderRadius: "20px" }}
-          >
+          <div className="flex items-center gap-3 px-5 py-4 bg-[#10B981]/10 border border-[#10B981]/20 rounded-xl">
             <BadgeCheck className="w-5 h-5 text-[#34D399] shrink-0" />
             <div>
               <div className="text-[14px] font-semibold text-[#34D399]">Payment successful!</div>
@@ -215,20 +209,14 @@ export default function Billing() {
         )}
 
         {loading ? (
-          <div
-            className="p-12 flex items-center justify-center gap-3 text-[#7A7A84]"
-            style={{ background: "rgba(17,24,39,0.65)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", border: "1px solid rgba(255,255,255,0.06)", boxShadow: "0 1px 2px rgba(0,0,0,0.3), 0 8px 32px rgba(0,0,0,0.3)", borderRadius: "20px" }}
-          >
+          <div className="p-12 flex items-center justify-center gap-3 text-[#7A7A84] bg-[#18181B] border border-[#27272A] rounded-xl">
             <RefreshCw className="w-4 h-4 animate-spin" />
             <span className="text-[14px]">Loading subscription...</span>
           </div>
         ) : (
           <>
             {/* Current Plan Card */}
-            <div
-              className="relative overflow-hidden"
-              style={{ background: "linear-gradient(135deg, #0F172A, #1E293B)", backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)", borderRadius: "20px", boxShadow: "0 4px 24px rgba(0,0,0,0.4)" }}
-            >
+            <div className="relative overflow-hidden bg-[#18181B] border border-[#27272A] rounded-xl">
               {/* Gradient accent */}
               <div
                 className="absolute inset-0 opacity-20"
@@ -239,7 +227,7 @@ export default function Billing() {
                   <div className="flex items-center gap-4">
                     <div
                       className="w-14 h-14 rounded-2xl flex items-center justify-center shrink-0"
-                      style={{ background: `${meta.color}25`, border: `1px solid ${meta.color}40`, backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)" }}
+                      style={{ background: `${meta.color}25`, border: `1px solid ${meta.color}40` }}
                     >
                       <PlanIcon className="w-6 h-6" style={{ color: meta.color }} />
                     </div>
@@ -251,7 +239,7 @@ export default function Billing() {
                       <div className="text-[13px] text-[#7A7A84]">
                         {currentPlan === "free"
                           ? "You're on the free plan"
-                          : `${billing === "annual" ? meta.annualPrice + "/yr" : meta.monthlyPrice + "/mo"} · billed ${billing}`}
+                          : `${billing === "annual" ? meta.annualPrice + "/yr" : meta.monthlyPrice + "/mo"} \u00B7 billed ${billing}`}
                       </div>
                     </div>
                   </div>
@@ -261,8 +249,7 @@ export default function Billing() {
                       <button
                         onClick={handlePortal}
                         disabled={portalLoading}
-                        className="inline-flex items-center gap-2 px-4 py-2 rounded-[14px] text-[13px] font-semibold text-white transition-all disabled:opacity-50"
-                        style={{ background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.15)" }}
+                        className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-[13px] font-semibold text-white transition-all disabled:opacity-50 bg-[#27272A] border border-[#3F3F46]"
                       >
                         {portalLoading ? (
                           <RefreshCw className="w-3.5 h-3.5 animate-spin" />
@@ -288,7 +275,7 @@ export default function Billing() {
                 {/* Features */}
                 <div className="mt-6 grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-2">
                   {meta.features.map((f) => (
-                    <div key={f} className="flex items-center gap-2 text-[12px] text-[#D1D5DB]">
+                    <div key={f} className="flex items-center gap-2 text-[12px] text-[#E4E4E7]">
                       <CheckCircle2 className="w-3.5 h-3.5 shrink-0" style={{ color: meta.color }} />
                       {f}
                     </div>
@@ -297,7 +284,7 @@ export default function Billing() {
 
                 {/* Renewal info */}
                 {sub?.renewsAt && (
-                  <div className="mt-5 pt-5 flex items-center gap-2 text-[12px] text-[#7A7A84]" style={{ borderTop: "1px solid rgba(255,255,255,0.08)" }}>
+                  <div className="mt-5 pt-5 flex items-center gap-2 text-[12px] text-[#7A7A84] border-t border-[#27272A]">
                     <Clock className="w-3.5 h-3.5" />
                     Renews on{" "}
                     <span className="text-white font-medium">
@@ -306,7 +293,7 @@ export default function Billing() {
                   </div>
                 )}
                 {sub?.expiresAt && sub.status === "cancelled" && (
-                  <div className="mt-5 pt-5 flex items-center gap-2 text-[12px] text-[#FB923C]" style={{ borderTop: "1px solid rgba(255,255,255,0.08)" }}>
+                  <div className="mt-5 pt-5 flex items-center gap-2 text-[12px] text-[#FB923C] border-t border-[#27272A]">
                     <Clock className="w-3.5 h-3.5" />
                     Access until{" "}
                     <span className="font-medium">
@@ -319,28 +306,18 @@ export default function Billing() {
 
             {/* Upgrade Section */}
             {upgradePlans.length > 0 && (
-              <div
-                className="overflow-hidden"
-                style={{
-                  background: "rgba(17,24,39,0.65)",
-                  backdropFilter: "blur(16px)",
-                  WebkitBackdropFilter: "blur(16px)",
-                  border: "1px solid rgba(255,255,255,0.06)",
-                  boxShadow: "0 1px 2px rgba(0,0,0,0.3), 0 8px 32px rgba(0,0,0,0.3)",
-                  borderRadius: "20px",
-                }}
-              >
+              <div className="overflow-hidden bg-[#18181B] border border-[#27272A] rounded-xl">
                 <div className="px-6 pt-6 pb-4 flex items-center justify-between flex-wrap gap-3">
                   <div>
-                    <h2 className="text-[16px] font-bold text-[#F1F5F9]">Upgrade your plan</h2>
-                    <p className="text-[12px] text-[#94A3B8] mt-0.5">Unlock more clicks, domains, and features.</p>
+                    <h2 className="text-[16px] font-bold text-[#FAFAFA]">Upgrade your plan</h2>
+                    <p className="text-[12px] text-[#A1A1AA] mt-0.5">Unlock more clicks, domains, and features.</p>
                   </div>
                   {/* Billing toggle */}
-                  <div className="flex items-center gap-3 rounded-[14px] px-3 py-2" style={{ background: "rgba(255,255,255,0.05)" }}>
+                  <div className="flex items-center gap-3 rounded-lg px-3 py-2 bg-[#09090B]">
                     <button
                       onClick={() => setBilling("monthly")}
                       className={`text-[12px] font-semibold px-3 py-1.5 rounded-lg transition-all ${
-                        billing === "monthly" ? "bg-[rgba(129,140,248,0.12)] shadow-sm text-[#A5B4FC]" : "text-[#7A7A84]"
+                        billing === "monthly" ? "bg-[#8B5CF6]/12 shadow-sm text-[#A78BFA]" : "text-[#7A7A84]"
                       }`}
                     >
                       Monthly
@@ -348,11 +325,11 @@ export default function Billing() {
                     <button
                       onClick={() => setBilling("annual")}
                       className={`text-[12px] font-semibold px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 ${
-                        billing === "annual" ? "bg-[rgba(129,140,248,0.12)] shadow-sm text-[#A5B4FC]" : "text-[#7A7A84]"
+                        billing === "annual" ? "bg-[#8B5CF6]/12 shadow-sm text-[#A78BFA]" : "text-[#7A7A84]"
                       }`}
                     >
                       Annual
-                      <span className="text-[10px] font-bold text-[#34D399] bg-[rgba(52,211,153,0.12)] px-1.5 py-0.5 rounded-full">-20%</span>
+                      <span className="text-[10px] font-bold text-[#34D399] bg-[#10B981]/12 px-1.5 py-0.5 rounded-full">-20%</span>
                     </button>
                   </div>
                 </div>
@@ -366,9 +343,8 @@ export default function Billing() {
                     return (
                       <div
                         key={planKey}
-                        className="group relative p-5 hover:shadow-[0_8px_32px_rgba(0,0,0,0.4)] hover:-translate-y-1 transition-all cursor-pointer"
+                        className="group relative p-5 hover:-translate-y-1 transition-all cursor-pointer bg-[#09090B] border border-[#27272A] rounded-xl"
                         onClick={() => handleUpgrade(planKey)}
-                        style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: "18px" }}
                       >
                         <div className="flex items-center justify-between mb-4">
                           <div className="flex items-center gap-2.5">
@@ -379,19 +355,19 @@ export default function Billing() {
                               <Icon className="w-4 h-4" style={{ color: m.color }} />
                             </div>
                             <div>
-                              <div className="text-[14px] font-bold text-[#F1F5F9]">{m.label}</div>
+                              <div className="text-[14px] font-bold text-[#FAFAFA]">{m.label}</div>
                               <div className="text-[11px] text-[#7A7A84]">{m.clicks} clicks/mo</div>
                             </div>
                           </div>
                           <div className="text-right">
-                            <div className="text-[18px] font-extrabold text-[#F1F5F9]">{price}</div>
+                            <div className="text-[18px] font-extrabold text-[#FAFAFA]">{price}</div>
                             <div className="text-[10px] text-[#7A7A84]">{perUnit}</div>
                           </div>
                         </div>
 
                         <ul className="space-y-1.5 mb-4">
                           {m.features.slice(0, 3).map((f) => (
-                            <li key={f} className="flex items-center gap-2 text-[12px] text-[#94A3B8]">
+                            <li key={f} className="flex items-center gap-2 text-[12px] text-[#A1A1AA]">
                               <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: m.color }} />
                               {f}
                             </li>
@@ -400,8 +376,8 @@ export default function Billing() {
 
                         <button
                           disabled={upgrading === planKey}
-                          className="w-full flex items-center justify-center gap-1.5 h-9 rounded-[14px] text-[13px] font-semibold text-white transition-all disabled:opacity-60"
-                          style={{ background: m.color, boxShadow: `0 2px 8px ${m.color}40` }}
+                          className="w-full flex items-center justify-center gap-1.5 h-9 rounded-lg text-[13px] font-semibold text-white transition-all disabled:opacity-60"
+                          style={{ background: m.color }}
                         >
                           {upgrading === planKey ? (
                             <RefreshCw className="w-3.5 h-3.5 animate-spin" />
@@ -425,50 +401,40 @@ export default function Billing() {
                 href="https://stripe.com"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center justify-between px-5 py-4 hover:shadow-[0_8px_32px_rgba(0,0,0,0.4)] transition-all group"
-                style={{ background: "rgba(17,24,39,0.65)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", border: "1px solid rgba(255,255,255,0.06)", boxShadow: "0 1px 2px rgba(0,0,0,0.3), 0 8px 32px rgba(0,0,0,0.3)", borderRadius: "20px" }}
+                className="flex items-center justify-between px-5 py-4 transition-all group bg-[#18181B] border border-[#27272A] rounded-xl"
               >
                 <div className="flex items-center gap-3">
-                  <div
-                    className="w-9 h-9 rounded-[12px] flex items-center justify-center"
-                    style={{ background: "linear-gradient(135deg, rgba(99,91,255,0.15), rgba(99,91,255,0.2))" }}
-                  >
-                    <CreditCard className="w-4 h-4 text-[#818CF8]" />
+                  <div className="w-9 h-9 rounded-lg flex items-center justify-center bg-[#8B5CF6]/10 border border-[#8B5CF6]/15">
+                    <CreditCard className="w-4 h-4 text-[#8B5CF6]" />
                   </div>
                   <div>
-                    <div className="text-[13px] font-semibold text-[#F1F5F9]">Payment methods</div>
-                    <div className="text-[11px] text-[#94A3B8]">Manage cards via Stripe portal</div>
+                    <div className="text-[13px] font-semibold text-[#FAFAFA]">Payment methods</div>
+                    <div className="text-[11px] text-[#A1A1AA]">Manage cards via Stripe portal</div>
                   </div>
                 </div>
-                <ChevronRight className="w-4 h-4 text-[#475569] group-hover:text-[#7A7A84] transition-colors" />
+                <ChevronRight className="w-4 h-4 text-[#3F3F46] group-hover:text-[#7A7A84] transition-colors" />
               </a>
 
-              <div
-                className="flex items-center justify-between px-5 py-4"
-                style={{ background: "rgba(17,24,39,0.65)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", border: "1px solid rgba(255,255,255,0.06)", boxShadow: "0 1px 2px rgba(0,0,0,0.3), 0 8px 32px rgba(0,0,0,0.3)", borderRadius: "20px" }}
-              >
+              <div className="flex items-center justify-between px-5 py-4 bg-[#18181B] border border-[#27272A] rounded-xl">
                 <div className="flex items-center gap-3">
-                  <div
-                    className="w-9 h-9 rounded-[12px] flex items-center justify-center"
-                    style={{ background: "linear-gradient(135deg, rgba(52,211,153,0.12), rgba(52,211,153,0.18))" }}
-                  >
+                  <div className="w-9 h-9 rounded-lg flex items-center justify-center bg-[#10B981]/10 border border-[#10B981]/15">
                     <Shield className="w-4 h-4 text-[#34D399]" />
                   </div>
                   <div>
-                    <div className="text-[13px] font-semibold text-[#F1F5F9]">Secure payments</div>
-                    <div className="text-[11px] text-[#94A3B8]">256-bit encryption · PCI-compliant</div>
+                    <div className="text-[13px] font-semibold text-[#FAFAFA]">Secure payments</div>
+                    <div className="text-[11px] text-[#A1A1AA]">256-bit encryption · PCI-compliant</div>
                   </div>
                 </div>
               </div>
             </div>
 
             {/* Footer note */}
-            <p className="text-center text-[12px] text-[#94A3B8]">
+            <p className="text-center text-[12px] text-[#A1A1AA]">
               Payments powered by{" "}
-              <a href="https://stripe.com" target="_blank" rel="noopener noreferrer" className="text-[#818CF8] font-semibold hover:underline">
+              <a href="https://stripe.com" target="_blank" rel="noopener noreferrer" className="text-[#8B5CF6] font-semibold hover:underline">
                 Stripe
               </a>
-              {" · "}No contracts · Cancel anytime
+              {" \u00B7 "}No contracts · Cancel anytime
             </p>
           </>
         )}

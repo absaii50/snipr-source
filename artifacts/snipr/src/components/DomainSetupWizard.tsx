@@ -54,10 +54,10 @@ function CopyBtn({ value }: { value: string }) {
   return (
     <button
       onClick={() => { navigator.clipboard.writeText(value); setCopied(true); setTimeout(() => setCopied(false), 1500); }}
-      className="ml-2 shrink-0 p-1.5 rounded-lg hover:bg-[rgba(255,255,255,0.08)] transition-colors"
+      className="ml-2 shrink-0 p-1.5 rounded-lg hover:bg-[#27272A] transition-colors"
       title="Copy"
     >
-      {copied ? <CheckCircle className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5 text-[#475569]" />}
+      {copied ? <CheckCircle className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5 text-[#3F3F46]" />}
     </button>
   );
 }
@@ -73,13 +73,13 @@ function StepBar({ current, total, labels }: { current: number; total: number; l
           <div key={step} className="flex items-center gap-1">
             <div className="flex flex-col items-center gap-1">
               <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold transition-all ${
-                isDone ? "bg-emerald-500 text-white" : isActive ? "bg-[#818CF8] text-white shadow-md" : "bg-[rgba(255,255,255,0.04)] text-[#475569]"
+                isDone ? "bg-emerald-500 text-white" : isActive ? "bg-[#8B5CF6] text-white shadow-md" : "bg-[#27272A] text-[#3F3F46]"
               }`}>
                 {isDone ? <CheckCircle className="w-3.5 h-3.5" /> : step}
               </div>
-              <span className={`text-[9px] font-medium ${isActive ? "text-[#F1F5F9]" : "text-[#475569]"}`}>{labels[i]}</span>
+              <span className={`text-[9px] font-medium ${isActive ? "text-[#FAFAFA]" : "text-[#3F3F46]"}`}>{labels[i]}</span>
             </div>
-            {step < total && <div className={`w-6 h-0.5 rounded mb-4 ${step < current ? "bg-emerald-500" : "bg-[rgba(255,255,255,0.08)]"}`} />}
+            {step < total && <div className={`w-6 h-0.5 rounded mb-4 ${step < current ? "bg-emerald-500" : "bg-[#27272A]"}`} />}
           </div>
         );
       })}
@@ -94,10 +94,10 @@ function PropagationBar({ pct }: { pct: number }) {
   return (
     <div className="space-y-1">
       <div className="flex items-center justify-between text-[11px]">
-        <span className="font-semibold text-[#E2E8F0]">Global propagation</span>
+        <span className="font-semibold text-[#E4E4E7]">Global propagation</span>
         <span className={`font-bold ${pct === 100 ? "text-[#34D399]" : pct >= 50 ? "text-[#FBBF24]" : "text-[#F87171]"}`}>{pct}%</span>
       </div>
-      <div className="h-2 w-full bg-[rgba(255,255,255,0.04)] rounded-full overflow-hidden">
+      <div className="h-2 w-full bg-[#27272A] rounded-full overflow-hidden">
         <div
           className={`h-full rounded-full transition-all duration-700 ${color}`}
           style={{ width: `${pct}%` }}
@@ -111,12 +111,12 @@ function ResolverDot({ r }: { r: ResolverResult }) {
   const statusColor =
     r.ok ? "bg-emerald-500 border-emerald-400" :
     r.error === "WRONG_TARGET" ? "bg-amber-400 border-amber-300" :
-    r.error === "TIMEOUT" ? "bg-[rgba(255,255,255,0.08)] border-[rgba(255,255,255,0.08)]" :
+    r.error === "TIMEOUT" ? "bg-[#27272A] border-[#27272A]" :
     "bg-red-400 border-red-300";
   const textColor =
     r.ok ? "text-[#34D399]" :
     r.error === "WRONG_TARGET" ? "text-[#FBBF24]" :
-    r.error === "TIMEOUT" ? "text-[#64748B]" :
+    r.error === "TIMEOUT" ? "text-[#71717A]" :
     "text-[#F87171]";
   const label =
     r.ok ? "OK" :
@@ -130,9 +130,9 @@ function ResolverDot({ r }: { r: ResolverResult }) {
         <span>{r.flag}</span>
       </div>
       <div className="text-center">
-        <p className="text-[10px] font-bold text-[#E2E8F0] leading-none">{r.name}</p>
+        <p className="text-[10px] font-bold text-[#E4E4E7] leading-none">{r.name}</p>
         <p className={`text-[9px] font-semibold mt-0.5 ${textColor}`}>{label}</p>
-        {r.ttl !== null && <p className="text-[9px] text-[#475569]">TTL {r.ttl}s</p>}
+        {r.ttl !== null && <p className="text-[9px] text-[#3F3F46]">TTL {r.ttl}s</p>}
       </div>
     </div>
   );
@@ -146,18 +146,18 @@ function RecordComparison({ checkType, expected, resolvers }: {
   const found = resolvers.find((r) => r.found)?.found;
   const allOk = resolvers.every((r) => r.ok);
   return (
-    <div className="rounded-xl border border-[rgba(255,255,255,0.08)] overflow-hidden text-[12px]">
-      <div className="grid grid-cols-2 gap-px bg-[rgba(255,255,255,0.08)]">
-        <div className="bg-[rgba(255,255,255,0.03)] p-3">
-          <p className="text-[10px] font-bold text-[#475569] uppercase mb-1.5">Expected {checkType === "cname" ? "CNAME" : "A record"}</p>
+    <div className="rounded-xl border border-[#27272A] overflow-hidden text-[12px]">
+      <div className="grid grid-cols-2 gap-px bg-[#27272A]">
+        <div className="bg-[#18181B] p-3">
+          <p className="text-[10px] font-bold text-[#3F3F46] uppercase mb-1.5">Expected {checkType === "cname" ? "CNAME" : "A record"}</p>
           <div className="flex items-center gap-1">
             <Target className="w-3 h-3 text-emerald-500 shrink-0" />
-            <span className="font-mono text-[#F1F5F9] break-all text-[11px]">{expected}</span>
+            <span className="font-mono text-[#FAFAFA] break-all text-[11px]">{expected}</span>
             <CopyBtn value={expected} />
           </div>
         </div>
         <div className={`p-3 ${allOk ? "bg-[rgba(52,211,153,0.1)]" : found ? "bg-[rgba(251,191,36,0.1)]" : "bg-[rgba(248,113,113,0.1)]"}`}>
-          <p className="text-[10px] font-bold text-[#475569] uppercase mb-1.5">Found in DNS</p>
+          <p className="text-[10px] font-bold text-[#3F3F46] uppercase mb-1.5">Found in DNS</p>
           {found ? (
             <div className="flex items-center gap-1">
               {allOk
@@ -204,21 +204,21 @@ function DiagnosisPanel({ diagnosis, suggestions }: { diagnosis: string | null; 
 function TxtResolvers({ resolvers }: { resolvers: { name: string; flag: string; ok: boolean; found: string | null }[] }) {
   const anyOk = resolvers.some((r) => r.ok);
   return (
-    <div className={`rounded-xl border p-3 ${anyOk ? "border-[rgba(52,211,153,0.2)] bg-[rgba(52,211,153,0.1)]" : "border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.04)]"}`}>
+    <div className={`rounded-xl border p-3 ${anyOk ? "border-[rgba(52,211,153,0.2)] bg-[rgba(52,211,153,0.1)]" : "border-[#27272A] bg-[#18181B]"}`}>
       <div className="flex items-center justify-between mb-2">
-        <p className="text-[11px] font-semibold text-[#94A3B8]">TXT verification (optional)</p>
+        <p className="text-[11px] font-semibold text-[#A1A1AA]">TXT verification (optional)</p>
         <div className="flex gap-2">
           {resolvers.map((r) => (
             <span key={r.name} title={`${r.name}: ${r.ok ? "found" : "not found"}`}
               className={`inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
-                r.ok ? "bg-[rgba(52,211,153,0.1)] text-[#34D399]" : "bg-[rgba(255,255,255,0.08)] text-[#64748B]"
+                r.ok ? "bg-[rgba(52,211,153,0.1)] text-[#34D399]" : "bg-[#27272A] text-[#71717A]"
               }`}>
               {r.flag} {r.ok ? "✓" : "–"}
             </span>
           ))}
         </div>
       </div>
-      <p className="text-[10px] text-[#64748B]">
+      <p className="text-[10px] text-[#71717A]">
         {anyOk
           ? "TXT record verified — your domain ownership is confirmed."
           : "TXT record not found (this is optional — your domain can still be verified without it)."}
@@ -244,19 +244,19 @@ function AutoRetryCountdown({ onRetry, seconds = 30 }: { onRetry: () => void; se
   }, [seconds, onRetry]);
 
   return (
-    <div className="flex items-center gap-2 text-[11px] text-[#64748B]">
+    <div className="flex items-center gap-2 text-[11px] text-[#71717A]">
       <div className="relative w-6 h-6">
         <svg className="w-6 h-6 -rotate-90" viewBox="0 0 24 24">
-          <circle cx="12" cy="12" r="10" strokeWidth="2" stroke="rgba(255,255,255,0.08)" fill="none" />
+          <circle cx="12" cy="12" r="10" strokeWidth="2" stroke="#27272A" fill="none" />
           <circle
-            cx="12" cy="12" r="10" strokeWidth="2" stroke="#64748B" fill="none"
+            cx="12" cy="12" r="10" strokeWidth="2" stroke="#71717A" fill="none"
             strokeDasharray={`${2 * Math.PI * 10}`}
             strokeDashoffset={`${2 * Math.PI * 10 * (1 - remaining / seconds)}`}
             strokeLinecap="round"
             className="transition-all duration-1000"
           />
         </svg>
-        <span className="absolute inset-0 flex items-center justify-center text-[8px] font-bold text-[#94A3B8]">{remaining}</span>
+        <span className="absolute inset-0 flex items-center justify-center text-[8px] font-bold text-[#A1A1AA]">{remaining}</span>
       </div>
       <span>Auto-rechecking in {remaining}s</span>
       <button onClick={onRetry} className="text-[11px] font-semibold text-[#60A5FA] hover:text-[#93BBFC] underline ml-1">
@@ -435,28 +435,28 @@ export default function DomainSetupWizard({
   const cnameTarget = setupInfo?.cnameTarget || "snipr.sh";
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={onClose}>
       <div
-        className="bg-[#111827] rounded-2xl shadow-2xl w-full max-w-[560px] mx-4 max-h-[92vh] overflow-y-auto border border-[rgba(255,255,255,0.08)]"
+        className="bg-[#18181B] rounded-xl shadow-2xl w-full max-w-[560px] mx-4 max-h-[92vh] overflow-y-auto border border-[#27272A]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-[rgba(255,255,255,0.08)] sticky top-0 bg-[#111827] z-10">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-[#27272A] sticky top-0 bg-[#18181B] z-10">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-[#818CF8] flex items-center justify-center">
+            <div className="w-8 h-8 rounded-xl bg-[#8B5CF6] flex items-center justify-center">
               <Globe className="w-4 h-4 text-white" />
             </div>
             <div>
-              <h2 className="text-[15px] font-bold text-[#F1F5F9]">
+              <h2 className="text-[15px] font-bold text-[#FAFAFA]">
                 {step <= 2 ? "Add Custom Domain" : step <= 4 ? "Domain Setup" : "Domain Connected"}
               </h2>
               {currentDomain && step >= 3 && (
-                <p className="text-[11px] text-[#475569] font-mono">{currentDomain.domain}</p>
+                <p className="text-[11px] text-[#3F3F46] font-mono">{currentDomain.domain}</p>
               )}
             </div>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-[rgba(255,255,255,0.08)] transition-colors">
-            <X className="w-4 h-4 text-[#475569]" />
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-[#27272A] transition-colors">
+            <X className="w-4 h-4 text-[#3F3F46]" />
           </button>
         </div>
 
@@ -469,8 +469,8 @@ export default function DomainSetupWizard({
           {step === 1 && (
             <div className="space-y-5">
               <div className="text-center">
-                <h3 className="text-xl font-bold text-[#F1F5F9]">What domain do you want to use?</h3>
-                <p className="text-sm text-[#64748B] mt-1">Use a subdomain you control or a full custom domain</p>
+                <h3 className="text-xl font-bold text-[#FAFAFA]">What domain do you want to use?</h3>
+                <p className="text-sm text-[#71717A] mt-1">Use a subdomain you control or a full custom domain</p>
               </div>
               <div className="grid grid-cols-2 gap-2 text-[11px]">
                 <div className="p-3 rounded-xl bg-[rgba(96,165,250,0.1)] border border-[rgba(96,165,250,0.2)]">
@@ -478,26 +478,26 @@ export default function DomainSetupWizard({
                   <p className="font-mono text-[#60A5FA]">go.yourdomain.com</p>
                   <p className="text-[#60A5FA]/70 mt-1">Works alongside your website</p>
                 </div>
-                <div className="p-3 rounded-xl bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.08)]">
-                  <p className="font-semibold text-[#E2E8F0] mb-0.5">Root domain</p>
-                  <p className="font-mono text-[#94A3B8]">yourdomain.com</p>
-                  <p className="text-[#475569] mt-1">Best when nothing else is on the domain</p>
+                <div className="p-3 rounded-xl bg-[#27272A] border border-[#3F3F46]">
+                  <p className="font-semibold text-[#E4E4E7] mb-0.5">Root domain</p>
+                  <p className="font-mono text-[#A1A1AA]">yourdomain.com</p>
+                  <p className="text-[#3F3F46] mt-1">Best when nothing else is on the domain</p>
                 </div>
               </div>
               <div className="space-y-2">
                 <div className="relative">
-                  <Globe className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#475569]" />
+                  <Globe className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#3F3F46]" />
                   <input
                     autoFocus value={domainInput}
                     onChange={(e) => { setDomainInput(e.target.value); setError(null); }}
                     onKeyDown={(e) => { if (e.key === "Enter" && isValidDomain) setStep(2); }}
                     placeholder="go.example.com"
-                    className="w-full pl-10 pr-4 py-3 rounded-xl border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.04)] text-[14px] text-[#F1F5F9] placeholder:text-[#475569] outline-none focus:border-[#818CF8] focus:ring-2 focus:ring-[#818CF8]/20 transition-all"
+                    className="w-full pl-10 pr-4 py-3 rounded-xl border border-[#27272A] bg-[#27272A] text-[14px] text-[#FAFAFA] placeholder:text-[#3F3F46] outline-none focus:border-[#8B5CF6] focus:ring-2 focus:ring-[#8B5CF6]/20 transition-all"
                   />
                 </div>
                 {parsedType && isValidDomain && (
                   <span className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full ${
-                    parsedType === "root" ? "bg-[rgba(255,255,255,0.04)] text-[#94A3B8]" : "bg-[rgba(96,165,250,0.1)] text-[#60A5FA]"
+                    parsedType === "root" ? "bg-[#27272A] text-[#A1A1AA]" : "bg-[rgba(96,165,250,0.1)] text-[#60A5FA]"
                   }`}>
                     {parsedType === "root" ? <Globe className="w-3 h-3" /> : <Link2 className="w-3 h-3" />}
                     {parsedType === "root" ? "Root domain" : `Subdomain of ${normalizedInput.split(".").slice(-2).join(".")}`}
@@ -508,7 +508,7 @@ export default function DomainSetupWizard({
               <button
                 onClick={() => { setError(null); setStep(2); }}
                 disabled={!isValidDomain}
-                className="w-full py-3 rounded-xl bg-[#818CF8] text-white text-sm font-semibold hover:bg-[#6366F1] disabled:opacity-30 disabled:cursor-not-allowed transition-all active:scale-[0.98]"
+                className="w-full py-3 rounded-xl bg-[#8B5CF6] text-white text-sm font-semibold hover:bg-[#7C3AED] disabled:opacity-30 disabled:cursor-not-allowed transition-all active:scale-[0.98]"
               >
                 Continue <ArrowRight className="w-4 h-4 inline ml-1" />
               </button>
@@ -519,22 +519,22 @@ export default function DomainSetupWizard({
           {step === 2 && (
             <div className="space-y-5">
               <div className="text-center">
-                <h3 className="text-xl font-bold text-[#F1F5F9]">How will you use <span className="font-mono text-[#818CF8]">{normalizedInput}</span>?</h3>
-                <p className="text-sm text-[#64748B] mt-1">Helps us give you the safest DNS setup instructions</p>
+                <h3 className="text-xl font-bold text-[#FAFAFA]">How will you use <span className="font-mono text-[#8B5CF6]">{normalizedInput}</span>?</h3>
+                <p className="text-sm text-[#71717A] mt-1">Helps us give you the safest DNS setup instructions</p>
               </div>
               <div className="space-y-3">
                 <button
                   onClick={() => { setPurpose("links_only"); createDomain(normalizedInput, "links_only"); }}
                   disabled={creating}
-                  className="w-full text-left p-4 rounded-xl border-2 border-[rgba(255,255,255,0.08)] hover:border-[#818CF8] hover:bg-[rgba(255,255,255,0.06)] transition-all group disabled:opacity-50"
+                  className="w-full text-left p-4 rounded-xl border-2 border-[#27272A] hover:border-[#8B5CF6] hover:bg-[#27272A] transition-all group disabled:opacity-50"
                 >
                   <div className="flex items-start gap-3">
                     <div className="w-10 h-10 rounded-xl bg-[rgba(96,165,250,0.1)] flex items-center justify-center shrink-0 group-hover:bg-[rgba(96,165,250,0.15)] transition-colors">
                       <Link2 className="w-5 h-5 text-[#60A5FA]" />
                     </div>
                     <div>
-                      <p className="text-[14px] font-bold text-[#F1F5F9]">Short links only</p>
-                      <p className="text-[12px] text-[#64748B] mt-0.5">This domain isn't used for anything else</p>
+                      <p className="text-[14px] font-bold text-[#FAFAFA]">Short links only</p>
+                      <p className="text-[12px] text-[#71717A] mt-0.5">This domain isn't used for anything else</p>
                       <p className="text-[11px] text-emerald-600 font-medium mt-1.5">✓ Simplest setup</p>
                     </div>
                   </div>
@@ -542,27 +542,27 @@ export default function DomainSetupWizard({
                 <button
                   onClick={() => { setPurpose("has_website"); createDomain(normalizedInput, "has_website"); }}
                   disabled={creating}
-                  className="w-full text-left p-4 rounded-xl border-2 border-[rgba(255,255,255,0.08)] hover:border-[#818CF8] hover:bg-[rgba(255,255,255,0.06)] transition-all group disabled:opacity-50"
+                  className="w-full text-left p-4 rounded-xl border-2 border-[#27272A] hover:border-[#8B5CF6] hover:bg-[#27272A] transition-all group disabled:opacity-50"
                 >
                   <div className="flex items-start gap-3">
                     <div className="w-10 h-10 rounded-xl bg-[rgba(251,191,36,0.1)] flex items-center justify-center shrink-0 group-hover:bg-[rgba(251,191,36,0.15)] transition-colors">
                       <Monitor className="w-5 h-5 text-[#FBBF24]" />
                     </div>
                     <div>
-                      <p className="text-[14px] font-bold text-[#F1F5F9]">Domain with an existing website</p>
-                      <p className="text-[12px] text-[#64748B] mt-0.5">There's already a site on this domain</p>
+                      <p className="text-[14px] font-bold text-[#FAFAFA]">Domain with an existing website</p>
+                      <p className="text-[12px] text-[#71717A] mt-0.5">There's already a site on this domain</p>
                       <p className="text-[11px] text-amber-600 font-medium mt-1.5">⚠ We'll suggest a safe subdomain</p>
                     </div>
                   </div>
                 </button>
               </div>
               {creating && (
-                <div className="flex items-center justify-center gap-2 text-sm text-[#64748B]">
+                <div className="flex items-center justify-center gap-2 text-sm text-[#71717A]">
                   <Loader2 className="w-4 h-4 animate-spin" /> Setting up…
                 </div>
               )}
               {error && <p className="text-xs text-[#F87171] font-medium text-center">{error}</p>}
-              <button onClick={() => setStep(1)} className="w-full text-center text-sm text-[#475569] hover:text-[#94A3B8] transition-colors">
+              <button onClick={() => setStep(1)} className="w-full text-center text-sm text-[#3F3F46] hover:text-[#A1A1AA] transition-colors">
                 <ArrowLeft className="w-3.5 h-3.5 inline mr-1" /> Back
               </button>
             </div>
@@ -572,8 +572,8 @@ export default function DomainSetupWizard({
           {step === 3 && (
             <div className="space-y-4">
               <div className="text-center">
-                <h3 className="text-lg font-bold text-[#F1F5F9]">Add these DNS records</h3>
-                <p className="text-sm text-[#64748B] mt-0.5">Log in to your domain registrar and add the record(s) below</p>
+                <h3 className="text-lg font-bold text-[#FAFAFA]">Add these DNS records</h3>
+                <p className="text-sm text-[#71717A] mt-0.5">Log in to your domain registrar and add the record(s) below</p>
               </div>
 
               <div className="flex items-start gap-2.5 p-3.5 rounded-xl bg-[rgba(96,165,250,0.1)] border border-[rgba(96,165,250,0.2)] text-xs text-[#60A5FA]">
@@ -603,7 +603,7 @@ export default function DomainSetupWizard({
                   <div className="flex flex-wrap gap-2">
                     {setupInfo.recommendations.suggestedSubdomains.map((sub) => (
                       <button key={sub} onClick={() => switchToSubdomain(sub)} disabled={creating}
-                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-[rgba(255,255,255,0.03)] border border-[rgba(96,165,250,0.2)] text-xs font-semibold text-[#60A5FA] hover:bg-[rgba(96,165,250,0.15)] hover:border-[rgba(96,165,250,0.3)] transition-all disabled:opacity-50">
+                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-[#18181B] border border-[rgba(96,165,250,0.2)] text-xs font-semibold text-[#60A5FA] hover:bg-[rgba(96,165,250,0.15)] hover:border-[rgba(96,165,250,0.3)] transition-all disabled:opacity-50">
                         <Link2 className="w-3 h-3" /> {sub}
                       </button>
                     ))}
@@ -616,38 +616,38 @@ export default function DomainSetupWizard({
                 {setupInfo?.recommendations.records.map((rec, i) => {
                   const isRequired = rec.priority === "Required";
                   return (
-                    <div key={i} className={`rounded-xl border overflow-hidden ${isRequired ? "border-[rgba(255,255,255,0.12)]" : "border-dashed border-[rgba(255,255,255,0.08)]"}`}>
-                      <div className={`flex items-center justify-between px-4 py-2.5 ${isRequired ? "bg-[rgba(255,255,255,0.06)]" : "bg-[rgba(255,255,255,0.04)] border-b border-[rgba(255,255,255,0.08)]"}`}>
+                    <div key={i} className={`rounded-xl border overflow-hidden ${isRequired ? "border-[#3F3F46]" : "border-dashed border-[#27272A]"}`}>
+                      <div className={`flex items-center justify-between px-4 py-2.5 ${isRequired ? "bg-[#27272A]" : "bg-[#18181B] border-b border-[#27272A]"}`}>
                         <div className="flex items-center gap-2">
                           <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
                             rec.type === "A" ? "bg-emerald-400 text-emerald-900" :
                             "bg-purple-300 text-purple-900"
                           }`}>{rec.type}</span>
-                          <span className={`text-[11px] font-semibold ${isRequired ? "text-[#F1F5F9]" : "text-[#64748B]"}`}>
+                          <span className={`text-[11px] font-semibold ${isRequired ? "text-[#FAFAFA]" : "text-[#71717A]"}`}>
                             {isRequired ? "Required" : "Optional — ownership verification"}
                           </span>
                         </div>
                       </div>
-                      <div className="grid grid-cols-2 gap-px bg-[rgba(255,255,255,0.08)]">
-                        <div className="bg-[rgba(255,255,255,0.03)] p-3">
-                          <p className="text-[10px] font-semibold text-[#475569] uppercase mb-1.5">Name / Host</p>
+                      <div className="grid grid-cols-2 gap-px bg-[#27272A]">
+                        <div className="bg-[#18181B] p-3">
+                          <p className="text-[10px] font-semibold text-[#3F3F46] uppercase mb-1.5">Name / Host</p>
                           <div className="flex items-center">
-                            <p className="text-[13px] font-mono text-[#F1F5F9] break-all">{rec.name}</p>
+                            <p className="text-[13px] font-mono text-[#FAFAFA] break-all">{rec.name}</p>
                             <CopyBtn value={rec.name} />
                           </div>
-                          <p className="text-[10px] text-[#475569] mt-1">
+                          <p className="text-[10px] text-[#3F3F46] mt-1">
                             {rec.type === "A" ? "Use @ for root domain" : "Enter in the Host/Name field"}
                           </p>
                         </div>
-                        <div className="bg-[rgba(255,255,255,0.03)] p-3">
-                          <p className="text-[10px] font-semibold text-[#475569] uppercase mb-1.5">
+                        <div className="bg-[#18181B] p-3">
+                          <p className="text-[10px] font-semibold text-[#3F3F46] uppercase mb-1.5">
                             {rec.type === "CNAME" ? "Target / Points To" : rec.type === "A" ? "IP Address" : "Value"}
                           </p>
                           <div className="flex items-center">
-                            <p className="text-[13px] font-mono text-[#F1F5F9] break-all">{rec.value}</p>
+                            <p className="text-[13px] font-mono text-[#FAFAFA] break-all">{rec.value}</p>
                             <CopyBtn value={rec.value} />
                           </div>
-                          <p className="text-[10px] text-[#475569] mt-1">Enter in the Target/Value field</p>
+                          <p className="text-[10px] text-[#3F3F46] mt-1">Enter in the Target/Value field</p>
                         </div>
                       </div>
                     </div>
@@ -658,25 +658,25 @@ export default function DomainSetupWizard({
               {/* TTL Tip */}
               <button
                 onClick={() => setShowTtlTip(!showTtlTip)}
-                className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.08)] hover:bg-[rgba(255,255,255,0.08)] transition-colors"
+                className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl bg-[#18181B] border border-[#27272A] hover:bg-[#27272A] transition-colors"
               >
                 <div className="flex items-center gap-2">
-                  <Clock className="w-4 h-4 text-[#64748B]" />
-                  <span className="text-[13px] font-semibold text-[#E2E8F0]">What should I set for TTL?</span>
+                  <Clock className="w-4 h-4 text-[#71717A]" />
+                  <span className="text-[13px] font-semibold text-[#E4E4E7]">What should I set for TTL?</span>
                 </div>
-                {showTtlTip ? <ChevronUp className="w-4 h-4 text-[#475569]" /> : <ChevronDown className="w-4 h-4 text-[#475569]" />}
+                {showTtlTip ? <ChevronUp className="w-4 h-4 text-[#3F3F46]" /> : <ChevronDown className="w-4 h-4 text-[#3F3F46]" />}
               </button>
               {showTtlTip && (
-                <div className="px-4 py-3 rounded-xl bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.08)] text-xs text-[#94A3B8] space-y-1.5">
+                <div className="px-4 py-3 rounded-xl bg-[#18181B] border border-[#27272A] text-xs text-[#A1A1AA] space-y-1.5">
                   <p>TTL (Time To Live) controls how quickly your DNS change takes effect worldwide.</p>
                   <p>💡 <strong>Set TTL to 300</strong> (5 minutes) before adding the record — you'll see results faster.</p>
-                  <p className="text-[#475569]">After your domain is verified, you can raise TTL to 3600+ for better performance.</p>
+                  <p className="text-[#3F3F46]">After your domain is verified, you can raise TTL to 3600+ for better performance.</p>
                 </div>
               )}
 
               {/* Registrar Guides */}
-              <div className="border border-[rgba(255,255,255,0.08)] rounded-xl overflow-hidden">
-                <p className="px-4 py-2.5 text-[12px] font-semibold text-[#94A3B8] bg-[rgba(255,255,255,0.04)] border-b border-[rgba(255,255,255,0.08)]">
+              <div className="border border-[#27272A] rounded-xl overflow-hidden">
+                <p className="px-4 py-2.5 text-[12px] font-semibold text-[#A1A1AA] bg-[#18181B] border-b border-[#27272A]">
                   Step-by-step for your registrar
                 </p>
                 <div className="flex flex-wrap gap-1.5 p-3">
@@ -685,8 +685,8 @@ export default function DomainSetupWizard({
                       onClick={() => setActiveRegistrar(activeRegistrar === r.id ? null : r.id)}
                       className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${
                         activeRegistrar === r.id
-                          ? "bg-[#818CF8] text-white border-[#818CF8]"
-                          : "bg-[rgba(255,255,255,0.03)] text-[#94A3B8] border-[rgba(255,255,255,0.08)] hover:border-[rgba(255,255,255,0.2)]"
+                          ? "bg-[#8B5CF6] text-white border-[#8B5CF6]"
+                          : "bg-[#18181B] text-[#A1A1AA] border-[#27272A] hover:border-[#3F3F46]"
                       }`}
                     >
                       {r.name}
@@ -697,11 +697,11 @@ export default function DomainSetupWizard({
                   const guide = REGISTRAR_GUIDES.find((r) => r.id === activeRegistrar);
                   if (!guide) return null;
                   return (
-                    <div className="px-4 pb-4 pt-1 border-t border-[rgba(255,255,255,0.08)]">
+                    <div className="px-4 pb-4 pt-1 border-t border-[#27272A]">
                       <ol className="space-y-2">
                         {guide.steps.map((s, i) => (
-                          <li key={i} className="flex items-start gap-2 text-xs text-[#94A3B8]">
-                            <span className="w-4 h-4 rounded-full bg-[rgba(255,255,255,0.04)] text-[#64748B] font-bold text-[10px] flex items-center justify-center shrink-0 mt-0.5">{i + 1}</span>
+                          <li key={i} className="flex items-start gap-2 text-xs text-[#A1A1AA]">
+                            <span className="w-4 h-4 rounded-full bg-[#27272A] text-[#71717A] font-bold text-[10px] flex items-center justify-center shrink-0 mt-0.5">{i + 1}</span>
                             <span className="leading-relaxed">{s}</span>
                           </li>
                         ))}
@@ -717,9 +717,9 @@ export default function DomainSetupWizard({
                 })()}
               </div>
 
-              <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.08)]">
-                <HelpCircle className="w-4 h-4 text-[#475569] shrink-0" />
-                <p className="text-xs text-[#64748B]">
+              <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-[#18181B] border border-[#27272A]">
+                <HelpCircle className="w-4 h-4 text-[#3F3F46] shrink-0" />
+                <p className="text-xs text-[#71717A]">
                   Don't see your registrar? Search "<strong>add A record</strong>" on your registrar's help site — the steps are similar everywhere.
                 </p>
               </div>
@@ -735,12 +735,12 @@ export default function DomainSetupWizard({
 
               <div className="flex justify-between pt-1">
                 {!domain
-                  ? <button onClick={() => setStep(2)} className="text-sm text-[#475569] hover:text-[#94A3B8] transition-colors"><ArrowLeft className="w-3.5 h-3.5 inline mr-1" /> Back</button>
+                  ? <button onClick={() => setStep(2)} className="text-sm text-[#3F3F46] hover:text-[#A1A1AA] transition-colors"><ArrowLeft className="w-3.5 h-3.5 inline mr-1" /> Back</button>
                   : <div />
                 }
                 <button
                   onClick={() => { setDnsResult(null); setStep(4); }}
-                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#818CF8] text-white text-sm font-semibold hover:bg-[#6366F1] transition-all active:scale-[0.98]"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#8B5CF6] text-white text-sm font-semibold hover:bg-[#7C3AED] transition-all active:scale-[0.98]"
                 >
                   I've Added the Records <ArrowRight className="w-4 h-4" />
                 </button>
@@ -754,21 +754,21 @@ export default function DomainSetupWizard({
 
               {/* Title */}
               <div className="text-center">
-                <h3 className="text-lg font-bold text-[#F1F5F9]">DNS Verification</h3>
-                <p className="font-mono text-[13px] text-[#64748B] mt-0.5">{currentDomain?.domain}</p>
+                <h3 className="text-lg font-bold text-[#FAFAFA]">DNS Verification</h3>
+                <p className="font-mono text-[13px] text-[#71717A] mt-0.5">{currentDomain?.domain}</p>
               </div>
 
               {/* Initial loading */}
               {checking && !dnsResult && (
                 <div className="py-10 flex flex-col items-center gap-3">
                   <div className="relative w-12 h-12">
-                    <div className="absolute inset-0 rounded-full border-4 border-[rgba(255,255,255,0.04)]" />
+                    <div className="absolute inset-0 rounded-full border-4 border-[#27272A]" />
                     <div className="absolute inset-0 rounded-full border-4 border-t-blue-500 animate-spin" />
                     <Wifi className="absolute inset-0 m-auto w-5 h-5 text-blue-400" />
                   </div>
                   <div className="text-center">
-                    <p className="text-sm font-semibold text-[#E2E8F0]">Querying global DNS resolvers…</p>
-                    <p className="text-xs text-[#475569] mt-0.5">Checking Google, Cloudflare, OpenDNS, Quad9</p>
+                    <p className="text-sm font-semibold text-[#E4E4E7]">Querying global DNS resolvers…</p>
+                    <p className="text-xs text-[#3F3F46] mt-0.5">Checking Google, Cloudflare, OpenDNS, Quad9</p>
                   </div>
                 </div>
               )}
@@ -787,13 +787,13 @@ export default function DomainSetupWizard({
                       </div>
                     </div>
                   ) : (
-                    <div className="flex items-center gap-3 p-4 rounded-xl bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.08)]">
-                      <div className="w-10 h-10 rounded-full bg-[rgba(255,255,255,0.04)] flex items-center justify-center shrink-0">
-                        <Clock className="w-5 h-5 text-[#64748B]" />
+                    <div className="flex items-center gap-3 p-4 rounded-xl bg-[#27272A] border border-[#3F3F46]">
+                      <div className="w-10 h-10 rounded-full bg-[#18181B] flex items-center justify-center shrink-0">
+                        <Clock className="w-5 h-5 text-[#71717A]" />
                       </div>
                       <div>
-                        <p className="text-[14px] font-bold text-[#F1F5F9]">Waiting for DNS to propagate</p>
-                        <p className="text-[12px] text-[#64748B]">Usually takes 5–30 minutes after saving the record</p>
+                        <p className="text-[14px] font-bold text-[#FAFAFA]">Waiting for DNS to propagate</p>
+                        <p className="text-[12px] text-[#71717A]">Usually takes 5–30 minutes after saving the record</p>
                       </div>
                     </div>
                   )}
@@ -803,7 +803,7 @@ export default function DomainSetupWizard({
 
                   {/* ── Per-resolver dots ── */}
                   <div>
-                    <p className="text-[11px] font-semibold text-[#64748B] uppercase tracking-wide mb-3">Resolver Status</p>
+                    <p className="text-[11px] font-semibold text-[#71717A] uppercase tracking-wide mb-3">Resolver Status</p>
                     <div className="grid grid-cols-4 gap-3">
                       {dnsResult.resolvers.map((r) => <ResolverDot key={r.name} r={r} />)}
                     </div>
@@ -827,7 +827,7 @@ export default function DomainSetupWizard({
                   )}
 
                   {/* ── Checked at ── */}
-                  <p className="text-[10px] text-[#475569] text-right">
+                  <p className="text-[10px] text-[#3F3F46] text-right">
                     Last checked: {new Date(dnsResult.checkedAt).toLocaleTimeString()}
                   </p>
                 </>
@@ -842,7 +842,7 @@ export default function DomainSetupWizard({
 
               {/* ── Auto-retry countdown ── */}
               {dnsResult && !dnsResult.ready && !checking && (
-                <div className="flex items-center justify-between p-3 rounded-xl bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.08)]">
+                <div className="flex items-center justify-between p-3 rounded-xl bg-[#18181B] border border-[#27272A]">
                   <AutoRetryCountdown onRetry={checkDns} seconds={30} />
                 </div>
               )}
@@ -852,7 +852,7 @@ export default function DomainSetupWizard({
                 <button
                   onClick={checkDns}
                   disabled={checking}
-                  className="w-full inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-[rgba(255,255,255,0.03)] border border-[rgba(255,255,255,0.08)] text-sm font-semibold text-[#E2E8F0] hover:bg-[rgba(255,255,255,0.06)] disabled:opacity-50 transition-all"
+                  className="w-full inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-[#18181B] border border-[#27272A] text-sm font-semibold text-[#E4E4E7] hover:bg-[#27272A] disabled:opacity-50 transition-all"
                 >
                   {checking
                     ? <><Loader2 className="w-4 h-4 animate-spin" /> Checking…</>
@@ -877,7 +877,7 @@ export default function DomainSetupWizard({
                   <button
                     onClick={() => verifyDomain(true)}
                     disabled={verifying}
-                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[rgba(255,255,255,0.08)] text-white text-sm font-medium hover:bg-[rgba(255,255,255,0.12)] disabled:opacity-50 transition-all"
+                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#27272A] text-white text-sm font-medium hover:bg-[#3F3F46] disabled:opacity-50 transition-all"
                   >
                     <Zap className="w-4 h-4" /> Force Verify
                   </button>
@@ -885,10 +885,10 @@ export default function DomainSetupWizard({
               </div>
 
               <div className="flex justify-between pt-1">
-                <button onClick={() => setStep(3)} className="text-sm text-[#475569] hover:text-[#94A3B8] transition-colors">
+                <button onClick={() => setStep(3)} className="text-sm text-[#3F3F46] hover:text-[#A1A1AA] transition-colors">
                   <ArrowLeft className="w-3.5 h-3.5 inline mr-1" /> Back to DNS records
                 </button>
-                <button onClick={onClose} className="text-sm text-[#475569] hover:text-[#94A3B8] transition-colors">
+                <button onClick={onClose} className="text-sm text-[#3F3F46] hover:text-[#A1A1AA] transition-colors">
                   I'll verify later
                 </button>
               </div>
@@ -902,17 +902,17 @@ export default function DomainSetupWizard({
                 <PartyPopper className="w-8 h-8 text-emerald-500" />
               </div>
               <div>
-                <h3 className="text-xl font-bold text-[#F1F5F9]">Domain Connected!</h3>
-                <p className="text-sm text-[#64748B] mt-1">
-                  <span className="font-mono font-semibold text-[#F1F5F9] bg-[rgba(255,255,255,0.04)] px-2 py-0.5 rounded-lg">
+                <h3 className="text-xl font-bold text-[#FAFAFA]">Domain Connected!</h3>
+                <p className="text-sm text-[#71717A] mt-1">
+                  <span className="font-mono font-semibold text-[#FAFAFA] bg-[#27272A] px-2 py-0.5 rounded-lg">
                     {currentDomain?.domain || domain?.domain}
                   </span>{" "}
                   is verified and ready to use
                 </p>
               </div>
-              <div className="p-4 rounded-xl bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.08)] text-left space-y-2">
-                <p className="text-xs font-semibold text-[#E2E8F0]">What's next?</p>
-                <ul className="space-y-1.5 text-xs text-[#94A3B8]">
+              <div className="p-4 rounded-xl bg-[#27272A] border border-[#3F3F46] text-left space-y-2">
+                <p className="text-xs font-semibold text-[#E4E4E7]">What's next?</p>
+                <ul className="space-y-1.5 text-xs text-[#A1A1AA]">
                   <li className="flex items-start gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" /> Create short links and select this domain</li>
                   <li className="flex items-start gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" /> Share links like <span className="font-mono">{currentDomain?.domain || domain?.domain}/your-slug</span></li>
                   <li className="flex items-start gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" /> Track click analytics per link</li>
@@ -922,13 +922,13 @@ export default function DomainSetupWizard({
                 <a
                   href={`https://${currentDomain?.domain || domain?.domain}`}
                   target="_blank" rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.08)] text-sm font-semibold text-[#E2E8F0] hover:bg-[rgba(255,255,255,0.08)] transition-all"
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#27272A] border border-[#3F3F46] text-sm font-semibold text-[#E4E4E7] hover:bg-[#3F3F46] transition-all"
                 >
                   <ExternalLink className="w-3.5 h-3.5" /> Test domain
                 </a>
                 <button
                   onClick={onClose}
-                  className="inline-flex items-center gap-2 px-5 py-2 rounded-xl bg-[#818CF8] text-white text-sm font-semibold hover:bg-[#6366F1] transition-all"
+                  className="inline-flex items-center gap-2 px-5 py-2 rounded-xl bg-[#8B5CF6] text-white text-sm font-semibold hover:bg-[#7C3AED] transition-all"
                 >
                   Done <CheckCircle2 className="w-4 h-4" />
                 </button>

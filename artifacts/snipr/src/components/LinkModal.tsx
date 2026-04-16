@@ -274,7 +274,7 @@ export function LinkModal({ isOpen, onClose, link, initialSlug }: LinkModalProps
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-[620px] p-0 overflow-hidden border-0 shadow-2xl max-h-[90vh] flex flex-col" style={{ borderRadius: 24, background: "rgba(17,24,39,0.95)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 25px 60px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.06)" }}>
+      <DialogContent className="sm:max-w-[620px] p-0 overflow-hidden border-0 shadow-2xl max-h-[90vh] flex flex-col" style={{ borderRadius: 20, background: "#18181B", border: "1px solid #27272A", boxShadow: "0 25px 60px rgba(0,0,0,0.5), 0 0 0 1px #27272A" }}>
 
         {/* SUCCESS SCREEN */}
         {createdLink ? (
@@ -288,25 +288,24 @@ export function LinkModal({ isOpen, onClose, link, initialSlug }: LinkModalProps
                 <CheckCircle2 className="w-8 h-8 text-white" />
               </div>
 
-              <h2 className="text-[22px] font-extrabold text-[#F1F5F9] tracking-[-0.02em] font-[family-name:var(--font-space-grotesk)]">
+              <h2 className="text-[22px] font-extrabold text-[#FAFAFA] tracking-[-0.02em] font-[family-name:var(--font-space-grotesk)]">
                 Link Created!
               </h2>
-              <p className="text-[13px] text-[#64748B] mt-1.5 font-medium">Your short link is ready to share</p>
+              <p className="text-[13px] text-[#71717A] mt-1.5 font-medium">Your short link is ready to share</p>
 
               {/* Short URL display */}
-              <div className="mt-6 flex items-center gap-2 p-1.5 mx-auto max-w-md" style={{ borderRadius: 14, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }}>
+              <div className="mt-6 flex items-center gap-2 p-1.5 mx-auto max-w-md rounded-xl" style={{ background: "#27272A", border: "1px solid #3F3F46" }}>
                 <div className="flex-1 px-4 py-2.5 text-left min-w-0">
-                  <p className="text-[15px] font-bold text-[#F1F5F9] truncate font-[family-name:var(--font-space-grotesk)] tracking-[-0.01em]">
+                  <p className="text-[15px] font-bold text-[#FAFAFA] truncate font-[family-name:var(--font-space-grotesk)] tracking-[-0.01em]">
                     {createdLink.shortUrl.replace(/^https?:\/\//, "")}
                   </p>
                 </div>
                 <button
                   onClick={handleCopyLink}
-                  className="shrink-0 px-4 py-2.5 text-[13px] font-bold text-white transition-all duration-200 active:scale-[0.95]"
+                  className="shrink-0 px-4 py-2.5 rounded-lg text-[13px] font-bold text-white transition-all duration-200 active:scale-[0.95]"
                   style={{
-                    borderRadius: 10,
-                    background: copied ? "linear-gradient(135deg, #34D399, #10B981)" : "linear-gradient(135deg, #818CF8, #6366F1)",
-                    boxShadow: copied ? "0 3px 12px rgba(52,211,153,0.3)" : "0 3px 12px rgba(129,140,248,0.3)",
+                    background: copied ? "linear-gradient(135deg, #34D399, #10B981)" : "linear-gradient(135deg, #8B5CF6, #7C3AED)",
+                    boxShadow: copied ? "0 3px 12px rgba(52,211,153,0.3)" : "0 3px 12px rgba(139,92,246,0.3)",
                   }}
                 >
                   <span className="flex items-center gap-1.5">
@@ -322,8 +321,8 @@ export function LinkModal({ isOpen, onClose, link, initialSlug }: LinkModalProps
                   href={createdLink.shortUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-2 px-4 py-2.5 text-[13px] font-semibold transition-all duration-200 hover:-translate-y-0.5 active:scale-[0.97]"
-                  style={{ borderRadius: 12, background: "rgba(129,140,248,0.1)", color: "#818CF8", border: "1px solid rgba(129,140,248,0.2)" }}
+                  className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-[13px] font-semibold transition-all duration-200 hover:-translate-y-0.5 active:scale-[0.97]"
+                  style={{ background: "rgba(139,92,246,0.1)", color: "#8B5CF6", border: "1px solid rgba(139,92,246,0.2)" }}
                 >
                   <ExternalLink className="w-4 h-4" /> Open Link
                 </a>
@@ -332,8 +331,8 @@ export function LinkModal({ isOpen, onClose, link, initialSlug }: LinkModalProps
                 <button
                   onClick={handleShowQr}
                   disabled={qrLoading}
-                  className="flex items-center gap-2 px-4 py-2.5 text-[13px] font-semibold transition-all duration-200 hover:-translate-y-0.5 active:scale-[0.97] disabled:opacity-50"
-                  style={{ borderRadius: 12, background: "rgba(52,211,153,0.1)", color: "#34D399", border: "1px solid rgba(52,211,153,0.2)" }}
+                  className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-[13px] font-semibold transition-all duration-200 hover:-translate-y-0.5 active:scale-[0.97] disabled:opacity-50"
+                  style={{ background: "rgba(52,211,153,0.1)", color: "#34D399", border: "1px solid rgba(52,211,153,0.2)" }}
                 >
                   {qrLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <QrCode className="w-4 h-4" />} QR Code
                 </button>
@@ -342,15 +341,15 @@ export function LinkModal({ isOpen, onClose, link, initialSlug }: LinkModalProps
               {/* QR Code display */}
               {qrSvg && (
                 <div className="mt-6 animate-in fade-in slide-in-from-bottom-3 duration-300">
-                  <div className="inline-block p-5 bg-white mx-auto" style={{ borderRadius: 16, border: "1px solid rgba(255,255,255,0.1)", boxShadow: "0 2px 12px rgba(0,0,0,0.3)" }}>
+                  <div className="inline-block p-5 bg-white mx-auto rounded-xl" style={{ border: "1px solid #3F3F46", boxShadow: "0 2px 12px rgba(0,0,0,0.3)" }}>
                     <div
                       className="w-[180px] h-[180px] mx-auto"
                       dangerouslySetInnerHTML={{ __html: qrSvg }}
                     />
                     <button
                       onClick={handleDownloadQr}
-                      className="mt-3 flex items-center gap-1.5 mx-auto px-3.5 py-2 text-[12px] font-semibold transition-all duration-200 hover:-translate-y-0.5 active:scale-[0.97]"
-                      style={{ borderRadius: 10, background: "rgba(255,255,255,0.05)", color: "#94A3B8", border: "1px solid rgba(255,255,255,0.1)" }}
+                      className="mt-3 flex items-center gap-1.5 mx-auto px-3.5 py-2 rounded-lg text-[12px] font-semibold transition-all duration-200 hover:-translate-y-0.5 active:scale-[0.97]"
+                      style={{ background: "#27272A", color: "#A1A1AA", border: "1px solid #3F3F46" }}
                     >
                       <Download className="w-3.5 h-3.5" /> Download PNG
                     </button>
@@ -362,15 +361,14 @@ export function LinkModal({ isOpen, onClose, link, initialSlug }: LinkModalProps
               <div className="mt-7 flex items-center justify-center gap-3">
                 <button
                   onClick={() => { setCreatedLink(null); setCopied(false); setQrSvg(null); }}
-                  className="px-5 py-2.5 text-[13px] font-semibold transition-all duration-200 active:scale-[0.97]"
-                  style={{ borderRadius: 12, background: "rgba(129,140,248,0.1)", color: "#818CF8", border: "1px solid rgba(129,140,248,0.15)" }}
+                  className="px-5 py-2.5 rounded-lg text-[13px] font-semibold transition-all duration-200 active:scale-[0.97]"
+                  style={{ background: "rgba(139,92,246,0.1)", color: "#8B5CF6", border: "1px solid rgba(139,92,246,0.15)" }}
                 >
                   Create Another
                 </button>
                 <button
                   onClick={onClose}
-                  className="px-5 py-2.5 text-[13px] font-semibold text-[#64748B] hover:text-[#E2E8F0] transition-colors"
-                  style={{ borderRadius: 12 }}
+                  className="px-5 py-2.5 rounded-lg text-[13px] font-semibold text-[#71717A] hover:text-[#E4E4E7] transition-colors"
                 >
                   Done
                 </button>
@@ -383,18 +381,18 @@ export function LinkModal({ isOpen, onClose, link, initialSlug }: LinkModalProps
         {/* Header */}
         <div className="relative px-7 pt-7 pb-5">
           {/* Accent bar */}
-          <div className="absolute top-0 left-0 right-0 h-[4px]" style={{ background: "linear-gradient(90deg, #818CF8, #6366F1, #818CF8, #A78BFA)" }} />
+          <div className="absolute top-0 left-0 right-0 h-[4px]" style={{ background: "linear-gradient(90deg, #8B5CF6, #7C3AED, #8B5CF6, #A78BFA)" }} />
 
           <DialogHeader>
             <div className="flex items-center gap-3.5 mb-1.5">
-              <div className="w-11 h-11 rounded-[14px] flex items-center justify-center" style={{ background: "linear-gradient(135deg, #818CF8, #6366F1)", boxShadow: "0 4px 14px rgba(129,140,248,0.3)" }}>
+              <div className="w-11 h-11 rounded-xl flex items-center justify-center" style={{ background: "linear-gradient(135deg, #8B5CF6, #7C3AED)", boxShadow: "0 4px 14px rgba(139,92,246,0.3)" }}>
                 <LinkIcon className="w-5 h-5 text-white" />
               </div>
               <div>
-                <DialogTitle className="text-[22px] font-extrabold text-[#F1F5F9] tracking-[-0.02em] font-[family-name:var(--font-space-grotesk)]">
+                <DialogTitle className="text-[22px] font-extrabold text-[#FAFAFA] tracking-[-0.02em] font-[family-name:var(--font-space-grotesk)]">
                   {isEdit ? "Edit Short Link" : "Create Short Link"}
                 </DialogTitle>
-                <DialogDescription className="text-[13px] text-[#64748B] mt-0.5 font-medium">
+                <DialogDescription className="text-[13px] text-[#71717A] mt-0.5 font-medium">
                   {isEdit ? "Update your short link settings." : "Turn a long URL into a trackable short link."}
                 </DialogDescription>
               </div>
@@ -403,20 +401,20 @@ export function LinkModal({ isOpen, onClose, link, initialSlug }: LinkModalProps
         </div>
 
         {/* Form Body */}
-        <div className="px-7 pb-2 flex-1 overflow-y-auto custom-scrollbar" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+        <div className="px-7 pb-2 flex-1 overflow-y-auto custom-scrollbar" style={{ borderTop: "1px solid #27272A" }}>
           <form id="link-form" onSubmit={form.handleSubmit(onSubmit)} className="py-5 space-y-5">
 
             {/* Destination URL */}
             <div className="space-y-2">
-              <Label htmlFor="destinationUrl" className="text-[12px] font-bold text-[#94A3B8] tracking-[0.03em] uppercase">
+              <Label htmlFor="destinationUrl" className="text-[12px] font-bold text-[#A1A1AA] tracking-[0.03em] uppercase">
                 Destination URL <span className="text-[#F87171]">*</span>
               </Label>
               <Input
                 id="destinationUrl"
                 placeholder="https://example.com/very/long/url"
                 {...form.register("destinationUrl")}
-                className="h-11 text-[14px] font-medium text-[#E2E8F0] placeholder:text-[#64748B] focus:border-[#818CF8] focus:ring-2 focus:ring-[#818CF8]/15 transition-all"
-                style={{ borderRadius: 12, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }}
+                className="h-11 rounded-lg text-[14px] font-medium text-[#E4E4E7] placeholder:text-[#71717A] focus:border-[#8B5CF6] focus:ring-2 focus:ring-[#8B5CF6]/15 transition-all"
+                style={{ background: "#27272A", border: "1px solid #3F3F46" }}
               />
               {form.formState.errors.destinationUrl && (
                 <p className="text-[12px] text-[#F87171] font-semibold">{form.formState.errors.destinationUrl.message}</p>
@@ -427,11 +425,11 @@ export function LinkModal({ isOpen, onClose, link, initialSlug }: LinkModalProps
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {/* Domain Selector */}
               <div className="space-y-2">
-                <Label className="text-[12px] font-bold text-[#94A3B8] tracking-[0.03em] uppercase flex items-center gap-1.5">
-                  <Globe className="w-3.5 h-3.5 text-[#818CF8]" /> Domain <span className="text-[#F87171]">*</span>
+                <Label className="text-[12px] font-bold text-[#A1A1AA] tracking-[0.03em] uppercase flex items-center gap-1.5">
+                  <Globe className="w-3.5 h-3.5 text-[#8B5CF6]" /> Domain <span className="text-[#F87171]">*</span>
                 </Label>
                 {verifiedDomains.length === 0 ? (
-                  <div className="flex items-center gap-2.5 p-3 text-[12px]" style={{ borderRadius: 12, background: "rgba(251,191,36,0.08)", border: "1px solid rgba(251,191,36,0.2)", color: "#FBBF24" }}>
+                  <div className="flex items-center gap-2.5 p-3 rounded-lg text-[12px]" style={{ background: "rgba(251,191,36,0.08)", border: "1px solid rgba(251,191,36,0.2)", color: "#FBBF24" }}>
                     <ShieldAlert className="w-4 h-4 shrink-0 text-[#FBBF24]" />
                     <span>
                       No verified domain.{" "}
@@ -446,7 +444,7 @@ export function LinkModal({ isOpen, onClose, link, initialSlug }: LinkModalProps
                       value={watchDomainId || ""}
                       onValueChange={(val) => form.setValue("domainId", val, { shouldValidate: true })}
                     >
-                      <SelectTrigger className="h-11 text-[14px] font-medium text-[#E2E8F0] focus:border-[#818CF8] focus:ring-2 focus:ring-[#818CF8]/15" style={{ borderRadius: 12, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }}>
+                      <SelectTrigger className="h-11 rounded-lg text-[14px] font-medium text-[#E4E4E7] focus:border-[#8B5CF6] focus:ring-2 focus:ring-[#8B5CF6]/15" style={{ background: "#27272A", border: "1px solid #3F3F46" }}>
                         <SelectValue placeholder="Select domain" />
                       </SelectTrigger>
                       <SelectContent className="rounded-xl">
@@ -464,18 +462,18 @@ export function LinkModal({ isOpen, onClose, link, initialSlug }: LinkModalProps
 
               {/* Custom Slug */}
               <div className="space-y-2">
-                <Label htmlFor="slug" className="text-[12px] font-bold text-[#94A3B8] tracking-[0.03em] uppercase">Custom Slug</Label>
+                <Label htmlFor="slug" className="text-[12px] font-bold text-[#A1A1AA] tracking-[0.03em] uppercase">Custom Slug</Label>
                 <div className="flex gap-2">
                   <div className="relative flex-1">
                     {slugPrefix && (
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[12px] text-[#64748B] font-medium select-none pointer-events-none">{slugPrefix}</span>
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[12px] text-[#71717A] font-medium select-none pointer-events-none">{slugPrefix}</span>
                     )}
                     <Input
                       id="slug"
                       placeholder="my-campaign"
                       {...form.register("slug")}
-                      className="h-11 text-[14px] font-medium text-[#E2E8F0] placeholder:text-[#64748B] focus:border-[#818CF8] focus:ring-2 focus:ring-[#818CF8]/15 transition-all"
-                      style={{ borderRadius: 12, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", paddingLeft: slugPrefix ? `${Math.min(slugPrefix.length * 7.2 + 12, 150)}px` : undefined }}
+                      className="h-11 rounded-lg text-[14px] font-medium text-[#E4E4E7] placeholder:text-[#71717A] focus:border-[#8B5CF6] focus:ring-2 focus:ring-[#8B5CF6]/15 transition-all"
+                      style={{ background: "#27272A", border: "1px solid #3F3F46", paddingLeft: slugPrefix ? `${Math.min(slugPrefix.length * 7.2 + 12, 150)}px` : undefined }}
                     />
                   </div>
                   {watchUrl && (
@@ -485,15 +483,15 @@ export function LinkModal({ isOpen, onClose, link, initialSlug }: LinkModalProps
                           type="button"
                           onClick={handleSuggest}
                           disabled={suggestMutation.isPending}
-                          className="w-11 h-11 shrink-0 flex items-center justify-center transition-all duration-200 hover:scale-105 active:scale-95 disabled:opacity-50"
-                          style={{ borderRadius: 12, background: "rgba(129,140,248,0.1)", border: "1px solid rgba(129,140,248,0.2)", color: "#818CF8" }}
+                          className="w-11 h-11 shrink-0 flex items-center justify-center rounded-lg transition-all duration-200 hover:scale-105 active:scale-95 disabled:opacity-50"
+                          style={{ background: "rgba(139,92,246,0.1)", border: "1px solid rgba(139,92,246,0.2)", color: "#8B5CF6" }}
                           title="AI slug suggestions"
                         >
                           {suggestMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
                         </button>
                       </PopoverTrigger>
-                      <PopoverContent align="end" className="w-[260px] p-3 shadow-xl" style={{ borderRadius: 16, background: "rgba(17,24,39,0.95)", border: "1px solid rgba(255,255,255,0.08)", backdropFilter: "blur(20px)" }}>
-                        <div className="text-[11px] font-bold text-[#64748B] tracking-[0.05em] uppercase mb-2.5 px-1">AI Suggestions</div>
+                      <PopoverContent align="end" className="w-[260px] p-3 shadow-xl rounded-xl" style={{ background: "#18181B", border: "1px solid #27272A" }}>
+                        <div className="text-[11px] font-bold text-[#71717A] tracking-[0.05em] uppercase mb-2.5 px-1">AI Suggestions</div>
                         <div className="flex flex-wrap gap-1.5">
                           {slugSuggestions.map(s => (
                             <button
@@ -501,9 +499,9 @@ export function LinkModal({ isOpen, onClose, link, initialSlug }: LinkModalProps
                               type="button"
                               onClick={() => { form.setValue("slug", s); setShowSuggestions(false); }}
                               className="px-3 py-1.5 text-[12px] font-semibold rounded-lg transition-all duration-150 hover:scale-[1.03] active:scale-[0.97]"
-                              style={{ background: "rgba(129,140,248,0.1)", color: "#818CF8", border: "1px solid rgba(129,140,248,0.15)" }}
-                              onMouseEnter={e => { (e.currentTarget).style.background = "#818CF8"; (e.currentTarget).style.color = "#fff"; }}
-                              onMouseLeave={e => { (e.currentTarget).style.background = "rgba(129,140,248,0.1)"; (e.currentTarget).style.color = "#818CF8"; }}
+                              style={{ background: "rgba(139,92,246,0.1)", color: "#8B5CF6", border: "1px solid rgba(139,92,246,0.15)" }}
+                              onMouseEnter={e => { (e.currentTarget).style.background = "#8B5CF6"; (e.currentTarget).style.color = "#fff"; }}
+                              onMouseLeave={e => { (e.currentTarget).style.background = "rgba(139,92,246,0.1)"; (e.currentTarget).style.color = "#8B5CF6"; }}
                             >
                               {s}
                             </button>
@@ -519,33 +517,33 @@ export function LinkModal({ isOpen, onClose, link, initialSlug }: LinkModalProps
             {/* Title + Expiry row */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="title" className="text-[12px] font-bold text-[#94A3B8] tracking-[0.03em] uppercase">Title <span className="text-[#64748B] font-normal normal-case tracking-normal">(optional)</span></Label>
+                <Label htmlFor="title" className="text-[12px] font-bold text-[#A1A1AA] tracking-[0.03em] uppercase">Title <span className="text-[#71717A] font-normal normal-case tracking-normal">(optional)</span></Label>
                 <Input
                   id="title"
                   placeholder="Summer Sale Promo"
                   {...form.register("title")}
-                  className="h-11 text-[14px] font-medium text-[#E2E8F0] placeholder:text-[#64748B] focus:border-[#818CF8] focus:ring-2 focus:ring-[#818CF8]/15 transition-all"
-                  style={{ borderRadius: 12, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }}
+                  className="h-11 rounded-lg text-[14px] font-medium text-[#E4E4E7] placeholder:text-[#71717A] focus:border-[#8B5CF6] focus:ring-2 focus:ring-[#8B5CF6]/15 transition-all"
+                  style={{ background: "#27272A", border: "1px solid #3F3F46" }}
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="expiresAt" className="text-[12px] font-bold text-[#94A3B8] tracking-[0.03em] uppercase">Expiry <span className="text-[#64748B] font-normal normal-case tracking-normal">(optional)</span></Label>
+                <Label htmlFor="expiresAt" className="text-[12px] font-bold text-[#A1A1AA] tracking-[0.03em] uppercase">Expiry <span className="text-[#71717A] font-normal normal-case tracking-normal">(optional)</span></Label>
                 <Input
                   id="expiresAt"
                   type="datetime-local"
                   {...form.register("expiresAt")}
-                  className="h-11 text-[14px] font-medium text-[#E2E8F0] focus:border-[#818CF8] focus:ring-2 focus:ring-[#818CF8]/15 transition-all"
-                  style={{ borderRadius: 12, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }}
+                  className="h-11 rounded-lg text-[14px] font-medium text-[#E4E4E7] focus:border-[#8B5CF6] focus:ring-2 focus:ring-[#8B5CF6]/15 transition-all"
+                  style={{ background: "#27272A", border: "1px solid #3F3F46" }}
                 />
               </div>
             </div>
 
             {/* Link Status (edit only) */}
             {isEdit && (
-              <div className="flex items-center justify-between p-4" style={{ borderRadius: 14, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+              <div className="flex items-center justify-between p-4 rounded-xl" style={{ background: "#27272A", border: "1px solid #3F3F46" }}>
                 <div>
-                  <p className="text-[13px] font-bold text-[#F1F5F9]">Link Status</p>
-                  <p className="text-[11px] text-[#64748B] mt-0.5">Enable or disable this redirect.</p>
+                  <p className="text-[13px] font-bold text-[#FAFAFA]">Link Status</p>
+                  <p className="text-[11px] text-[#71717A] mt-0.5">Enable or disable this redirect.</p>
                 </div>
                 <Switch
                   checked={form.watch("enabled")}
@@ -561,27 +559,27 @@ export function LinkModal({ isOpen, onClose, link, initialSlug }: LinkModalProps
                 onClick={() => setShowAdvanced(!showAdvanced)}
                 className="group flex items-center gap-2 py-2"
               >
-                <div className="w-7 h-7 rounded-[8px] flex items-center justify-center transition-all duration-200 group-hover:scale-105" style={{ background: showAdvanced ? "#818CF8" : "rgba(129,140,248,0.1)", border: showAdvanced ? "none" : "1px solid rgba(129,140,248,0.15)" }}>
-                  <Settings2 className="w-3.5 h-3.5" style={{ color: showAdvanced ? "#fff" : "#818CF8" }} />
+                <div className="w-7 h-7 rounded-lg flex items-center justify-center transition-all duration-200 group-hover:scale-105" style={{ background: showAdvanced ? "#8B5CF6" : "rgba(139,92,246,0.1)", border: showAdvanced ? "none" : "1px solid rgba(139,92,246,0.15)" }}>
+                  <Settings2 className="w-3.5 h-3.5" style={{ color: showAdvanced ? "#fff" : "#8B5CF6" }} />
                 </div>
-                <span className="text-[13px] font-bold" style={{ color: "#818CF8" }}>Advanced Settings</span>
-                {showAdvanced ? <ChevronUp className="w-4 h-4 text-[#818CF8]" /> : <ChevronDown className="w-4 h-4 text-[#818CF8]" />}
+                <span className="text-[13px] font-bold" style={{ color: "#8B5CF6" }}>Advanced Settings</span>
+                {showAdvanced ? <ChevronUp className="w-4 h-4 text-[#8B5CF6]" /> : <ChevronDown className="w-4 h-4 text-[#8B5CF6]" />}
               </button>
 
               {showAdvanced && (
-                <div className="mt-3 p-5 space-y-4 animate-in slide-in-from-top-2 fade-in duration-200" style={{ borderRadius: 16, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                <div className="mt-3 p-5 space-y-4 rounded-xl animate-in slide-in-from-top-2 fade-in duration-200" style={{ background: "#27272A", border: "1px solid #3F3F46" }}>
 
                   {/* Folder + Click Limit */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label className="text-[11px] font-bold text-[#64748B] tracking-[0.04em] uppercase flex items-center gap-1.5">
+                      <Label className="text-[11px] font-bold text-[#71717A] tracking-[0.04em] uppercase flex items-center gap-1.5">
                         <FolderOpen className="w-3 h-3 text-[#FB923C]" /> Folder
                       </Label>
                       <Select
                         value={form.watch("folderId") || "none"}
                         onValueChange={(val) => form.setValue("folderId", val === "none" ? null : val)}
                       >
-                        <SelectTrigger className="h-10 text-[13px] font-medium text-[#E2E8F0]" style={{ borderRadius: 10, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }}>
+                        <SelectTrigger className="h-10 rounded-lg text-[13px] font-medium text-[#E4E4E7]" style={{ background: "#18181B", border: "1px solid #3F3F46" }}>
                           <SelectValue placeholder="No folder" />
                         </SelectTrigger>
                         <SelectContent className="rounded-xl">
@@ -593,7 +591,7 @@ export function LinkModal({ isOpen, onClose, link, initialSlug }: LinkModalProps
                       </Select>
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="clickLimit" className="text-[11px] font-bold text-[#64748B] tracking-[0.04em] uppercase flex items-center gap-1.5">
+                      <Label htmlFor="clickLimit" className="text-[11px] font-bold text-[#71717A] tracking-[0.04em] uppercase flex items-center gap-1.5">
                         <Target className="w-3 h-3 text-[#F87171]" /> Click Limit
                       </Label>
                       <Input
@@ -601,28 +599,28 @@ export function LinkModal({ isOpen, onClose, link, initialSlug }: LinkModalProps
                         type="number"
                         placeholder="e.g. 1000"
                         {...form.register("clickLimit")}
-                        className="h-10 text-[13px] font-medium text-[#E2E8F0] placeholder:text-[#64748B]"
-                        style={{ borderRadius: 10, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }}
+                        className="h-10 rounded-lg text-[13px] font-medium text-[#E4E4E7] placeholder:text-[#71717A]"
+                        style={{ background: "#18181B", border: "1px solid #3F3F46" }}
                       />
                     </div>
                   </div>
 
                   {/* Fallback URL */}
                   <div className="space-y-2">
-                    <Label htmlFor="fallbackUrl" className="text-[11px] font-bold text-[#64748B] tracking-[0.04em] uppercase">Fallback URL</Label>
+                    <Label htmlFor="fallbackUrl" className="text-[11px] font-bold text-[#71717A] tracking-[0.04em] uppercase">Fallback URL</Label>
                     <Input
                       id="fallbackUrl"
                       placeholder="https://example.com/expired"
                       {...form.register("fallbackUrl")}
-                      className="h-10 text-[13px] font-medium text-[#E2E8F0] placeholder:text-[#64748B]"
-                      style={{ borderRadius: 10, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }}
+                      className="h-10 rounded-lg text-[13px] font-medium text-[#E4E4E7] placeholder:text-[#71717A]"
+                      style={{ background: "#18181B", border: "1px solid #3F3F46" }}
                     />
-                    <p className="text-[11px] text-[#64748B]">Redirect here if link expires, is disabled, or hits click limit.</p>
+                    <p className="text-[11px] text-[#71717A]">Redirect here if link expires, is disabled, or hits click limit.</p>
                   </div>
 
                   {/* Password */}
                   <div className="space-y-2">
-                    <Label htmlFor="password" className="text-[11px] font-bold text-[#64748B] tracking-[0.04em] uppercase flex items-center gap-1.5">
+                    <Label htmlFor="password" className="text-[11px] font-bold text-[#71717A] tracking-[0.04em] uppercase flex items-center gap-1.5">
                       <Lock className="w-3 h-3 text-[#FB923C]" /> Password Protection
                     </Label>
                     <Input
@@ -630,19 +628,19 @@ export function LinkModal({ isOpen, onClose, link, initialSlug }: LinkModalProps
                       type="password"
                       placeholder={isEdit && link?.hasPassword ? "Leave blank to keep current" : "Set a password..."}
                       {...form.register("password")}
-                      className="h-10 text-[13px] font-medium text-[#E2E8F0] placeholder:text-[#64748B]"
-                      style={{ borderRadius: 10, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }}
+                      className="h-10 rounded-lg text-[13px] font-medium text-[#E4E4E7] placeholder:text-[#71717A]"
+                      style={{ background: "#18181B", border: "1px solid #3F3F46" }}
                     />
                   </div>
 
                   {/* Toggle switches */}
                   <div className="space-y-2.5">
-                    <div className="flex items-center justify-between p-3.5" style={{ borderRadius: 12, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                    <div className="flex items-center justify-between p-3.5 rounded-lg" style={{ background: "#18181B", border: "1px solid #3F3F46" }}>
                       <div>
-                        <p className="text-[12px] font-bold text-[#F1F5F9] flex items-center gap-1.5">
+                        <p className="text-[12px] font-bold text-[#FAFAFA] flex items-center gap-1.5">
                           <EyeOff className="w-3.5 h-3.5 text-[#A78BFA]" /> Cloak URL
                         </p>
-                        <p className="text-[11px] text-[#64748B] mt-0.5">Visitors see your short link in the address bar.</p>
+                        <p className="text-[11px] text-[#71717A] mt-0.5">Visitors see your short link in the address bar.</p>
                       </div>
                       <Switch
                         checked={form.watch("isCloaked")}
@@ -650,12 +648,12 @@ export function LinkModal({ isOpen, onClose, link, initialSlug }: LinkModalProps
                       />
                     </div>
 
-                    <div className="flex items-center justify-between p-3.5" style={{ borderRadius: 12, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                    <div className="flex items-center justify-between p-3.5 rounded-lg" style={{ background: "#18181B", border: "1px solid #3F3F46" }}>
                       <div>
-                        <p className="text-[12px] font-bold text-[#F1F5F9] flex items-center gap-1.5">
+                        <p className="text-[12px] font-bold text-[#FAFAFA] flex items-center gap-1.5">
                           <ShieldOff className="w-3.5 h-3.5 text-[#F87171]" /> Hide Referrer
                         </p>
-                        <p className="text-[11px] text-[#64748B] mt-0.5">Destination site won&apos;t see where the click came from.</p>
+                        <p className="text-[11px] text-[#71717A] mt-0.5">Destination site won&apos;t see where the click came from.</p>
                       </div>
                       <Switch
                         checked={form.watch("hideReferrer")}
@@ -665,30 +663,30 @@ export function LinkModal({ isOpen, onClose, link, initialSlug }: LinkModalProps
                   </div>
 
                   {/* Mobile Deep Links */}
-                  <div className="p-3.5 space-y-3" style={{ borderRadius: 12, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
-                    <p className="text-[12px] font-bold text-[#F1F5F9] flex items-center gap-1.5">
+                  <div className="p-3.5 space-y-3 rounded-lg" style={{ background: "#18181B", border: "1px solid #3F3F46" }}>
+                    <p className="text-[12px] font-bold text-[#FAFAFA] flex items-center gap-1.5">
                       <Smartphone className="w-3.5 h-3.5 text-[#60A5FA]" /> Mobile Deep Links
                     </p>
-                    <p className="text-[11px] text-[#64748B] -mt-1">Open native apps on mobile. Falls back to destination if app not installed.</p>
+                    <p className="text-[11px] text-[#71717A] -mt-1">Open native apps on mobile. Falls back to destination if app not installed.</p>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div className="space-y-1">
-                        <Label htmlFor="iosDeepLink" className="text-[10px] font-semibold text-[#64748B] uppercase">iOS</Label>
+                        <Label htmlFor="iosDeepLink" className="text-[10px] font-semibold text-[#71717A] uppercase">iOS</Label>
                         <Input
                           id="iosDeepLink"
                           placeholder="myapp://path"
                           {...form.register("iosDeepLink")}
-                          className="h-9 text-[12px] font-medium text-[#E2E8F0] placeholder:text-[#64748B]"
-                          style={{ borderRadius: 8, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }}
+                          className="h-9 rounded-md text-[12px] font-medium text-[#E4E4E7] placeholder:text-[#71717A]"
+                          style={{ background: "#27272A", border: "1px solid #3F3F46" }}
                         />
                       </div>
                       <div className="space-y-1">
-                        <Label htmlFor="androidDeepLink" className="text-[10px] font-semibold text-[#64748B] uppercase">Android</Label>
+                        <Label htmlFor="androidDeepLink" className="text-[10px] font-semibold text-[#71717A] uppercase">Android</Label>
                         <Input
                           id="androidDeepLink"
                           placeholder="myapp://path"
                           {...form.register("androidDeepLink")}
-                          className="h-9 text-[12px] font-medium text-[#E2E8F0] placeholder:text-[#64748B]"
-                          style={{ borderRadius: 8, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }}
+                          className="h-9 rounded-md text-[12px] font-medium text-[#E4E4E7] placeholder:text-[#71717A]"
+                          style={{ background: "#27272A", border: "1px solid #3F3F46" }}
                         />
                       </div>
                     </div>
@@ -697,7 +695,7 @@ export function LinkModal({ isOpen, onClose, link, initialSlug }: LinkModalProps
                   {/* Tags */}
                   {tags && tags.length > 0 && (
                     <div className="space-y-2.5">
-                      <Label className="text-[11px] font-bold text-[#64748B] tracking-[0.04em] uppercase flex items-center gap-1.5">
+                      <Label className="text-[11px] font-bold text-[#71717A] tracking-[0.04em] uppercase flex items-center gap-1.5">
                         <Tag className="w-3 h-3 text-[#2DD4BF]" /> Tags
                       </Label>
                       <div className="flex flex-wrap gap-2">
@@ -712,12 +710,11 @@ export function LinkModal({ isOpen, onClose, link, initialSlug }: LinkModalProps
                                 if (isSelected) form.setValue("tagIds", current.filter(id => id !== tag.id));
                                 else form.setValue("tagIds", [...current, tag.id]);
                               }}
-                              className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-semibold transition-all duration-150"
+                              className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[12px] font-semibold transition-all duration-150"
                               style={{
-                                borderRadius: 8,
-                                background: isSelected ? `${tag.color}15` : "rgba(255,255,255,0.03)",
-                                border: `1.5px solid ${isSelected ? tag.color : "rgba(255,255,255,0.1)"}`,
-                                color: isSelected ? tag.color : "#94A3B8",
+                                background: isSelected ? `${tag.color}15` : "#18181B",
+                                border: `1.5px solid ${isSelected ? tag.color : "#3F3F46"}`,
+                                color: isSelected ? tag.color : "#A1A1AA",
                               }}
                             >
                               <span className="w-2 h-2 rounded-full" style={{ backgroundColor: tag.color }} />
@@ -737,32 +734,31 @@ export function LinkModal({ isOpen, onClose, link, initialSlug }: LinkModalProps
               <button
                 type="button"
                 onClick={() => router.push(`/links/${link.id}/rules`)}
-                className="w-full flex items-center justify-between p-4 group transition-all duration-200 hover:-translate-y-0.5"
-                style={{ borderRadius: 14, background: "rgba(129,140,248,0.06)", border: "1px solid rgba(129,140,248,0.15)" }}
+                className="w-full flex items-center justify-between p-4 rounded-xl group transition-all duration-200 hover:-translate-y-0.5"
+                style={{ background: "rgba(139,92,246,0.06)", border: "1px solid rgba(139,92,246,0.15)" }}
               >
                 <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-[10px] flex items-center justify-center" style={{ background: "linear-gradient(135deg, #818CF8, #A78BFA)", boxShadow: "0 3px 10px rgba(129,140,248,0.25)" }}>
+                  <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ background: "linear-gradient(135deg, #8B5CF6, #A78BFA)", boxShadow: "0 3px 10px rgba(139,92,246,0.25)" }}>
                     <Target className="w-4 h-4 text-white" />
                   </div>
                   <div className="text-left">
-                    <p className="text-[13px] font-bold text-[#F1F5F9]">Smart Routing Rules</p>
-                    <p className="text-[11px] text-[#64748B]">Geo-targeting, device routing, A/B testing</p>
+                    <p className="text-[13px] font-bold text-[#FAFAFA]">Smart Routing Rules</p>
+                    <p className="text-[11px] text-[#71717A]">Geo-targeting, device routing, A/B testing</p>
                   </div>
                 </div>
-                <span className="text-[#818CF8] text-[13px] font-semibold group-hover:translate-x-0.5 transition-transform">&rarr;</span>
+                <span className="text-[#8B5CF6] text-[13px] font-semibold group-hover:translate-x-0.5 transition-transform">&rarr;</span>
               </button>
             )}
           </form>
         </div>
 
         {/* Footer */}
-        <div className="px-7 py-5 flex items-center justify-end gap-3 shrink-0" style={{ borderTop: "1px solid rgba(255,255,255,0.06)", background: "rgba(255,255,255,0.02)" }}>
+        <div className="px-7 py-5 flex items-center justify-end gap-3 shrink-0" style={{ borderTop: "1px solid #27272A", background: "#18181B" }}>
           <button
             type="button"
             onClick={onClose}
             disabled={isPending}
-            className="px-5 py-2.5 text-[13px] font-semibold text-[#64748B] hover:text-[#E2E8F0] transition-colors disabled:opacity-50"
-            style={{ borderRadius: 12 }}
+            className="px-5 py-2.5 rounded-lg text-[13px] font-semibold text-[#71717A] hover:text-[#E4E4E7] transition-colors disabled:opacity-50"
           >
             Cancel
           </button>
@@ -770,11 +766,10 @@ export function LinkModal({ isOpen, onClose, link, initialSlug }: LinkModalProps
             form="link-form"
             type="submit"
             disabled={isPending || verifiedDomains.length === 0}
-            className="px-6 py-2.5 text-[13px] font-bold text-white transition-all duration-200 hover:-translate-y-0.5 active:scale-[0.97] disabled:opacity-50 disabled:hover:translate-y-0"
+            className="px-6 py-2.5 rounded-lg text-[13px] font-bold text-white transition-all duration-200 hover:-translate-y-0.5 active:scale-[0.97] disabled:opacity-50 disabled:hover:translate-y-0"
             style={{
-              borderRadius: 12,
-              background: "linear-gradient(135deg, #818CF8, #6366F1)",
-              boxShadow: "0 4px 14px rgba(129,140,248,0.35), 0 1px 3px rgba(0,0,0,0.2)",
+              background: "linear-gradient(135deg, #8B5CF6, #7C3AED)",
+              boxShadow: "0 4px 14px rgba(139,92,246,0.35), 0 1px 3px rgba(0,0,0,0.2)",
             }}
           >
             {isPending ? (

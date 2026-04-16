@@ -123,16 +123,16 @@ function countryName(code: string | null): string {
 
 function deviceIcon(device: string) {
   const d = device.toLowerCase();
-  if (d === "mobile") return <Smartphone className="w-4 h-4 text-violet-500" />;
-  if (d === "tablet") return <Tablet className="w-4 h-4 text-teal-500" />;
-  return <Monitor className="w-4 h-4 text-sky-500" />;
+  if (d === "mobile") return <Smartphone className="w-4 h-4 text-[#8B5CF6]" />;
+  if (d === "tablet") return <Tablet className="w-4 h-4 text-[#06B6D4]" />;
+  return <Monitor className="w-4 h-4 text-[#06B6D4]" />;
 }
 
 function deviceColor(device: string) {
   const d = device.toLowerCase();
-  if (d === "mobile") return "#7C3AED";
-  if (d === "tablet") return "#14B8A6";
-  return "#0EA5E9";
+  if (d === "mobile") return "#8B5CF6";
+  if (d === "tablet") return "#06B6D4";
+  return "#06B6D4";
 }
 
 function browserIcon(browser: string | null) {
@@ -236,16 +236,16 @@ export default function Analytics() {
 
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 animate-fade-up">
           <div>
-            <p className="text-[10px] font-bold tracking-[0.24em] uppercase text-[#64748B] mb-1">In-Depth</p>
-            <h1 className="text-[28px] font-display font-black tracking-tight text-[#F1F5F9] leading-none">Analytics</h1>
-            <p className="text-[13px] text-[#64748B] mt-1">Complete performance intelligence across all your links.</p>
+            <p className="text-[10px] font-bold tracking-[0.24em] uppercase text-[#71717A] mb-1">In-Depth</p>
+            <h1 className="text-[28px] font-[family-name:var(--font-space-grotesk)] font-bold tracking-tight text-[#FAFAFA] leading-none">Analytics</h1>
+            <p className="text-[13px] text-[#71717A] mt-1">Complete performance intelligence across all your links.</p>
           </div>
 
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2.5">
             <div className="relative">
-              <Globe className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#64748B] pointer-events-none" />
+              <Globe className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#71717A] pointer-events-none" />
               <select
-                className="pl-8 pr-8 py-2 text-[12px] font-medium bg-[rgba(17,24,39,0.65)] border border-[rgba(255,255,255,0.06)] rounded-xl outline-none focus:border-[#818CF8] focus:ring-2 focus:ring-[rgba(129,140,248,0.15)] cursor-pointer appearance-none text-[#F1F5F9] min-w-[160px]"
+                className="pl-8 pr-8 py-2 text-[12px] font-medium bg-[#09090B] border border-[#27272A] rounded-lg outline-none focus:border-[#8B5CF6]/40 focus:ring-2 focus:ring-[#8B5CF6]/10 cursor-pointer appearance-none text-[#FAFAFA] min-w-[160px]"
                 value={selectedLinkId}
                 onChange={(e) => setSelectedLinkId(e.target.value)}
               >
@@ -256,18 +256,18 @@ export default function Analytics() {
                   </option>
                 ))}
               </select>
-              <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-[#64748B] pointer-events-none" />
+              <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-[#71717A] pointer-events-none" />
             </div>
 
-            <div className="flex bg-[rgba(255,255,255,0.06)] p-1 rounded-xl flex-wrap">
+            <div className="flex bg-[#27272A] p-1 rounded-xl flex-wrap">
               {PERIODS.map((p) => (
                 <button
                   key={p.key}
                   onClick={() => setPeriodKey(p.key)}
                   className={`px-3 py-1.5 text-[11px] font-semibold rounded-lg transition-all ${
                     periodKey === p.key
-                      ? "bg-[rgba(17,24,39,0.65)] text-[#F1F5F9] shadow-none"
-                      : "text-[#64748B] hover:text-[#CBD5E1]"
+                      ? "bg-[#18181B] text-[#FAFAFA]"
+                      : "text-[#71717A] hover:text-[#A1A1AA]"
                   }`}
                 >
                   {p.label}
@@ -278,38 +278,38 @@ export default function Analytics() {
         </div>
 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 [&>*:nth-child(1)]:animate-fade-up [&>*:nth-child(2)]:[animation-delay:60ms] [&>*:nth-child(2)]:animate-fade-up [&>*:nth-child(3)]:[animation-delay:120ms] [&>*:nth-child(3)]:animate-fade-up [&>*:nth-child(4)]:[animation-delay:180ms] [&>*:nth-child(4)]:animate-fade-up">
-          <KpiCard title="Total Clicks" value={stats?.totalClicks} delta={clickDelta} icon={<MousePointerClick className="w-4 h-4" />} color="text-[#818CF8]" bg="bg-[rgba(129,140,248,0.1)]" loading={statsLoading} periodLabel={period.displayLabel} />
-          <KpiCard title="Unique Visitors" value={stats?.uniqueClicks} delta={uniqueDelta} icon={<Users className="w-4 h-4" />} color="text-violet-600" bg="bg-violet-50" loading={statsLoading} periodLabel={period.displayLabel} />
-          <KpiCard title="Total Links" value={stats?.totalLinks} icon={<LinkIcon className="w-4 h-4" />} color="text-amber-600" bg="bg-amber-50" loading={statsLoading} />
-          <KpiCard title="Active Links" value={stats?.enabledLinks} icon={<Activity className="w-4 h-4" />} color="text-emerald-600" bg="bg-emerald-50" loading={statsLoading} />
+          <KpiCard title="Total Clicks" value={stats?.totalClicks} delta={clickDelta} icon={<MousePointerClick className="w-4 h-4" />} color="text-[#8B5CF6]" bg="bg-[#8B5CF6]/10" loading={statsLoading} periodLabel={period.displayLabel} />
+          <KpiCard title="Unique Visitors" value={stats?.uniqueClicks} delta={uniqueDelta} icon={<Users className="w-4 h-4" />} color="text-[#8B5CF6]" bg="bg-[#8B5CF6]/10" loading={statsLoading} periodLabel={period.displayLabel} />
+          <KpiCard title="Total Links" value={stats?.totalLinks} icon={<LinkIcon className="w-4 h-4" />} color="text-[#F59E0B]" bg="bg-[#F59E0B]/10" loading={statsLoading} />
+          <KpiCard title="Active Links" value={stats?.enabledLinks} icon={<Activity className="w-4 h-4" />} color="text-[#10B981]" bg="bg-[#10B981]/10" loading={statsLoading} />
         </div>
 
-        <div className="bg-[rgba(17,24,39,0.65)] border border-[rgba(255,255,255,0.06)] rounded-2xl overflow-hidden">
+        <div className="bg-[#18181B] border border-[#27272A] rounded-xl overflow-hidden">
           <div className="px-5 pt-5 pb-3 flex items-center justify-between">
             <div>
-              <h3 className="font-semibold text-[14px] text-[#F1F5F9]">Clicks Over Time</h3>
-              <p className="text-[12px] text-[#64748B] mt-0.5">Total and unique visitor trends</p>
+              <h3 className="font-semibold text-[14px] text-[#FAFAFA]">Clicks Over Time</h3>
+              <p className="text-[12px] text-[#71717A] mt-0.5">Total and unique visitor trends</p>
             </div>
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-[rgba(129,140,248,0.1)]0" />
-                <span className="text-[11px] text-[#64748B] font-medium">Total</span>
+                <span className="w-2.5 h-2.5 rounded-full bg-[#8B5CF6]" />
+                <span className="text-[11px] text-[#71717A] font-medium">Total</span>
               </div>
               <div className="flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-violet-300" />
-                <span className="text-[11px] text-[#64748B] font-medium">Unique</span>
+                <span className="w-2.5 h-2.5 rounded-full bg-[#A78BFA]" />
+                <span className="text-[11px] text-[#71717A] font-medium">Unique</span>
               </div>
             </div>
           </div>
           <div className="px-2 pb-3 h-[260px]">
             {tsLoading ? (
               <div className="h-full w-full flex items-center justify-center">
-                <Loader2 className="w-6 h-6 animate-spin text-[#475569]" />
+                <Loader2 className="w-6 h-6 animate-spin text-[#3F3F46]" />
               </div>
             ) : !timeseries || timeseries.length === 0 ? (
               <div className="h-full w-full flex flex-col items-center justify-center gap-2 text-center">
-                <MousePointerClick className="w-8 h-8 text-[#475569]" />
-                <p className="text-[13px] text-[#64748B]">No click data for this period</p>
+                <MousePointerClick className="w-8 h-8 text-[#3F3F46]" />
+                <p className="text-[13px] text-[#71717A]">No click data for this period</p>
               </div>
             ) : (
               <AnalyticsAreaChart data={timeseries} />
@@ -320,40 +320,40 @@ export default function Analytics() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
           <TopLinksCard
             title={`Top Links — ${period.label}`}
-            icon={<Zap className="w-4 h-4 text-[#818CF8]" />}
+            icon={<Zap className="w-4 h-4 text-[#8B5CF6]" />}
             data={stats?.topLinks}
             links={links}
             loading={statsLoading}
-            accentColor="#4F46E5"
+            accentColor="#7C3AED"
           />
           <TopLinksCard
             title="Top Links — Last 7 Days"
-            icon={<Calendar className="w-4 h-4 text-violet-500" />}
+            icon={<Calendar className="w-4 h-4 text-[#8B5CF6]" />}
             data={sevenStats?.topLinks}
             links={links}
             loading={!sevenStats}
-            accentColor="#7C3AED"
+            accentColor="#8B5CF6"
           />
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
 
-          <div className="lg:col-span-5 bg-[rgba(17,24,39,0.65)] border border-[rgba(255,255,255,0.06)] rounded-2xl overflow-hidden">
-            <div className="px-5 py-3.5 border-b border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.03)]">
-              <h3 className="font-semibold text-[14px] text-[#F1F5F9] flex items-center gap-2">
-                <Smartphone className="w-4 h-4 text-violet-500" />
+          <div className="lg:col-span-5 bg-[#18181B] border border-[#27272A] rounded-xl overflow-hidden">
+            <div className="px-5 py-3.5 border-b border-[#27272A]">
+              <h3 className="font-semibold text-[14px] text-[#FAFAFA] flex items-center gap-2">
+                <Smartphone className="w-4 h-4 text-[#8B5CF6]" />
                 Device Breakdown
               </h3>
             </div>
             <div className="p-5 space-y-4">
               {statsLoading ? (
-                <div className="space-y-3">{[1,2,3].map(i => <div key={i} className="h-8 bg-[rgba(255,255,255,0.06)] rounded animate-pulse" />)}</div>
+                <div className="space-y-3">{[1,2,3].map(i => <div key={i} className="h-8 bg-[#27272A] rounded animate-pulse" />)}</div>
               ) : topDevices.length === 0 ? (
                 <div className="text-center py-8">
-                  <div className="w-10 h-10 rounded-xl bg-violet-50 flex items-center justify-center mx-auto mb-2">
-                    <Smartphone className="w-5 h-5 text-violet-400" />
+                  <div className="w-10 h-10 rounded-lg bg-[#8B5CF6]/10 border border-[#8B5CF6]/15 flex items-center justify-center mx-auto mb-2">
+                    <Smartphone className="w-5 h-5 text-[#8B5CF6]" />
                   </div>
-                  <p className="text-[12px] text-[#64748B]">No device data for this period</p>
+                  <p className="text-[12px] text-[#71717A]">No device data for this period</p>
                 </div>
               ) : (
                 <>
@@ -361,15 +361,15 @@ export default function Analytics() {
                     const pct = Math.round((d.count / deviceTotal) * 100);
                     return (
                       <div key={d.label} className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-lg bg-[rgba(255,255,255,0.04)] flex items-center justify-center shrink-0">
+                        <div className="w-9 h-9 rounded-lg bg-[#27272A] flex items-center justify-center shrink-0">
                           {deviceIcon(d.label)}
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex justify-between items-center mb-1">
-                            <span className="text-[13px] font-semibold text-[#F1F5F9] capitalize">{d.label}</span>
-                            <span className="text-[12px] font-bold text-[#CBD5E1]">{fmtNum(d.count)} <span className="text-[#64748B] font-normal">({pct}%)</span></span>
+                            <span className="text-[13px] font-semibold text-[#FAFAFA] capitalize">{d.label}</span>
+                            <span className="text-[12px] font-bold text-[#A1A1AA]">{fmtNum(d.count)} <span className="text-[#71717A] font-normal">({pct}%)</span></span>
                           </div>
-                          <div className="h-2 bg-[rgba(255,255,255,0.06)] rounded-full overflow-hidden">
+                          <div className="h-2 bg-[#27272A] rounded-full overflow-hidden">
                             <div className="h-full rounded-full transition-all duration-700" style={{ width: `${pct}%`, background: deviceColor(d.label) }} />
                           </div>
                         </div>
@@ -377,22 +377,22 @@ export default function Analytics() {
                     );
                   })}
 
-                  <div className="border-t border-[rgba(255,255,255,0.06)] pt-4 mt-2">
-                    <p className="text-[10px] font-bold text-[#64748B] uppercase tracking-[0.12em] mb-3">Browsers</p>
+                  <div className="border-t border-[#27272A] pt-4 mt-2">
+                    <p className="text-[10px] font-bold text-[#71717A] uppercase tracking-[0.12em] mb-3">Browsers</p>
                     <div className="space-y-2">
                       {topBrowsers.map((b: { label: string; count: number }) => {
                         const bPct = Math.round((b.count / deviceTotal) * 100);
                         return (
                           <div key={b.label} className="flex items-center justify-between">
-                            <span className="text-[12px] text-[#94A3B8] flex items-center gap-1.5">
+                            <span className="text-[12px] text-[#A1A1AA] flex items-center gap-1.5">
                               <span className="text-[14px]">{browserIcon(b.label)}</span>
                               {b.label}
                             </span>
                             <div className="flex items-center gap-2">
-                              <div className="w-16 h-1.5 bg-[rgba(255,255,255,0.06)] rounded-full overflow-hidden">
-                                <div className="h-full bg-indigo-400 rounded-full" style={{ width: `${bPct}%` }} />
+                              <div className="w-16 h-1.5 bg-[#27272A] rounded-full overflow-hidden">
+                                <div className="h-full bg-[#8B5CF6] rounded-full" style={{ width: `${bPct}%` }} />
                               </div>
-                              <span className="text-[11px] font-semibold text-[#CBD5E1] w-6 text-right">{b.count}</span>
+                              <span className="text-[11px] font-semibold text-[#A1A1AA] w-6 text-right">{b.count}</span>
                             </div>
                           </div>
                         );
@@ -404,42 +404,42 @@ export default function Analytics() {
             </div>
           </div>
 
-          <div className="lg:col-span-7 bg-[rgba(17,24,39,0.65)] border border-[rgba(255,255,255,0.06)] rounded-2xl overflow-hidden">
-            <div className="px-5 py-3.5 border-b border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.03)] flex items-center justify-between">
-              <h3 className="font-semibold text-[14px] text-[#F1F5F9] flex items-center gap-2">
-                <Globe className="w-4 h-4 text-teal-500" />
+          <div className="lg:col-span-7 bg-[#18181B] border border-[#27272A] rounded-xl overflow-hidden">
+            <div className="px-5 py-3.5 border-b border-[#27272A] flex items-center justify-between">
+              <h3 className="font-semibold text-[14px] text-[#FAFAFA] flex items-center gap-2">
+                <Globe className="w-4 h-4 text-[#06B6D4]" />
                 Top Countries
               </h3>
               {stats?.topCountries && (
-                <span className="text-[10px] font-bold bg-teal-50 text-teal-600 px-2 py-0.5 rounded-full border border-teal-200">
+                <span className="text-[10px] font-bold bg-[#06B6D4]/10 text-[#06B6D4] px-2 py-0.5 rounded-full border border-[#06B6D4]/15">
                   {stats.topCountries.length} region{stats.topCountries.length !== 1 ? "s" : ""}
                 </span>
               )}
             </div>
-            <div className="divide-y divide-[rgba(255,255,255,0.06)]">
+            <div className="divide-y divide-[#27272A]">
               {statsLoading ? (
-                <div className="p-5 space-y-3">{[1,2,3,4].map(i => <div key={i} className="h-8 bg-[rgba(255,255,255,0.06)] rounded animate-pulse" />)}</div>
+                <div className="p-5 space-y-3">{[1,2,3,4].map(i => <div key={i} className="h-8 bg-[#27272A] rounded animate-pulse" />)}</div>
               ) : !stats?.topCountries || stats.topCountries.length === 0 ? (
                 <div className="text-center py-8">
-                  <div className="w-10 h-10 rounded-xl bg-teal-50 flex items-center justify-center mx-auto mb-2">
-                    <Globe className="w-5 h-5 text-teal-400" />
+                  <div className="w-10 h-10 rounded-lg bg-[#06B6D4]/10 border border-[#06B6D4]/15 flex items-center justify-center mx-auto mb-2">
+                    <Globe className="w-5 h-5 text-[#06B6D4]" />
                   </div>
-                  <p className="text-[12px] text-[#64748B]">No country data for this period</p>
+                  <p className="text-[12px] text-[#71717A]">No country data for this period</p>
                 </div>
               ) : (
                 stats.topCountries.map((c: { label: string; count: number }, i: number) => {
                   const maxCount = stats.topCountries![0].count;
                   const pct = Math.round((c.count / countryTotal) * 100);
                   return (
-                    <div key={c.label} className="flex items-center gap-3 px-5 py-3 hover:bg-[rgba(255,255,255,0.04)]/50 transition-colors">
-                      <span className="text-[10px] font-bold text-[#475569] w-4 shrink-0">#{i + 1}</span>
+                    <div key={c.label} className="flex items-center gap-3 px-5 py-3 hover:bg-[#27272A]/50 transition-colors">
+                      <span className="text-[10px] font-bold text-[#3F3F46] w-4 shrink-0">#{i + 1}</span>
                       <span className="flex items-center shrink-0 w-5">{countryFlag(c.label)}</span>
                       <div className="flex-1 min-w-0">
                         <div className="flex justify-between items-center mb-1">
-                          <span className="text-[13px] font-semibold text-[#F1F5F9]">{countryName(c.label)}</span>
-                          <span className="text-[12px] font-bold text-[#CBD5E1]">{fmtNum(c.count)} <span className="text-[#64748B] font-normal">({pct}%)</span></span>
+                          <span className="text-[13px] font-semibold text-[#FAFAFA]">{countryName(c.label)}</span>
+                          <span className="text-[12px] font-bold text-[#A1A1AA]">{fmtNum(c.count)} <span className="text-[#71717A] font-normal">({pct}%)</span></span>
                         </div>
-                        <div className="h-1.5 bg-[rgba(255,255,255,0.06)] rounded-full overflow-hidden">
+                        <div className="h-1.5 bg-[#27272A] rounded-full overflow-hidden">
                           <div
                             className="h-full rounded-full transition-all duration-700"
                             style={{ width: `${(c.count / maxCount) * 100}%`, background: `hsl(${170 + i * 20}, 60%, 45%)` }}
@@ -457,31 +457,31 @@ export default function Analytics() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
           <TopList
             title="Traffic Sources"
-            icon={<ExternalLink className="w-4 h-4 text-violet-500" />}
+            icon={<ExternalLink className="w-4 h-4 text-[#8B5CF6]" />}
             data={stats?.topReferrers}
             isLoading={statsLoading}
-            accentColor="#7C3AED"
-            barColor="#F3EEFF"
-            emptyIcon={<ExternalLink className="w-5 h-5 text-violet-400" />}
+            accentColor="#8B5CF6"
+            barColor="#8B5CF6"
+            emptyIcon={<ExternalLink className="w-5 h-5 text-[#8B5CF6]" />}
             emptyText="No referrer data for this period"
           />
 
-          <div className="bg-[rgba(17,24,39,0.65)] border border-[rgba(255,255,255,0.06)] rounded-2xl overflow-hidden">
-            <div className="px-5 py-3.5 border-b border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.03)]">
-              <h3 className="font-semibold text-[14px] text-[#F1F5F9] flex items-center gap-2">
-                <Eye className="w-4 h-4 text-sky-500" />
+          <div className="bg-[#18181B] border border-[#27272A] rounded-xl overflow-hidden">
+            <div className="px-5 py-3.5 border-b border-[#27272A]">
+              <h3 className="font-semibold text-[14px] text-[#FAFAFA] flex items-center gap-2">
+                <Eye className="w-4 h-4 text-[#06B6D4]" />
                 Visitors by Device — {period.label}
               </h3>
             </div>
             <div className="p-5">
               {statsLoading ? (
-                <div className="space-y-3">{[1,2,3].map(i => <div key={i} className="h-6 bg-[rgba(255,255,255,0.06)] rounded animate-pulse" />)}</div>
+                <div className="space-y-3">{[1,2,3].map(i => <div key={i} className="h-6 bg-[#27272A] rounded animate-pulse" />)}</div>
               ) : topDevices.length === 0 ? (
                 <div className="text-center py-6">
-                  <div className="w-10 h-10 rounded-xl bg-sky-50 flex items-center justify-center mx-auto mb-2">
-                    <Eye className="w-5 h-5 text-sky-400" />
+                  <div className="w-10 h-10 rounded-lg bg-[#06B6D4]/10 border border-[#06B6D4]/15 flex items-center justify-center mx-auto mb-2">
+                    <Eye className="w-5 h-5 text-[#06B6D4]" />
                   </div>
-                  <p className="text-[12px] text-[#64748B]">No visitors in this period</p>
+                  <p className="text-[12px] text-[#71717A]">No visitors in this period</p>
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -489,15 +489,15 @@ export default function Analytics() {
                     const pct = Math.round((d.count / deviceTotal) * 100);
                     return (
                       <div key={d.label} className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-[rgba(255,255,255,0.04)] flex items-center justify-center shrink-0">
+                        <div className="w-8 h-8 rounded-lg bg-[#27272A] flex items-center justify-center shrink-0">
                           {deviceIcon(d.label)}
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex justify-between items-center mb-1">
-                            <span className="text-[12px] font-semibold text-[#F1F5F9] capitalize">{d.label}</span>
-                            <span className="text-[11px] font-bold text-[#CBD5E1]">{d.count} <span className="text-[#64748B] font-normal">({pct}%)</span></span>
+                            <span className="text-[12px] font-semibold text-[#FAFAFA] capitalize">{d.label}</span>
+                            <span className="text-[11px] font-bold text-[#A1A1AA]">{d.count} <span className="text-[#71717A] font-normal">({pct}%)</span></span>
                           </div>
-                          <div className="h-1.5 bg-[rgba(255,255,255,0.06)] rounded-full overflow-hidden">
+                          <div className="h-1.5 bg-[#27272A] rounded-full overflow-hidden">
                             <div className="h-full rounded-full transition-all duration-700" style={{ width: `${pct}%`, background: deviceColor(d.label) }} />
                           </div>
                         </div>
@@ -506,16 +506,16 @@ export default function Analytics() {
                   })}
 
                   {topBrowsers.length > 0 && (
-                    <div className="border-t border-[rgba(255,255,255,0.06)] pt-3 mt-1">
-                      <p className="text-[10px] font-bold text-[#64748B] uppercase tracking-[0.12em] mb-2">Browsers</p>
+                    <div className="border-t border-[#27272A] pt-3 mt-1">
+                      <p className="text-[10px] font-bold text-[#71717A] uppercase tracking-[0.12em] mb-2">Browsers</p>
                       <div className="space-y-1.5">
                         {topBrowsers.map((b: { label: string; count: number }) => (
                           <div key={b.label} className="flex items-center justify-between">
-                            <span className="text-[11px] text-[#94A3B8] flex items-center gap-1.5">
+                            <span className="text-[11px] text-[#A1A1AA] flex items-center gap-1.5">
                               <span className="text-[12px]">{browserIcon(b.label)}</span>
                               {b.label}
                             </span>
-                            <span className="text-[11px] font-semibold text-[#CBD5E1]">{b.count}</span>
+                            <span className="text-[11px] font-semibold text-[#A1A1AA]">{b.count}</span>
                           </div>
                         ))}
                       </div>
@@ -523,16 +523,16 @@ export default function Analytics() {
                   )}
 
                   {topCountries.length > 0 && (
-                    <div className="border-t border-[rgba(255,255,255,0.06)] pt-3 mt-1">
-                      <p className="text-[10px] font-bold text-[#64748B] uppercase tracking-[0.12em] mb-2">Countries</p>
+                    <div className="border-t border-[#27272A] pt-3 mt-1">
+                      <p className="text-[10px] font-bold text-[#71717A] uppercase tracking-[0.12em] mb-2">Countries</p>
                       <div className="space-y-1.5">
                         {topCountries.map((c: { label: string; count: number }) => (
                           <div key={c.label} className="flex items-center justify-between">
-                            <span className="text-[11px] text-[#94A3B8] flex items-center gap-1.5">
+                            <span className="text-[11px] text-[#A1A1AA] flex items-center gap-1.5">
                               <span className="flex items-center w-5">{countryFlag(c.label)}</span>
                               {countryName(c.label)}
                             </span>
-                            <span className="text-[11px] font-semibold text-[#CBD5E1]">{c.count}</span>
+                            <span className="text-[11px] font-semibold text-[#A1A1AA]">{c.count}</span>
                           </div>
                         ))}
                       </div>
@@ -546,72 +546,72 @@ export default function Analytics() {
 
         {/* QR vs Direct + Hour of Day */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-          <div className="bg-[rgba(17,24,39,0.65)] border border-[rgba(255,255,255,0.06)] rounded-2xl overflow-hidden">
-            <div className="px-5 py-3.5 border-b border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.03)]">
-              <h3 className="font-semibold text-[14px] text-[#F1F5F9] flex items-center gap-2">
+          <div className="bg-[#18181B] border border-[#27272A] rounded-xl overflow-hidden">
+            <div className="px-5 py-3.5 border-b border-[#27272A]">
+              <h3 className="font-semibold text-[14px] text-[#FAFAFA] flex items-center gap-2">
                 <QrCode className="w-4 h-4 text-pink-500" />
                 QR Code vs Direct Clicks
               </h3>
             </div>
             <div className="p-5">
               {statsLoading ? (
-                <div className="space-y-3">{[1,2].map(i => <div key={i} className="h-10 bg-[rgba(255,255,255,0.06)] rounded animate-pulse" />)}</div>
+                <div className="space-y-3">{[1,2].map(i => <div key={i} className="h-10 bg-[#27272A] rounded animate-pulse" />)}</div>
               ) : qrClicks === 0 && directClicks === 0 ? (
                 <div className="text-center py-8">
-                  <div className="w-10 h-10 rounded-xl bg-pink-50 flex items-center justify-center mx-auto mb-2">
+                  <div className="w-10 h-10 rounded-lg bg-pink-500/10 border border-pink-500/15 flex items-center justify-center mx-auto mb-2">
                     <QrCode className="w-5 h-5 text-pink-400" />
                   </div>
-                  <p className="text-[12px] text-[#64748B]">No click data for this period</p>
+                  <p className="text-[12px] text-[#71717A]">No click data for this period</p>
                 </div>
               ) : (
                 <div className="space-y-4">
                   {[
-                    { label: "Direct Clicks", count: directClicks, color: "#4F46E5", icon: <Link2 className="w-4 h-4 text-[#818CF8]" /> },
+                    { label: "Direct Clicks", count: directClicks, color: "#7C3AED", icon: <Link2 className="w-4 h-4 text-[#8B5CF6]" /> },
                     { label: "QR Code Scans", count: qrClicks, color: "#EC4899", icon: <QrCode className="w-4 h-4 text-pink-500" /> },
                   ].map(item => {
                     const pct = Math.round((item.count / qrTotal) * 100);
                     return (
                       <div key={item.label} className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-lg bg-[rgba(255,255,255,0.04)] flex items-center justify-center shrink-0">
+                        <div className="w-9 h-9 rounded-lg bg-[#27272A] flex items-center justify-center shrink-0">
                           {item.icon}
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex justify-between items-center mb-1">
-                            <span className="text-[13px] font-semibold text-[#F1F5F9]">{item.label}</span>
-                            <span className="text-[12px] font-bold text-[#CBD5E1]">{fmtNum(item.count)} <span className="text-[#64748B] font-normal">({pct}%)</span></span>
+                            <span className="text-[13px] font-semibold text-[#FAFAFA]">{item.label}</span>
+                            <span className="text-[12px] font-bold text-[#A1A1AA]">{fmtNum(item.count)} <span className="text-[#71717A] font-normal">({pct}%)</span></span>
                           </div>
-                          <div className="h-2.5 bg-[rgba(255,255,255,0.06)] rounded-full overflow-hidden">
+                          <div className="h-2.5 bg-[#27272A] rounded-full overflow-hidden">
                             <div className="h-full rounded-full transition-all duration-700" style={{ width: `${pct}%`, background: item.color }} />
                           </div>
                         </div>
                       </div>
                     );
                   })}
-                  <div className="mt-2 pt-3 border-t border-[rgba(255,255,255,0.06)] flex items-center justify-between">
-                    <span className="text-[11px] text-[#64748B]">QR Scan Rate</span>
-                    <span className="text-[13px] font-bold text-pink-600">{Math.round((qrClicks / qrTotal) * 100)}%</span>
+                  <div className="mt-2 pt-3 border-t border-[#27272A] flex items-center justify-between">
+                    <span className="text-[11px] text-[#71717A]">QR Scan Rate</span>
+                    <span className="text-[13px] font-bold text-pink-500">{Math.round((qrClicks / qrTotal) * 100)}%</span>
                   </div>
                 </div>
               )}
             </div>
           </div>
 
-          <div className="bg-[rgba(17,24,39,0.65)] border border-[rgba(255,255,255,0.06)] rounded-2xl overflow-hidden">
-            <div className="px-5 py-3.5 border-b border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.03)]">
-              <h3 className="font-semibold text-[14px] text-[#F1F5F9] flex items-center gap-2">
-                <Clock className="w-4 h-4 text-amber-500" />
+          <div className="bg-[#18181B] border border-[#27272A] rounded-xl overflow-hidden">
+            <div className="px-5 py-3.5 border-b border-[#27272A]">
+              <h3 className="font-semibold text-[14px] text-[#FAFAFA] flex items-center gap-2">
+                <Clock className="w-4 h-4 text-[#F59E0B]" />
                 Clicks by Hour of Day
               </h3>
             </div>
             <div className="p-5">
               {statsLoading ? (
-                <div className="h-[140px] bg-[rgba(255,255,255,0.06)] rounded animate-pulse" />
+                <div className="h-[140px] bg-[#27272A] rounded animate-pulse" />
               ) : hourOfDay.every(h => h.count === 0) ? (
                 <div className="text-center py-8">
-                  <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center mx-auto mb-2">
-                    <Clock className="w-5 h-5 text-amber-400" />
+                  <div className="w-10 h-10 rounded-lg bg-[#F59E0B]/10 border border-[#F59E0B]/15 flex items-center justify-center mx-auto mb-2">
+                    <Clock className="w-5 h-5 text-[#F59E0B]" />
                   </div>
-                  <p className="text-[12px] text-[#64748B]">No hourly data for this period</p>
+                  <p className="text-[12px] text-[#71717A]">No hourly data for this period</p>
                 </div>
               ) : (
                 <div>
@@ -619,10 +619,10 @@ export default function Analytics() {
                     {hourOfDay.map((h) => {
                       const heightPct = Math.max((h.count / maxHourCount) * 100, 2);
                       const intensity = h.count / maxHourCount;
-                      const bg = intensity > 0.75 ? "#4F46E5" : intensity > 0.5 ? "#6366F1" : intensity > 0.25 ? "#A5B4FC" : "#E0E7FF";
+                      const bg = intensity > 0.75 ? "#7C3AED" : intensity > 0.5 ? "#8B5CF6" : intensity > 0.25 ? "#A78BFA" : "#3F3F46";
                       return (
                         <div key={h.hour} className="flex-1 flex flex-col items-center justify-end h-full group relative">
-                          <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-[10px] px-1.5 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10">
+                          <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-[#27272A] text-[#FAFAFA] text-[10px] px-1.5 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10">
                             {h.hour}:00 — {h.count} clicks
                           </div>
                           <div
@@ -634,15 +634,15 @@ export default function Analytics() {
                     })}
                   </div>
                   <div className="flex justify-between mt-2">
-                    <span className="text-[10px] text-[#64748B]">12am</span>
-                    <span className="text-[10px] text-[#64748B]">6am</span>
-                    <span className="text-[10px] text-[#64748B]">12pm</span>
-                    <span className="text-[10px] text-[#64748B]">6pm</span>
-                    <span className="text-[10px] text-[#64748B]">11pm</span>
+                    <span className="text-[10px] text-[#71717A]">12am</span>
+                    <span className="text-[10px] text-[#71717A]">6am</span>
+                    <span className="text-[10px] text-[#71717A]">12pm</span>
+                    <span className="text-[10px] text-[#71717A]">6pm</span>
+                    <span className="text-[10px] text-[#71717A]">11pm</span>
                   </div>
-                  <div className="flex items-center justify-between mt-3 pt-3 border-t border-[rgba(255,255,255,0.06)]">
-                    <span className="text-[11px] text-[#64748B]">Peak Hour</span>
-                    <span className="text-[13px] font-bold text-[#818CF8]">
+                  <div className="flex items-center justify-between mt-3 pt-3 border-t border-[#27272A]">
+                    <span className="text-[11px] text-[#71717A]">Peak Hour</span>
+                    <span className="text-[13px] font-bold text-[#8B5CF6]">
                       {(() => { const peak = hourOfDay.reduce((a, b) => b.count > a.count ? b : a, hourOfDay[0]); return `${peak.hour}:00 (${fmtNum(peak.count)} clicks)`; })()}
                     </span>
                   </div>
@@ -654,27 +654,27 @@ export default function Analytics() {
 
         {/* OS Breakdown + Top Cities */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-          <div className="bg-[rgba(17,24,39,0.65)] border border-[rgba(255,255,255,0.06)] rounded-2xl overflow-hidden">
-            <div className="px-5 py-3.5 border-b border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.03)] flex items-center justify-between">
-              <h3 className="font-semibold text-[14px] text-[#F1F5F9] flex items-center gap-2">
-                <Laptop className="w-4 h-4 text-cyan-500" />
+          <div className="bg-[#18181B] border border-[#27272A] rounded-xl overflow-hidden">
+            <div className="px-5 py-3.5 border-b border-[#27272A] flex items-center justify-between">
+              <h3 className="font-semibold text-[14px] text-[#FAFAFA] flex items-center gap-2">
+                <Laptop className="w-4 h-4 text-[#06B6D4]" />
                 Operating Systems
               </h3>
               {topOs.length > 0 && (
-                <span className="text-[10px] font-bold bg-cyan-50 text-cyan-600 px-2 py-0.5 rounded-full border border-cyan-200">
+                <span className="text-[10px] font-bold bg-[#06B6D4]/10 text-[#06B6D4] px-2 py-0.5 rounded-full border border-[#06B6D4]/15">
                   {topOs.length} OS{topOs.length !== 1 ? "es" : ""}
                 </span>
               )}
             </div>
             <div className="p-5">
               {statsLoading ? (
-                <div className="space-y-3">{[1,2,3].map(i => <div key={i} className="h-8 bg-[rgba(255,255,255,0.06)] rounded animate-pulse" />)}</div>
+                <div className="space-y-3">{[1,2,3].map(i => <div key={i} className="h-8 bg-[#27272A] rounded animate-pulse" />)}</div>
               ) : topOs.length === 0 ? (
                 <div className="text-center py-8">
-                  <div className="w-10 h-10 rounded-xl bg-cyan-50 flex items-center justify-center mx-auto mb-2">
-                    <Laptop className="w-5 h-5 text-cyan-400" />
+                  <div className="w-10 h-10 rounded-lg bg-[#06B6D4]/10 border border-[#06B6D4]/15 flex items-center justify-center mx-auto mb-2">
+                    <Laptop className="w-5 h-5 text-[#06B6D4]" />
                   </div>
-                  <p className="text-[12px] text-[#64748B]">No OS data for this period</p>
+                  <p className="text-[12px] text-[#71717A]">No OS data for this period</p>
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -683,15 +683,15 @@ export default function Analytics() {
                     const colors = ["#06B6D4", "#0891B2", "#22D3EE", "#67E8F9", "#A5F3FC"];
                     return (
                       <div key={o.label} className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-[rgba(255,255,255,0.04)] flex items-center justify-center shrink-0">
+                        <div className="w-8 h-8 rounded-lg bg-[#27272A] flex items-center justify-center shrink-0">
                           <span className="text-[14px]">{osIcon(o.label)}</span>
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex justify-between items-center mb-1">
-                            <span className="text-[13px] font-semibold text-[#F1F5F9]">{o.label}</span>
-                            <span className="text-[12px] font-bold text-[#CBD5E1]">{fmtNum(o.count)} <span className="text-[#64748B] font-normal">({pct}%)</span></span>
+                            <span className="text-[13px] font-semibold text-[#FAFAFA]">{o.label}</span>
+                            <span className="text-[12px] font-bold text-[#A1A1AA]">{fmtNum(o.count)} <span className="text-[#71717A] font-normal">({pct}%)</span></span>
                           </div>
-                          <div className="h-1.5 bg-[rgba(255,255,255,0.06)] rounded-full overflow-hidden">
+                          <div className="h-1.5 bg-[#27272A] rounded-full overflow-hidden">
                             <div className="h-full rounded-full transition-all duration-700" style={{ width: `${pct}%`, background: colors[i % colors.length] }} />
                           </div>
                         </div>
@@ -703,41 +703,41 @@ export default function Analytics() {
             </div>
           </div>
 
-          <div className="bg-[rgba(17,24,39,0.65)] border border-[rgba(255,255,255,0.06)] rounded-2xl overflow-hidden">
-            <div className="px-5 py-3.5 border-b border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.03)] flex items-center justify-between">
-              <h3 className="font-semibold text-[14px] text-[#F1F5F9] flex items-center gap-2">
+          <div className="bg-[#18181B] border border-[#27272A] rounded-xl overflow-hidden">
+            <div className="px-5 py-3.5 border-b border-[#27272A] flex items-center justify-between">
+              <h3 className="font-semibold text-[14px] text-[#FAFAFA] flex items-center gap-2">
                 <MapPin className="w-4 h-4 text-rose-500" />
                 Top Cities
               </h3>
               {topCities.length > 0 && (
-                <span className="text-[10px] font-bold bg-rose-50 text-rose-600 px-2 py-0.5 rounded-full border border-rose-200">
+                <span className="text-[10px] font-bold bg-rose-500/10 text-rose-500 px-2 py-0.5 rounded-full border border-rose-500/15">
                   {topCities.length} cities
                 </span>
               )}
             </div>
-            <div className="divide-y divide-[rgba(255,255,255,0.06)]">
+            <div className="divide-y divide-[#27272A]">
               {statsLoading ? (
-                <div className="p-5 space-y-3">{[1,2,3,4].map(i => <div key={i} className="h-6 bg-[rgba(255,255,255,0.06)] rounded animate-pulse" />)}</div>
+                <div className="p-5 space-y-3">{[1,2,3,4].map(i => <div key={i} className="h-6 bg-[#27272A] rounded animate-pulse" />)}</div>
               ) : topCities.length === 0 ? (
                 <div className="text-center py-8">
-                  <div className="w-10 h-10 rounded-xl bg-rose-50 flex items-center justify-center mx-auto mb-2">
+                  <div className="w-10 h-10 rounded-lg bg-rose-500/10 border border-rose-500/15 flex items-center justify-center mx-auto mb-2">
                     <MapPin className="w-5 h-5 text-rose-400" />
                   </div>
-                  <p className="text-[12px] text-[#64748B]">No city data for this period</p>
+                  <p className="text-[12px] text-[#71717A]">No city data for this period</p>
                 </div>
               ) : (
                 topCities.map((c: { label: string; count: number }, i: number) => {
                   const maxCount = topCities[0].count;
                   const pct = Math.round((c.count / cityTotal) * 100);
                   return (
-                    <div key={c.label} className="flex items-center gap-3 px-5 py-2.5 hover:bg-[rgba(255,255,255,0.04)]/50 transition-colors">
-                      <span className="text-[10px] font-bold text-[#475569] w-4 shrink-0">#{i + 1}</span>
+                    <div key={c.label} className="flex items-center gap-3 px-5 py-2.5 hover:bg-[#27272A]/50 transition-colors">
+                      <span className="text-[10px] font-bold text-[#3F3F46] w-4 shrink-0">#{i + 1}</span>
                       <div className="flex-1 min-w-0">
                         <div className="flex justify-between items-center mb-1">
-                          <span className="text-[13px] font-semibold text-[#F1F5F9]">{c.label}</span>
-                          <span className="text-[12px] font-bold text-[#CBD5E1]">{fmtNum(c.count)} <span className="text-[#64748B] font-normal">({pct}%)</span></span>
+                          <span className="text-[13px] font-semibold text-[#FAFAFA]">{c.label}</span>
+                          <span className="text-[12px] font-bold text-[#A1A1AA]">{fmtNum(c.count)} <span className="text-[#71717A] font-normal">({pct}%)</span></span>
                         </div>
-                        <div className="h-1.5 bg-[rgba(255,255,255,0.06)] rounded-full overflow-hidden">
+                        <div className="h-1.5 bg-[#27272A] rounded-full overflow-hidden">
                           <div
                             className="h-full rounded-full transition-all duration-700"
                             style={{ width: `${(c.count / maxCount) * 100}%`, background: `hsl(${350 + i * 12}, 60%, 50%)` }}
@@ -753,32 +753,32 @@ export default function Analytics() {
         </div>
 
         {/* UTM Campaign Analytics */}
-        <div className="bg-[rgba(17,24,39,0.65)] border border-[rgba(255,255,255,0.06)] rounded-2xl overflow-hidden">
-          <div className="px-5 py-3.5 border-b border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.03)]">
-            <h3 className="font-semibold text-[14px] text-[#F1F5F9] flex items-center gap-2">
-              <Megaphone className="w-4 h-4 text-orange-500" />
+        <div className="bg-[#18181B] border border-[#27272A] rounded-xl overflow-hidden">
+          <div className="px-5 py-3.5 border-b border-[#27272A]">
+            <h3 className="font-semibold text-[14px] text-[#FAFAFA] flex items-center gap-2">
+              <Megaphone className="w-4 h-4 text-[#F59E0B]" />
               UTM Campaign Analytics
             </h3>
-            <p className="text-[11px] text-[#64748B] mt-0.5">Track your marketing campaigns, sources, and mediums</p>
+            <p className="text-[11px] text-[#71717A] mt-0.5">Track your marketing campaigns, sources, and mediums</p>
           </div>
           <div className="p-5">
             {statsLoading ? (
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {[1,2,3].map(i => <div key={i} className="space-y-3">{[1,2,3].map(j => <div key={j} className="h-6 bg-[rgba(255,255,255,0.06)] rounded animate-pulse" />)}</div>)}
+                {[1,2,3].map(i => <div key={i} className="space-y-3">{[1,2,3].map(j => <div key={j} className="h-6 bg-[#27272A] rounded animate-pulse" />)}</div>)}
               </div>
             ) : topUtmSources.length === 0 && topUtmMediums.length === 0 && topUtmCampaigns.length === 0 ? (
               <div className="text-center py-8">
-                <div className="w-10 h-10 rounded-xl bg-orange-50 flex items-center justify-center mx-auto mb-2">
-                  <Megaphone className="w-5 h-5 text-orange-400" />
+                <div className="w-10 h-10 rounded-lg bg-[#F59E0B]/10 border border-[#F59E0B]/15 flex items-center justify-center mx-auto mb-2">
+                  <Megaphone className="w-5 h-5 text-[#F59E0B]" />
                 </div>
-                <p className="text-[12px] text-[#64748B]">No UTM data for this period</p>
-                <p className="text-[11px] text-[#475569] mt-1">Add utm_source, utm_medium, or utm_campaign parameters to your links</p>
+                <p className="text-[12px] text-[#71717A]">No UTM data for this period</p>
+                <p className="text-[11px] text-[#3F3F46] mt-1">Add utm_source, utm_medium, or utm_campaign parameters to your links</p>
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <UtmColumn title="Sources" icon={<Tag className="w-3.5 h-3.5 text-orange-500" />} data={topUtmSources} color="#F97316" />
-                <UtmColumn title="Mediums" icon={<Filter className="w-3.5 h-3.5 text-amber-500" />} data={topUtmMediums} color="#F59E0B" />
-                <UtmColumn title="Campaigns" icon={<Megaphone className="w-3.5 h-3.5 text-yellow-600" />} data={topUtmCampaigns} color="#CA8A04" />
+                <UtmColumn title="Sources" icon={<Tag className="w-3.5 h-3.5 text-[#F59E0B]" />} data={topUtmSources} color="#F59E0B" />
+                <UtmColumn title="Mediums" icon={<Filter className="w-3.5 h-3.5 text-[#F59E0B]" />} data={topUtmMediums} color="#F59E0B" />
+                <UtmColumn title="Campaigns" icon={<Megaphone className="w-3.5 h-3.5 text-[#F59E0B]" />} data={topUtmCampaigns} color="#F59E0B" />
               </div>
             )}
           </div>
@@ -810,23 +810,23 @@ function KpiCard({
   color: string; bg: string; loading: boolean; periodLabel?: string;
 }) {
   return (
-    <div className="bg-[rgba(17,24,39,0.65)] border border-[rgba(255,255,255,0.06)] rounded-2xl p-4 sf-card-hover">
+    <div className="bg-[#18181B] border border-[#27272A] rounded-xl p-4 hover:border-[#3F3F46] transition-colors">
       <div className="flex items-center justify-between mb-3">
-        <p className="text-[10px] font-bold text-[#64748B] uppercase tracking-[0.12em]">{title}</p>
-        <div className={`w-7 h-7 rounded-lg ${bg} ${color} flex items-center justify-center`}>{icon}</div>
+        <p className="text-[10px] font-bold text-[#71717A] uppercase tracking-[0.12em]">{title}</p>
+        <div className={`w-7 h-7 rounded-lg ${bg} border border-current/15 ${color} flex items-center justify-center`}>{icon}</div>
       </div>
-      <div className="text-[28px] font-display font-black text-[#F1F5F9] leading-none tabular-nums">
-        {loading ? <span className="inline-block w-12 h-7 bg-[rgba(255,255,255,0.06)] rounded animate-pulse" /> : fmtNum(value ?? 0)}
+      <div className="text-[28px] font-[family-name:var(--font-space-grotesk)] font-bold text-[#FAFAFA] leading-none tabular-nums">
+        {loading ? <span className="inline-block w-12 h-7 bg-[#27272A] rounded animate-pulse" /> : fmtNum(value ?? 0)}
       </div>
       <div className="mt-1.5 h-5 flex items-center">
         {delta !== null && delta !== undefined && !loading ? (
-          <span className={`text-[11px] font-semibold flex items-center gap-0.5 ${delta >= 0 ? "text-emerald-600" : "text-red-500"}`}>
+          <span className={`text-[11px] font-semibold flex items-center gap-0.5 ${delta >= 0 ? "text-[#10B981]" : "text-red-500"}`}>
             {delta >= 0 ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
             {Math.abs(delta)}%
-            <span className="text-[#64748B] font-normal ml-0.5">vs prior {periodLabel}</span>
+            <span className="text-[#71717A] font-normal ml-0.5">vs prior {periodLabel}</span>
           </span>
         ) : (
-          <span className="text-[11px] text-[#475569]">—</span>
+          <span className="text-[11px] text-[#3F3F46]">—</span>
         )}
       </div>
     </div>
@@ -843,20 +843,20 @@ function TopLinksCard({
   const max = Math.max(...(data?.map(d => d.count) ?? [0]), 1);
 
   return (
-    <div className="bg-[rgba(17,24,39,0.65)] border border-[rgba(255,255,255,0.06)] rounded-2xl overflow-hidden">
-      <div className="px-5 py-3.5 border-b border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.03)] flex items-center gap-2">
+    <div className="bg-[#18181B] border border-[#27272A] rounded-xl overflow-hidden hover:border-[#3F3F46] transition-colors">
+      <div className="px-5 py-3.5 border-b border-[#27272A] flex items-center gap-2">
         {icon}
-        <h3 className="font-semibold text-[14px] text-[#F1F5F9]">{title}</h3>
+        <h3 className="font-semibold text-[14px] text-[#FAFAFA]">{title}</h3>
       </div>
       <div className="p-5">
         {loading ? (
-          <div className="space-y-3">{[1,2,3].map(i => <div key={i} className="h-6 bg-[rgba(255,255,255,0.06)] rounded animate-pulse" />)}</div>
+          <div className="space-y-3">{[1,2,3].map(i => <div key={i} className="h-6 bg-[#27272A] rounded animate-pulse" />)}</div>
         ) : !data || data.length === 0 ? (
           <div className="text-center py-6">
-            <div className="w-10 h-10 rounded-xl bg-[rgba(129,140,248,0.1)] flex items-center justify-center mx-auto mb-2">
-              <Layers className="w-5 h-5 text-indigo-400" />
+            <div className="w-10 h-10 rounded-lg bg-[#8B5CF6]/10 border border-[#8B5CF6]/15 flex items-center justify-center mx-auto mb-2">
+              <Layers className="w-5 h-5 text-[#8B5CF6]" />
             </div>
-            <p className="text-[12px] text-[#64748B]">No link activity for this period</p>
+            <p className="text-[12px] text-[#71717A]">No link activity for this period</p>
           </div>
         ) : (
           <div className="space-y-2.5">
@@ -870,21 +870,21 @@ function TopLinksCard({
 
               const row = (
                 <div className="flex items-center gap-2.5">
-                  <span className="text-[10px] font-bold text-[#475569] w-4 shrink-0 tabular-nums">#{i + 1}</span>
+                  <span className="text-[10px] font-bold text-[#3F3F46] w-4 shrink-0 tabular-nums">#{i + 1}</span>
                   <div className="flex-1 min-w-0 relative h-7 flex items-center">
                     <div
                       className="absolute inset-y-0 left-0 rounded-lg transition-all duration-700 opacity-15"
                       style={{ width: `${pct}%`, background: accentColor }}
                     />
-                    <span className="relative text-[12px] font-semibold text-[#F1F5F9] truncate pr-2 pl-2">
+                    <span className="relative text-[12px] font-semibold text-[#FAFAFA] truncate pr-2 pl-2">
                       /{item.label}
-                      {matchedLink?.title && <span className="text-[#64748B] font-normal ml-1.5 text-[11px]">{matchedLink.title}</span>}
+                      {matchedLink?.title && <span className="text-[#71717A] font-normal ml-1.5 text-[11px]">{matchedLink.title}</span>}
                     </span>
                   </div>
                   <div className="flex items-center gap-1.5 shrink-0">
-                    {trend === "up" && <TrendingUp className="w-3.5 h-3.5 text-emerald-500" />}
+                    {trend === "up" && <TrendingUp className="w-3.5 h-3.5 text-[#10B981]" />}
                     {trend === "down" && <TrendingDown className="w-3.5 h-3.5 text-red-400" />}
-                    {trend === "flat" && <Minus className="w-3.5 h-3.5 text-[#475569]" />}
+                    {trend === "flat" && <Minus className="w-3.5 h-3.5 text-[#3F3F46]" />}
                     <span className="text-[12px] font-bold tabular-nums" style={{ color: accentColor }}>
                       {item.count.toLocaleString()}
                     </span>
@@ -938,10 +938,10 @@ function UtmColumn({
     <div>
       <div className="flex items-center gap-1.5 mb-3">
         {icon}
-        <p className="text-[11px] font-bold text-[#64748B] uppercase tracking-[0.1em]">{title}</p>
+        <p className="text-[11px] font-bold text-[#71717A] uppercase tracking-[0.1em]">{title}</p>
       </div>
       {data.length === 0 ? (
-        <p className="text-[11px] text-[#475569] italic">No data</p>
+        <p className="text-[11px] text-[#3F3F46] italic">No data</p>
       ) : (
         <div className="space-y-2">
           {data.map((item, i) => {
@@ -953,7 +953,7 @@ function UtmColumn({
                     className="absolute inset-y-0 left-0 rounded-md transition-all duration-700 opacity-15"
                     style={{ width: `${pct}%`, background: color }}
                   />
-                  <span className="relative text-[11px] font-semibold text-[#CBD5E1] truncate pl-2 pr-1">
+                  <span className="relative text-[11px] font-semibold text-[#A1A1AA] truncate pl-2 pr-1">
                     {item.label || "Unknown"}
                   </span>
                 </div>
@@ -970,7 +970,7 @@ function UtmColumn({
 }
 
 function TopList({
-  title, icon, data, isLoading, accentColor = "#728DA7", barColor = "#EEF3F7",
+  title, icon, data, isLoading, accentColor = "#8B5CF6", barColor = "#8B5CF6",
   emptyIcon, emptyText,
 }: {
   title: string; icon: React.ReactNode; data?: { label: string; count: number }[];
@@ -980,18 +980,18 @@ function TopList({
   const max = Math.max(...(data?.map((d) => d.count) ?? [0]), 1);
 
   return (
-    <div className="bg-[rgba(17,24,39,0.65)] border border-[rgba(255,255,255,0.06)] rounded-2xl overflow-hidden">
-      <div className="px-5 py-3.5 border-b border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.03)] flex items-center gap-2">
+    <div className="bg-[#18181B] border border-[#27272A] rounded-xl overflow-hidden hover:border-[#3F3F46] transition-colors">
+      <div className="px-5 py-3.5 border-b border-[#27272A] flex items-center gap-2">
         {icon}
-        <h3 className="font-semibold text-[14px] text-[#F1F5F9]">{title}</h3>
+        <h3 className="font-semibold text-[14px] text-[#FAFAFA]">{title}</h3>
       </div>
       <div className="p-5">
         {isLoading ? (
-          <div className="space-y-3">{[1,2,3].map(i => <div key={i} className="h-6 bg-[rgba(255,255,255,0.06)] rounded animate-pulse" />)}</div>
+          <div className="space-y-3">{[1,2,3].map(i => <div key={i} className="h-6 bg-[#27272A] rounded animate-pulse" />)}</div>
         ) : !data || data.length === 0 ? (
           <div className="text-center py-6">
-            {emptyIcon && <div className="w-10 h-10 rounded-xl bg-[rgba(255,255,255,0.04)] flex items-center justify-center mx-auto mb-2">{emptyIcon}</div>}
-            <p className="text-[12px] text-[#64748B]">{emptyText ?? "No data for this period"}</p>
+            {emptyIcon && <div className="w-10 h-10 rounded-lg bg-[#27272A] flex items-center justify-center mx-auto mb-2">{emptyIcon}</div>}
+            <p className="text-[12px] text-[#71717A]">{emptyText ?? "No data for this period"}</p>
           </div>
         ) : (
           <div className="space-y-2.5">
@@ -999,13 +999,13 @@ function TopList({
               const pct = Math.max((item.count / max) * 100, 3);
               return (
                 <div key={item.label} className="flex items-center gap-2.5">
-                  <span className="text-[10px] font-bold text-[#475569] w-4 shrink-0 tabular-nums">#{i + 1}</span>
+                  <span className="text-[10px] font-bold text-[#3F3F46] w-4 shrink-0 tabular-nums">#{i + 1}</span>
                   <div className="flex-1 min-w-0 relative h-7 flex items-center">
                     <div
-                      className="absolute inset-y-0 left-0 rounded-lg transition-all duration-700"
+                      className="absolute inset-y-0 left-0 rounded-lg transition-all duration-700 opacity-15"
                       style={{ width: `${pct}%`, background: barColor }}
                     />
-                    <span className="relative text-[12px] font-semibold text-[#F1F5F9] truncate pr-2 pl-2">
+                    <span className="relative text-[12px] font-semibold text-[#FAFAFA] truncate pr-2 pl-2">
                       {item.label || "Unknown"}
                     </span>
                   </div>

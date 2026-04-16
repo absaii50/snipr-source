@@ -67,18 +67,18 @@ export default function Domains() {
 
         <div className="flex items-start justify-between gap-4 mb-6 animate-fade-up">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-[16px] flex items-center justify-center" style={{ background: "linear-gradient(135deg, #818CF8, #A78BFA)", boxShadow: "0 4px 14px rgba(129,140,248,0.25)" }}>
+            <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ background: "linear-gradient(135deg, #8B5CF6, #7C3AED)" }}>
               <Globe className="w-6 h-6 text-white" />
             </div>
             <div>
-              <h1 className="font-[family-name:var(--font-space-grotesk)] text-[28px] font-bold tracking-tight" style={{ color: "#F1F5F9" }}>Custom Domains</h1>
-              <p className="text-[13px] mt-0.5" style={{ color: "#94A3B8" }}>Use your own domain for branded short links</p>
+              <h1 className="font-[family-name:var(--font-space-grotesk)] text-[28px] font-bold tracking-tight text-[#FAFAFA]">Custom Domains</h1>
+              <p className="text-[13px] mt-0.5 text-[#A1A1AA]">Use your own domain for branded short links</p>
             </div>
           </div>
           <button
             onClick={openNewWizard}
-            className="inline-flex items-center gap-2 text-white text-[13px] font-semibold px-5 py-2.5 rounded-[14px] transition-all shrink-0 hover:opacity-90 active:scale-[0.97]"
-            style={{ background: "linear-gradient(135deg, #818CF8, #A78BFA)", boxShadow: "0 4px 14px rgba(129,140,248,0.25)" }}
+            className="inline-flex items-center gap-2 text-white text-[13px] font-semibold px-5 py-2.5 rounded-lg transition-all shrink-0 hover:opacity-90 active:scale-[0.97]"
+            style={{ background: "linear-gradient(135deg, #8B5CF6, #7C3AED)" }}
           >
             <Plus className="w-3.5 h-3.5" /> Add Domain
           </button>
@@ -86,23 +86,20 @@ export default function Domains() {
 
         {!isLoading && (!domains || domains.length === 0) && (
           <div className="space-y-4 animate-fade-up" style={{ animationDelay: "60ms" }}>
-            <div
-              className="py-16 flex flex-col items-center justify-center text-center rounded-[20px] relative overflow-hidden"
-              style={{ background: "rgba(17,24,39,0.65)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", border: "1px solid rgba(255,255,255,0.06)", boxShadow: "0 1px 2px rgba(0,0,0,0.3), 0 8px 32px rgba(0,0,0,0.3)" }}
-            >
-              <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 via-transparent to-violet-500/5 pointer-events-none" />
+            <div className="py-16 flex flex-col items-center justify-center text-center rounded-xl relative overflow-hidden bg-[#18181B] border border-[#27272A]">
+              <div className="absolute inset-0 bg-gradient-to-br from-[#8B5CF6]/5 via-transparent to-[#7C3AED]/5 pointer-events-none" />
               <div className="relative">
-                <div className="w-16 h-16 rounded-[16px] flex items-center justify-center mb-5" style={{ background: "linear-gradient(135deg, #818CF8, #A78BFA)", boxShadow: "0 4px 14px rgba(129,140,248,0.25)" }}>
+                <div className="w-16 h-16 rounded-xl flex items-center justify-center mb-5" style={{ background: "linear-gradient(135deg, #8B5CF6, #7C3AED)" }}>
                   <Globe className="w-7 h-7 text-white" />
                 </div>
-                <h3 className="font-[family-name:var(--font-space-grotesk)] text-lg font-bold mb-1" style={{ color: "#F1F5F9" }}>No custom domains yet</h3>
-                <p className="text-[13px] max-w-sm mb-5" style={{ color: "#64748B" }}>
-                  Use your own domain for short links — like <span className="font-mono px-1.5 py-0.5 rounded-[8px]" style={{ color: "#94A3B8", background: "rgba(255,255,255,0.05)" }}>go.yourcompany.com/launch</span>
+                <h3 className="font-[family-name:var(--font-space-grotesk)] text-lg font-bold mb-1 text-[#FAFAFA]">No custom domains yet</h3>
+                <p className="text-[13px] max-w-sm mb-5 text-[#71717A]">
+                  Use your own domain for short links — like <span className="font-mono px-1.5 py-0.5 rounded-lg text-[#A1A1AA] bg-[#27272A]">go.yourcompany.com/launch</span>
                 </p>
                 <button
                   onClick={openNewWizard}
-                  className="inline-flex items-center gap-2 text-white text-[13px] font-semibold px-5 py-2.5 rounded-[14px] transition-all hover:opacity-90 active:scale-[0.97]"
-                  style={{ background: "linear-gradient(135deg, #818CF8, #A78BFA)", boxShadow: "0 4px 14px rgba(129,140,248,0.25)" }}
+                  className="inline-flex items-center gap-2 text-white text-[13px] font-semibold px-5 py-2.5 rounded-lg transition-all hover:opacity-90 active:scale-[0.97]"
+                  style={{ background: "linear-gradient(135deg, #8B5CF6, #7C3AED)" }}
                 >
                   <Plus className="w-4 h-4" /> Add your first domain
                 </button>
@@ -117,14 +114,13 @@ export default function Domains() {
               ].map((item) => (
                 <div
                   key={item.step}
-                  className="p-4 rounded-[20px] text-center transition-all hover:-translate-y-0.5"
-                  style={{ background: "rgba(17,24,39,0.65)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", border: "1px solid rgba(255,255,255,0.06)", boxShadow: "0 1px 2px rgba(0,0,0,0.3), 0 8px 32px rgba(0,0,0,0.3)" }}
+                  className="p-4 rounded-xl text-center transition-all hover:-translate-y-0.5 bg-[#18181B] border border-[#27272A]"
                 >
-                  <div className={`w-9 h-9 rounded-[10px] bg-gradient-to-br ${item.color} flex items-center justify-center mx-auto mb-3`}>
+                  <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${item.color} flex items-center justify-center mx-auto mb-3`}>
                     <item.icon className={`w-4 h-4 ${item.iconColor}`} />
                   </div>
-                  <p className="text-[13px] font-semibold mb-1" style={{ color: "#F1F5F9" }}>{item.title}</p>
-                  <p className="text-[11px]" style={{ color: "#94A3B8" }}>{item.desc}</p>
+                  <p className="text-[13px] font-semibold mb-1 text-[#FAFAFA]">{item.title}</p>
+                  <p className="text-[11px] text-[#A1A1AA]">{item.desc}</p>
                 </div>
               ))}
             </div>
@@ -133,7 +129,7 @@ export default function Domains() {
 
         {isLoading && (
           <div className="py-24 flex justify-center">
-            <Loader2 className="w-6 h-6 animate-spin text-[#475569]" />
+            <Loader2 className="w-6 h-6 animate-spin text-[#3F3F46]" />
           </div>
         )}
 
@@ -142,44 +138,44 @@ export default function Domains() {
 
             {pending.length > 0 && (
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-wide mb-2 flex items-center gap-1.5" style={{ color: "#94A3B8" }}>
+                <p className="text-[11px] font-semibold uppercase tracking-wide mb-2 flex items-center gap-1.5 text-[#A1A1AA]">
                   <AlertCircle className="w-3.5 h-3.5 text-amber-400" /> {pending.length} pending setup
                 </p>
                 <div className="space-y-2">
                   {pending.map((domain, i) => (
                     <div
                       key={domain.id}
-                      className="rounded-[20px] overflow-hidden transition-all hover:-translate-y-0.5 animate-fade-up"
-                      style={{ background: "rgba(17,24,39,0.65)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", border: "1px solid rgba(245,158,11,0.15)", boxShadow: "0 1px 2px rgba(0,0,0,0.3), 0 8px 32px rgba(0,0,0,0.3)", animationDelay: `${i * 60}ms` }}
+                      className="rounded-xl overflow-hidden transition-all hover:-translate-y-0.5 animate-fade-up bg-[#18181B] border border-[#F59E0B]/15"
+                      style={{ animationDelay: `${i * 60}ms` }}
                     >
                       <div className="p-5">
                         <div className="flex items-center justify-between gap-4">
                           <div className="flex items-center gap-3 min-w-0">
-                            <div className="w-10 h-10 rounded-[14px] bg-gradient-to-br from-amber-900/30 to-orange-900/20 flex items-center justify-center shrink-0">
+                            <div className="w-10 h-10 rounded-lg bg-[#F59E0B]/10 border border-[#F59E0B]/15 flex items-center justify-center shrink-0">
                               <Globe className="w-5 h-5 text-amber-400" />
                             </div>
                             <div className="min-w-0">
                               <div className="flex items-center gap-2 flex-wrap">
-                                <h3 className="text-[15px] font-bold truncate" style={{ color: "#F1F5F9" }}>{domain.domain}</h3>
-                                <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0" style={{ background: "rgba(245,158,11,0.1)", color: "#FB923C" }}>
+                                <h3 className="text-[15px] font-bold truncate text-[#FAFAFA]">{domain.domain}</h3>
+                                <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 bg-[#F59E0B]/10 text-[#FB923C]">
                                   <AlertCircle className="w-3 h-3" /> PENDING
                                 </span>
                               </div>
-                              <p className="text-[12px]" style={{ color: "#94A3B8" }}>Added {format(new Date(domain.createdAt), "MMM d, yyyy")}</p>
+                              <p className="text-[12px] text-[#A1A1AA]">Added {format(new Date(domain.createdAt), "MMM d, yyyy")}</p>
                             </div>
                           </div>
                           <div className="flex items-center gap-2 shrink-0">
                             <button
                               onClick={() => openSetupWizard(domain)}
-                              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-[14px] text-white text-[12px] font-semibold transition-all active:scale-[0.97] hover:opacity-90"
-                              style={{ background: "linear-gradient(135deg, #818CF8, #A78BFA)", boxShadow: "0 4px 14px rgba(129,140,248,0.25)" }}
+                              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-white text-[12px] font-semibold transition-all active:scale-[0.97] hover:opacity-90"
+                              style={{ background: "linear-gradient(135deg, #8B5CF6, #7C3AED)" }}
                             >
                               <Settings2 className="w-3.5 h-3.5" /> Complete Setup
                             </button>
                             <button
                               onClick={() => handleDelete(domain.id)}
                               disabled={deleteMutation.isPending}
-                              className="p-2 rounded-[14px] hover:bg-red-500/10 text-[#475569] hover:text-[#F87171] transition-all"
+                              className="p-2 rounded-lg hover:bg-red-500/10 text-[#3F3F46] hover:text-[#F87171] transition-all"
                             >
                               <Trash2 className="w-4 h-4" />
                             </button>
@@ -187,7 +183,7 @@ export default function Domains() {
                         </div>
                       </div>
 
-                      <div className="px-5 py-3" style={{ background: "rgba(245,158,11,0.06)", borderTop: "1px solid rgba(245,158,11,0.15)" }}>
+                      <div className="px-5 py-3 bg-[#F59E0B]/6 border-t border-[#F59E0B]/15">
                         <div className="flex items-start gap-2">
                           <AlertCircle className="w-3.5 h-3.5 text-amber-400 shrink-0 mt-0.5" />
                           <div className="text-[11px] text-amber-400/80 space-y-0.5">
@@ -216,7 +212,7 @@ export default function Domains() {
             {verified.length > 0 && (
               <div>
                 {pending.length > 0 && (
-                  <p className="text-[11px] font-semibold uppercase tracking-wide mb-2 mt-4 flex items-center gap-1.5" style={{ color: "#94A3B8" }}>
+                  <p className="text-[11px] font-semibold uppercase tracking-wide mb-2 mt-4 flex items-center gap-1.5 text-[#A1A1AA]">
                     <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> {verified.length} active
                   </p>
                 )}
@@ -224,22 +220,22 @@ export default function Domains() {
                   {verified.map((domain, i) => (
                     <div
                       key={domain.id}
-                      className="rounded-[20px] p-5 transition-all hover:-translate-y-0.5 animate-fade-up"
-                      style={{ background: "rgba(17,24,39,0.65)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", border: "1px solid rgba(255,255,255,0.06)", boxShadow: "0 1px 2px rgba(0,0,0,0.3), 0 8px 32px rgba(0,0,0,0.3)", animationDelay: `${i * 60}ms` }}
+                      className="rounded-xl p-5 transition-all hover:-translate-y-0.5 animate-fade-up bg-[#18181B] border border-[#27272A]"
+                      style={{ animationDelay: `${i * 60}ms` }}
                     >
                       <div className="flex items-center justify-between gap-4">
                         <div className="flex items-center gap-3 min-w-0">
-                          <div className="w-10 h-10 rounded-[14px] bg-gradient-to-br from-emerald-900/30 to-teal-900/20 flex items-center justify-center shrink-0">
+                          <div className="w-10 h-10 rounded-lg bg-[#10B981]/10 border border-[#10B981]/15 flex items-center justify-center shrink-0">
                             <Globe className="w-5 h-5 text-emerald-400" />
                           </div>
                           <div className="min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
-                              <h3 className="text-[15px] font-bold truncate" style={{ color: "#F1F5F9" }}>{domain.domain}</h3>
-                              <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0" style={{ background: "rgba(52,211,153,0.1)", color: "#34D399" }}>
+                              <h3 className="text-[15px] font-bold truncate text-[#FAFAFA]">{domain.domain}</h3>
+                              <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 bg-[#10B981]/10 text-[#34D399]">
                                 <CheckCircle2 className="w-3 h-3" /> ACTIVE
                               </span>
                             </div>
-                            <p className="text-[12px]" style={{ color: "#94A3B8" }}>
+                            <p className="text-[12px] text-[#A1A1AA]">
                               Connected {format(new Date(domain.createdAt), "MMM d, yyyy")}
                             </p>
                           </div>
@@ -249,7 +245,7 @@ export default function Domains() {
                             href={`https://${domain.domain}`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="p-2 rounded-[14px] hover:bg-[rgba(255,255,255,0.03)] text-[#475569] hover:text-[#94A3B8] transition-all"
+                            className="p-2 rounded-lg hover:bg-[#27272A] text-[#3F3F46] hover:text-[#A1A1AA] transition-all"
                             title="Test domain"
                           >
                             <ExternalLink className="w-4 h-4" />
@@ -257,7 +253,7 @@ export default function Domains() {
                           <button
                             onClick={() => handleDelete(domain.id)}
                             disabled={deleteMutation.isPending}
-                            className="p-2 rounded-[14px] hover:bg-red-500/10 text-[#475569] hover:text-[#F87171] transition-all"
+                            className="p-2 rounded-lg hover:bg-red-500/10 text-[#3F3F46] hover:text-[#F87171] transition-all"
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>

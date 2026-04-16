@@ -35,21 +35,21 @@ export default function Signup() {
   };
 
   return (
-    <div className="min-h-screen flex bg-white">
+    <div className="min-h-screen flex bg-[#09090B]">
       {/* Left side - Brand */}
-      <div className="hidden lg:flex lg:w-[480px] xl:w-[520px] bg-[#0A0A0A] flex-col justify-between p-10 relative overflow-hidden">
+      <div className="hidden lg:flex lg:w-[480px] xl:w-[520px] bg-[#09090B] flex-col justify-between p-10 relative overflow-hidden border-r border-[#27272A]">
         <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, white 1px, transparent 0)', backgroundSize: '24px 24px' }} />
         <div className="relative z-10">
           <div className="flex items-center gap-2.5 mb-16">
-            <div className="bg-white/10 p-2 rounded-xl backdrop-blur-sm flex items-center justify-center">
+            <div className="bg-[#27272A] p-2 rounded-xl flex items-center justify-center">
               <SniprLogo size={20} color="white" />
             </div>
-            <span className="font-bold text-lg text-white tracking-tight">Snipr</span>
+            <span className="font-bold text-lg text-[#FAFAFA] tracking-tight">Snipr</span>
           </div>
-          <h2 className="text-3xl font-bold text-white leading-tight mb-4">
+          <h2 className="text-3xl font-bold text-[#FAFAFA] leading-tight mb-4">
             Start free.<br />Scale infinitely.
           </h2>
-          <p className="text-white/50 text-[15px] leading-relaxed max-w-[320px]">
+          <p className="text-[#71717A] text-[15px] leading-relaxed max-w-[320px]">
             Join thousands of marketers and developers who trust Snipr for link intelligence.
           </p>
         </div>
@@ -59,7 +59,7 @@ export default function Signup() {
             { icon: Shield, text: "Enterprise-grade security & privacy" },
             { icon: Sparkles, text: "AI insights included on all plans" },
           ].map((item, i) => (
-            <div key={i} className="flex items-center gap-3 text-white/40 text-sm">
+            <div key={i} className="flex items-center gap-3 text-[#71717A] text-sm">
               <item.icon className="w-4 h-4 shrink-0" />
               {item.text}
             </div>
@@ -68,30 +68,30 @@ export default function Signup() {
       </div>
 
       {/* Right side - Form */}
-      <div className="flex-1 flex items-center justify-center px-6 py-12 bg-[#FAFAFA]">
+      <div className="flex-1 flex items-center justify-center px-6 py-12 bg-[#09090B]">
         <div className="w-full max-w-[380px]">
           {/* Mobile logo */}
           <div className="flex flex-col items-center mb-10 lg:hidden">
-            <div className="bg-[#0A0A0A] p-2.5 rounded-xl mb-3 flex items-center justify-center">
+            <div className="bg-[#18181B] p-2.5 rounded-xl mb-3 flex items-center justify-center border border-[#27272A]">
               <SniprLogo size={20} color="white" />
             </div>
-            <span className="font-bold text-lg text-[#0A0A0A]">Snipr</span>
+            <span className="font-bold text-lg text-[#FAFAFA]">Snipr</span>
           </div>
 
           <div className="mb-8">
-            <h1 className="text-[26px] font-bold text-[#0A0A0A] tracking-tight">Create your account</h1>
-            <p className="text-[#7A7A84] text-[15px] mt-1.5">Get started in under 30 seconds</p>
+            <h1 className="text-[26px] font-bold text-[#FAFAFA] tracking-tight">Create your account</h1>
+            <p className="text-[#71717A] text-[15px] mt-1.5">Get started in under 30 seconds</p>
           </div>
 
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
             <div className="space-y-1.5">
-              <Label htmlFor="name" className="text-[13px] font-medium text-[#3A3A3E]">Full name</Label>
+              <Label htmlFor="name" className="text-[13px] font-medium text-[#A1A1AA]">Full name</Label>
               <Input
                 id="name"
                 placeholder="Jane Doe"
                 autoComplete="name"
                 {...form.register("name")}
-                className="rounded-xl h-11 text-[14px] bg-white border border-[#E2E8F0] text-[#0A0A0A] placeholder:text-[#C0C0C8] focus-visible:ring-2 focus-visible:ring-[#0A0A0A]/10 focus-visible:border-[#0A0A0A] transition-all shadow-sm"
+                className="rounded-xl h-11 text-[14px] bg-[#18181B] border border-[#27272A] text-[#FAFAFA] placeholder:text-[#52525B] focus-visible:ring-2 focus-visible:ring-[#8B5CF6]/20 focus-visible:border-[#8B5CF6] transition-all"
               />
               {form.formState.errors.name && (
                 <p className="text-xs text-red-500 font-medium mt-1">{form.formState.errors.name.message}</p>
@@ -99,14 +99,14 @@ export default function Signup() {
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="email" className="text-[13px] font-medium text-[#3A3A3E]">Work email</Label>
+              <Label htmlFor="email" className="text-[13px] font-medium text-[#A1A1AA]">Work email</Label>
               <Input
                 id="email"
                 type="email"
                 placeholder="name@company.com"
                 autoComplete="email"
                 {...form.register("email")}
-                className="rounded-xl h-11 text-[14px] bg-white border border-[#E2E8F0] text-[#0A0A0A] placeholder:text-[#C0C0C8] focus-visible:ring-2 focus-visible:ring-[#0A0A0A]/10 focus-visible:border-[#0A0A0A] transition-all shadow-sm"
+                className="rounded-xl h-11 text-[14px] bg-[#18181B] border border-[#27272A] text-[#FAFAFA] placeholder:text-[#52525B] focus-visible:ring-2 focus-visible:ring-[#8B5CF6]/20 focus-visible:border-[#8B5CF6] transition-all"
               />
               {form.formState.errors.email && (
                 <p className="text-xs text-red-500 font-medium mt-1">{form.formState.errors.email.message}</p>
@@ -114,14 +114,14 @@ export default function Signup() {
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="password" className="text-[13px] font-medium text-[#3A3A3E]">Password</Label>
+              <Label htmlFor="password" className="text-[13px] font-medium text-[#A1A1AA]">Password</Label>
               <Input
                 id="password"
                 type="password"
                 placeholder="Min. 8 characters"
                 autoComplete="new-password"
                 {...form.register("password")}
-                className="rounded-xl h-11 text-[14px] bg-white border border-[#E2E8F0] text-[#0A0A0A] placeholder:text-[#C0C0C8] focus-visible:ring-2 focus-visible:ring-[#0A0A0A]/10 focus-visible:border-[#0A0A0A] transition-all shadow-sm"
+                className="rounded-xl h-11 text-[14px] bg-[#18181B] border border-[#27272A] text-[#FAFAFA] placeholder:text-[#52525B] focus-visible:ring-2 focus-visible:ring-[#8B5CF6]/20 focus-visible:border-[#8B5CF6] transition-all"
               />
               {form.formState.errors.password && (
                 <p className="text-xs text-red-500 font-medium mt-1">{form.formState.errors.password.message}</p>
@@ -131,7 +131,8 @@ export default function Signup() {
             <button
               type="submit"
               disabled={isRegistering}
-              className="w-full h-11 rounded-xl text-[14px] font-semibold bg-[#0A0A0A] hover:bg-[#1F1F1F] text-white transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+              className="w-full h-11 rounded-xl text-[14px] font-semibold text-white transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{ background: 'linear-gradient(135deg, #8B5CF6, #7C3AED)' }}
             >
               {isRegistering ? (
                 <span className="flex items-center justify-center gap-2">
@@ -142,15 +143,15 @@ export default function Signup() {
             </button>
           </form>
 
-          <p className="mt-6 text-center text-[11px] text-[#7A7A84] leading-relaxed">
+          <p className="mt-6 text-center text-[11px] text-[#71717A] leading-relaxed">
             By creating an account, you agree to our{" "}
-            <Link href="/terms" className="underline hover:text-[#7A7A84]">Terms</Link> and{" "}
-            <Link href="/privacy" className="underline hover:text-[#7A7A84]">Privacy Policy</Link>
+            <Link href="/terms" className="underline hover:text-[#A1A1AA]">Terms</Link> and{" "}
+            <Link href="/privacy" className="underline hover:text-[#A1A1AA]">Privacy Policy</Link>
           </p>
 
-          <p className="mt-4 text-center text-[13px] text-[#7A7A84]">
+          <p className="mt-4 text-center text-[13px] text-[#71717A]">
             Already have an account?{" "}
-            <Link href="/login" className="text-[#0A0A0A] font-semibold hover:underline">
+            <Link href="/login" className="text-[#8B5CF6] font-semibold hover:underline">
               Sign in
             </Link>
           </p>
