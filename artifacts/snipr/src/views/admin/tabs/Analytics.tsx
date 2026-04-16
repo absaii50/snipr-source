@@ -6,6 +6,7 @@ import {
   BarChart, Bar, Legend,
 } from "recharts";
 import { apiFetch, apiFetchBlob, downloadBlob, fmtNum } from "../utils";
+import { useToast } from "../Toast";
 
 interface AnalyticsData {
   clicksByDay: { day: string; clicks: string }[];
@@ -69,6 +70,7 @@ function ClicksTooltip({ active, payload, label }: any) {
 }
 
 export default function AnalyticsTab() {
+  const { toast } = useToast();
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [platform, setPlatform] = useState<PlatformData | null>(null);
   const [range, setRange] = useState<Range>("30");
@@ -139,7 +141,7 @@ export default function AnalyticsTab() {
           <button onClick={() => load(range)} className="p-2 rounded-xl border border-[#E2E8F0] bg-white hover:bg-[#F4F4F6] transition-all">
             <RefreshCw className={`w-3.5 h-3.5 text-[#8888A0] ${loading ? "animate-spin" : ""}`} />
           </button>
-          <button onClick={async () => { try { const b = await apiFetchBlob("/admin/export/clicks"); downloadBlob(b, "snipr-clicks.csv"); } catch { alert("Export failed."); } }}
+          <button onClick={async () => { try { const b = await apiFetchBlob("/admin/export/clicks"); downloadBlob(b, "snipr-clicks.csv"); toast("Clicks exported"); } catch { toast("Export failed", "error"); } }}
             className="flex items-center gap-1 px-2.5 py-2 rounded-xl border border-[#E2E8F0] bg-white hover:bg-[#F4F4F6] transition-all text-xs text-[#8888A0]">
             <Download className="w-3.5 h-3.5" /> CSV
           </button>

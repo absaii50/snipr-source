@@ -207,11 +207,14 @@ export default function GuideTab() {
       <Section icon={Users} title="Users & Plans">
         <p className="text-[#6666A0] text-xs">Each user account is tied to a workspace. Plans control feature limits.</p>
         <div className="mt-3 space-y-2">
-          <div className="grid grid-cols-3 gap-2 text-xs">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
             {[
               { plan: "Free", color: "bg-gray-100 text-gray-700", limits: "5 links · 1 domain · Basic analytics" },
+              { plan: "Starter", color: "bg-emerald-100 text-emerald-700", limits: "25 links · 2 domains · Click analytics" },
+              { plan: "Growth", color: "bg-amber-100 text-amber-700", limits: "100 links · 3 domains · Country & device data" },
               { plan: "Pro", color: "bg-violet-100 text-violet-700", limits: "Unlimited links · 5 domains · Full analytics" },
-              { plan: "Business", color: "bg-amber-100 text-amber-700", limits: "Unlimited everything · AI Insights · API access" },
+              { plan: "Business", color: "bg-blue-100 text-blue-700", limits: "Unlimited everything · AI Insights · API access" },
+              { plan: "Enterprise", color: "bg-rose-100 text-rose-700", limits: "Unlimited · Custom domains · Priority support" },
             ].map(({ plan, color, limits }) => (
               <div key={plan} className="bg-[#F8F8FC] rounded-xl p-3 border border-[#E2E8F0]">
                 <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${color}`}>{plan}</span>
@@ -219,7 +222,7 @@ export default function GuideTab() {
               </div>
             ))}
           </div>
-          <InfoBox type="info">Plans are managed via Stripe. Webhook events update the plan field automatically. You can manually set a user&apos;s plan in the Users tab → Performance table.</InfoBox>
+          <InfoBox type="info">Plans are managed via Stripe. Webhook events update the plan field automatically. You can manually set a user&apos;s plan in the Users tab or Plans tab.</InfoBox>
         </div>
       </Section>
 
@@ -228,7 +231,7 @@ export default function GuideTab() {
         <p className="text-[#6666A0] text-xs">Snipr uses Stripe for subscriptions. Billing is managed via the Stripe integration.</p>
         <div className="mt-3 space-y-2">
           <Step n={1}>Connect Stripe via the Replit integrations panel.</Step>
-          <Step n={2}>Create products for Pro and Business plans in the Stripe dashboard.</Step>
+          <Step n={2}>Create products for each paid plan tier (Starter, Growth, Pro, Business, Enterprise) in the Stripe dashboard.</Step>
           <Step n={3}>Webhooks are managed automatically by the Stripe integration.</Step>
         </div>
         <InfoBox type="tip">Until billing is fully configured, you can manually set user plans in the Users tab using the plan dropdown in each user&apos;s profile.</InfoBox>

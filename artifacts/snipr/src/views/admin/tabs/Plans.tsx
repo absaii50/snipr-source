@@ -2,6 +2,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { CreditCard, Users, Zap, Crown, Star, Rocket, Building2, Search, ChevronDown, Check, AlertCircle, DollarSign, TrendingUp, UserCheck, BarChart3 } from "lucide-react";
 import { apiFetch } from "../utils";
+import { useToast } from "../Toast";
 
 interface Distribution {
   free: number;
@@ -98,6 +99,7 @@ const PLAN_COLORS: Record<string, string> = {
 };
 
 export default function PlansTab() {
+  const { toast } = useToast();
   const [dist, setDist] = useState<DistributionData | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<SearchUser[]>([]);
@@ -110,8 +112,8 @@ export default function PlansTab() {
   const [revenue, setRevenue] = useState<RevenueData | null>(null);
 
   useEffect(() => {
-    apiFetch("/admin/plan-distribution").then(setDist).catch(() => {});
-    apiFetch("/admin/revenue").then(setRevenue).catch(() => {});
+    apiFetch("/admin/plan-distribution").then(setDist).catch(() => toast("Failed to load plan distribution", "error"));
+    apiFetch("/admin/revenue").then(setRevenue).catch(() => toast("Failed to load revenue data", "error"));
   }, []);
 
   const handleSearch = useCallback(async (query: string) => {
@@ -161,7 +163,7 @@ export default function PlansTab() {
       setFeedback({ type: "success", message: `Plan changed to ${newPlan} for ${selectedUser.email}` });
       setSelectedUser({ ...selectedUser, plan: newPlan });
       // Refresh distribution
-      apiFetch("/admin/plan-distribution").then(setDist).catch(() => {});
+      apiFetch("/admin/plan-distribution").then(setDist).catch(() => {/* silent */});
     } catch (err: any) {
       setFeedback({ type: "error", message: err?.error || "Failed to change plan" });
     } finally {

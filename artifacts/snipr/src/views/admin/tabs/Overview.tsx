@@ -9,6 +9,7 @@ import {
   AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
 } from "recharts";
 import { apiFetch, fmtDate, fmtNum } from "../utils";
+import { useToast } from "../Toast";
 
 interface Stats {
   totalUsers: number; totalWorkspaces: number; totalLinks: number;
@@ -86,6 +87,7 @@ function CustomTooltip({ active, payload, label }: any) {
 }
 
 export default function Overview() {
+  const { toast } = useToast();
   const [stats, setStats] = useState<Stats | null>(null);
   const [recent, setRecent] = useState<RecentUser[]>([]);
   const [topLinks, setTopLinks] = useState<TopLink[]>([]);
@@ -130,7 +132,7 @@ export default function Overview() {
 
   async function refresh() {
     setRefreshing(true);
-    await load().catch(() => {});
+    await load().catch(() => toast("Failed to refresh data", "error"));
     setRefreshing(false);
   }
 

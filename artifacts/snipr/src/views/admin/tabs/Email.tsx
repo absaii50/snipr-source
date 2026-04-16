@@ -5,6 +5,7 @@ import {
   ShieldCheck, Loader2, Clock, Users, MailCheck, MailX, Download, Megaphone,
 } from "lucide-react";
 import { apiFetch, apiFetchBlob, downloadBlob, fmtDate, fmtNum } from "../utils";
+import { useToast, ConfirmModal } from "../Toast";
 
 interface EmailStats {
   totalEmails: number;
@@ -48,6 +49,7 @@ const STATUS_BADGES: Record<string, { bg: string; text: string }> = {
 };
 
 export default function EmailTab() {
+  const { toast } = useToast();
   const [stats, setStats] = useState<EmailStats | null>(null);
   const [logs, setLogs] = useState<EmailLog[]>([]);
   const [unverified, setUnverified] = useState<UnverifiedUser[]>([]);
@@ -62,6 +64,7 @@ export default function EmailTab() {
   const [massTemplate, setMassTemplate] = useState<"general" | "maintenance" | "feature" | "security">("general");
   const [massSending, setMassSending] = useState(false);
   const [massPreview, setMassPreview] = useState<{ recipientCount: number; subject: string; template: string } | null>(null);
+  const [confirmModal, setConfirmModal] = useState<{ open: boolean; title: string; desc: string; action: () => void; variant?: "danger" | "warning" }>({ open: false, title: "", desc: "", action: () => {} });
 
   async function loadAll() {
     setLoading(true);
@@ -76,6 +79,7 @@ export default function EmailTab() {
       setUnverified((u || []).filter((usr: Record<string, unknown>) => !usr.emailVerified));
     } catch (err) {
       console.error("Failed to load email data", err);
+      toast("Failed to load email data", "error");
     } finally {
       setLoading(false);
     }
@@ -83,23 +87,33 @@ export default function EmailTab() {
 
   useEffect(() => { loadAll(); }, []);
 
-  async function forceVerify(userId: string) {
-    if (!confirm("Force verify this user's email?")) return;
+  async function doForceVerify(userId: string) {
     setBusy(userId);
     try {
       await apiFetch(`/admin/force-verify/${userId}`, { method: "POST" });
+      toast("Email force-verified successfully");
       loadAll();
-    } catch { alert("Failed to force verify"); }
+    } catch { toast("Failed to force verify", "error"); }
     finally { setBusy(null); }
+  }
+
+  function forceVerify(userId: string) {
+    setConfirmModal({
+      open: true,
+      title: "Force Verify Email",
+      desc: "This will mark the user's email as verified without them clicking a confirmation link.",
+      variant: "warning",
+      action: () => { setConfirmModal(m => ({ ...m, open: false })); doForceVerify(userId); },
+    });
   }
 
   async function resendVerification(userId: string) {
     setBusy(userId);
     try {
       await apiFetch(`/admin/resend-verification/${userId}`, { method: "POST" });
-      alert("Verification email sent!");
+      toast("Verification email sent!");
       loadAll();
-    } catch { alert("Failed to send email"); }
+    } catch { toast("Failed to send email", "error"); }
     finally { setBusy(null); }
   }
 
@@ -107,33 +121,43 @@ export default function EmailTab() {
     try {
       const blob = await apiFetchBlob("/admin/export/emails");
       downloadBlob(blob, "snipr-emails.csv");
-    } catch { alert("Export failed."); }
+      toast("Emails exported successfully");
+    } catch { toast("Export failed", "error"); }
   }
 
   async function previewMassEmail() {
-    if (!massSubject.trim() || !massBody.trim()) { alert("Subject and body are required."); return; }
+    if (!massSubject.trim() || !massBody.trim()) { toast("Subject and body are required", "error"); return; }
     try {
       const data = await apiFetch("/admin/notifications/preview", {
         method: "POST",
         body: JSON.stringify({ subject: massSubject, body: massBody, planFilter: massTarget, template: massTemplate }),
       });
       setMassPreview(data);
-    } catch { alert("Failed to load preview."); }
+    } catch { toast("Failed to load preview", "error"); }
   }
 
-  async function confirmSendMassEmail() {
+  function confirmSendMassEmail() {
     if (!massPreview) return;
-    if (!confirm(`Send email to ${massPreview.recipientCount} ${massTarget === "all" ? "" : massTarget + " "}user(s)? This cannot be undone.`)) return;
+    setConfirmModal({
+      open: true,
+      title: "Send Mass Email",
+      desc: `Send email to ${massPreview.recipientCount} ${massTarget === "all" ? "" : massTarget + " "}user(s)? This cannot be undone.`,
+      variant: "danger",
+      action: () => { setConfirmModal(m => ({ ...m, open: false })); doSendMassEmail(); },
+    });
+  }
+
+  async function doSendMassEmail() {
     setMassSending(true);
     try {
       const res = await apiFetch("/admin/notifications/send", {
         method: "POST",
         body: JSON.stringify({ subject: massSubject, body: massBody, planFilter: massTarget, template: massTemplate }),
       });
-      alert(`Mass email sent! ${res.sent} delivered, ${res.failed} failed out of ${res.total} recipients.`);
+      toast(`Mass email sent! ${res.sent} delivered, ${res.failed} failed out of ${res.total}`);
       setMassSubject(""); setMassBody(""); setMassPreview(null);
       loadAll();
-    } catch { alert("Failed to send mass email."); }
+    } catch { toast("Failed to send mass email", "error"); }
     finally { setMassSending(false); }
   }
 
@@ -413,6 +437,16 @@ export default function EmailTab() {
           </div>
         </div>
       )}
+
+      <ConfirmModal
+        open={confirmModal.open}
+        onClose={() => setConfirmModal(m => ({ ...m, open: false }))}
+        onConfirm={confirmModal.action}
+        title={confirmModal.title}
+        description={confirmModal.desc}
+        confirmText={confirmModal.variant === "danger" ? "Send" : "Confirm"}
+        variant={confirmModal.variant}
+      />
     </div>
   );
 }
