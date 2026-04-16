@@ -203,7 +203,7 @@ export default function UserProfile({
     setLoading(true);
     apiFetch(`/admin/users/${userId}/analytics`)
       .then(setData)
-      .catch(() => {})
+      .catch(() => toast("Failed to load user analytics", "error"))
       .finally(() => setLoading(false));
 
     setTimelineLoading(true);

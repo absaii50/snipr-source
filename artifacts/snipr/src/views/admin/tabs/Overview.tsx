@@ -101,7 +101,7 @@ export default function Overview() {
     try {
       const h = await apiFetch("/admin/health-detail");
       setHealth(h);
-    } catch {}
+    } catch { /* health polling — silent on fail to avoid toast spam */ }
   }
 
   async function load() {
@@ -119,6 +119,7 @@ export default function Overview() {
         clicks: Number(d.clicks),
       })));
     } catch {
+      toast("Failed to load dashboard data", "error");
     } finally {
       setLoading(false);
     }

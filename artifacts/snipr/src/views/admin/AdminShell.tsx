@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   LayoutDashboard, Users, Link2, Globe, BarChart3,
   CreditCard, FileText, Sparkles, Settings, LogOut, ShieldCheck,
@@ -54,6 +54,22 @@ export default function AdminShell({ tab, setTab, onLogout, children }: Props) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [cmdPaletteOpen, setCmdPaletteOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
+  const [notifCount, setNotifCount] = useState(0);
+
+  const pollNotifications = useCallback(() => {
+    apiFetch("/admin/notifications")
+      .then((d: any) => {
+        const count = (d?.newSignups?.length || 0) + (d?.failedEmails?.length || 0);
+        setNotifCount(count);
+      })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    pollNotifications();
+    const interval = setInterval(pollNotifications, 60000);
+    return () => clearInterval(interval);
+  }, [pollNotifications]);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -157,11 +173,16 @@ export default function AdminShell({ tab, setTab, onLogout, children }: Props) {
             </button>
             <div className="relative">
               <button
-                onClick={() => setNotifOpen(!notifOpen)}
+                onClick={() => { setNotifOpen(!notifOpen); if (!notifOpen) setNotifCount(0); }}
                 className="p-2 rounded-lg hover:bg-[#F4F4F6] transition-colors relative"
                 title="Notifications"
               >
                 <Bell className="w-4 h-4 text-[#8888A0]" />
+                {notifCount > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] flex items-center justify-center px-1 bg-red-500 text-white text-[10px] font-bold rounded-full leading-none">
+                    {notifCount > 99 ? "99+" : notifCount}
+                  </span>
+                )}
               </button>
               <NotificationsDropdown open={notifOpen} onClose={() => setNotifOpen(false)} />
             </div>
@@ -183,7 +204,17 @@ export default function AdminShell({ tab, setTab, onLogout, children }: Props) {
       <CommandPalette
         open={cmdPaletteOpen}
         onClose={() => setCmdPaletteOpen(false)}
-        onNavigate={(t) => { setTab(t as AdminTab); setCmdPaletteOpen(false); }}
+        onNavigate={(t) => {
+          const [tabPart, queryPart] = t.split("?");
+          setTab(tabPart as AdminTab);
+          if (queryPart) {
+            // Push with query params for tabs that support it
+            window.history.replaceState(null, "", `/admin/${tabPart}?${queryPart}`);
+            // Dispatch custom event so the tab can pick up the search
+            window.dispatchEvent(new CustomEvent("admin-search", { detail: queryPart }));
+          }
+          setCmdPaletteOpen(false);
+        }}
         onAction={(action) => {
           setCmdPaletteOpen(false);
           if (action === "export-users") window.open(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/admin/export/users`, "_blank");

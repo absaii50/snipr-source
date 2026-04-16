@@ -4,17 +4,21 @@ import {
   LayoutDashboard, Users, Link2, Globe, BarChart3,
   CreditCard, FileText, Mail, Sparkles, ScrollText,
   Settings, BookOpen, Search, Download, RefreshCw,
-  ArrowRight,
+  ArrowRight, User,
 } from "lucide-react";
+import { apiFetch } from "./utils";
 
 /* ── types ─────────────────────────────────────────────────── */
+
+type Category = "Navigation" | "Quick Actions" | "Users";
 
 interface CommandItem {
   id: string;
   label: string;
   icon: React.ElementType;
-  category: "Navigation" | "Quick Actions";
+  category: Category;
   keywords?: string;
+  sub?: string;
 }
 
 interface Props {
@@ -24,9 +28,9 @@ interface Props {
   onAction: (action: string) => void;
 }
 
-/* ── data ──────────────────────────────────────────────────── */
+/* ── static data ──────────────────────────────────────────── */
 
-const ITEMS: CommandItem[] = [
+const STATIC_ITEMS: CommandItem[] = [
   // Navigation
   { id: "overview",  label: "Overview",      icon: LayoutDashboard, category: "Navigation" },
   { id: "users",     label: "Users",         icon: Users,           category: "Navigation" },
@@ -52,11 +56,14 @@ const ITEMS: CommandItem[] = [
 export default function CommandPalette({ open, onClose, onNavigate, onAction }: Props) {
   const [query, setQuery] = useState("");
   const [selectedIdx, setSelectedIdx] = useState(0);
+  const [userResults, setUserResults] = useState<CommandItem[]>([]);
+  const [searchingUsers, setSearchingUsers] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
-  /* filter items */
-  const filtered = ITEMS.filter((item) => {
+  /* filter static items */
+  const filteredStatic = STATIC_ITEMS.filter((item) => {
     if (!query) return true;
     const q = query.toLowerCase();
     return (
@@ -66,11 +73,49 @@ export default function CommandPalette({ open, onClose, onNavigate, onAction }: 
     );
   });
 
+  const filtered = [...filteredStatic, ...userResults];
+
+  /* search users from API when query is 2+ chars */
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+
+    if (query.length < 2) {
+      setUserResults([]);
+      setSearchingUsers(false);
+      return;
+    }
+
+    setSearchingUsers(true);
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const data = await apiFetch(`/admin/users/performance?search=${encodeURIComponent(query)}`);
+        const users = (data.users ?? data ?? []).slice(0, 5);
+        setUserResults(
+          users.map((u: any) => ({
+            id: `user-${u.id}`,
+            label: u.name || u.full_name || u.email,
+            sub: u.email,
+            icon: User,
+            category: "Users" as Category,
+            keywords: u.email,
+          }))
+        );
+      } catch {
+        setUserResults([]);
+      } finally {
+        setSearchingUsers(false);
+      }
+    }, 300);
+
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+  }, [query]);
+
   /* reset state when opening / closing */
   useEffect(() => {
     if (open) {
       setQuery("");
       setSelectedIdx(0);
+      setUserResults([]);
       setTimeout(() => inputRef.current?.focus(), 0);
     }
   }, [open]);
@@ -102,7 +147,11 @@ export default function CommandPalette({ open, onClose, onNavigate, onAction }: 
   /* select handler */
   const handleSelect = useCallback(
     (item: CommandItem) => {
-      if (item.category === "Navigation") {
+      if (item.category === "Users") {
+        // Navigate to users tab — the user's email is in the item
+        const email = item.sub || item.label;
+        onNavigate(`users?search=${encodeURIComponent(email)}`);
+      } else if (item.category === "Navigation") {
         onNavigate(item.id);
       } else {
         onAction(item.id);
@@ -160,20 +209,23 @@ export default function CommandPalette({ open, onClose, onNavigate, onAction }: 
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Search commands... ⌘K"
+            placeholder="Search commands or users... ⌘K"
             className="flex-1 bg-transparent text-sm text-gray-900 placeholder-gray-400 outline-none"
           />
+          {searchingUsers && (
+            <div className="w-4 h-4 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin shrink-0" />
+          )}
         </div>
 
         {/* results */}
         <div ref={listRef} className="max-h-72 overflow-y-auto py-2">
-          {filtered.length === 0 && (
+          {filtered.length === 0 && !searchingUsers && (
             <p className="px-4 py-6 text-center text-sm text-gray-400">
               No results found
             </p>
           )}
 
-          {(["Navigation", "Quick Actions"] as const).map((cat) => {
+          {(["Navigation", "Users", "Quick Actions"] as const).map((cat) => {
             const items = groups[cat];
             if (!items?.length) return null;
 
@@ -205,7 +257,14 @@ export default function CommandPalette({ open, onClose, onNavigate, onAction }: 
                           isSelected ? "text-blue-500" : "text-gray-400"
                         }`}
                       />
-                      <span className="flex-1 text-left">{item.label}</span>
+                      <div className="flex-1 text-left min-w-0">
+                        <span className="block truncate">{item.label}</span>
+                        {item.sub && (
+                          <span className={`block text-xs truncate ${isSelected ? "text-blue-400" : "text-gray-400"}`}>
+                            {item.sub}
+                          </span>
+                        )}
+                      </div>
                       <ArrowRight
                         className={`h-3.5 w-3.5 shrink-0 ${
                           isSelected ? "text-blue-400" : "text-transparent"

@@ -89,7 +89,13 @@ interface WorkspaceDetail {
 export default function UsersTab() {
   const [users, setUsers] = useState<PerformanceUser[]>([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      return params.get("search") || "";
+    }
+    return "";
+  });
   const [plan, setPlan] = useState<PlanFilter>("all");
   const [status, setStatus] = useState<StatusFilter>("all");
   const [sort, setSort] = useState<SortKey>("clicks");
@@ -106,6 +112,18 @@ export default function UsersTab() {
   const [inspectorLoading, setInspectorLoading] = useState(false);
   const { toast } = useToast();
   const [confirmModal, setConfirmModal] = useState<{ open: boolean; title: string; description: string; onConfirm: () => void } | null>(null);
+
+  // Listen for command palette search events
+  useEffect(() => {
+    function handleAdminSearch(e: Event) {
+      const query = (e as CustomEvent).detail as string;
+      const params = new URLSearchParams(query);
+      const searchVal = params.get("search");
+      if (searchVal) setSearch(searchVal);
+    }
+    window.addEventListener("admin-search", handleAdminSearch);
+    return () => window.removeEventListener("admin-search", handleAdminSearch);
+  }, []);
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {

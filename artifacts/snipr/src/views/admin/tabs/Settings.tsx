@@ -88,7 +88,7 @@ export default function SettingsTab() {
     try {
       const data = await apiFetch("/admin/announcement");
       if (data) setAnnouncement({ text: data.text || "", type: data.type || "info", enabled: data.enabled ?? false });
-    } catch {}
+    } catch { toast("Failed to load announcement", "error"); }
   }
 
   async function loadPlatformSettings() {
@@ -98,7 +98,7 @@ export default function SettingsTab() {
         setPlatformCfg(prev => ({ ...prev, ...data }));
       }
       setPlatformLoaded(true);
-    } catch { setPlatformLoaded(true); }
+    } catch { setPlatformLoaded(true); toast("Failed to load platform settings", "error"); }
   }
 
   async function savePlatformSettings() {
@@ -140,7 +140,7 @@ export default function SettingsTab() {
       setRateLimits(data.limits || []);
       setRecentBlocked(data.recentBlocked || null);
       setWhitelist(data.whitelist || []);
-    } catch {}
+    } catch { toast("Failed to load rate limits", "error"); }
   }
 
   async function loadDbSize() {
