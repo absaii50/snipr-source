@@ -6,9 +6,11 @@ import {
   RefreshCw, WifiOff, QrCode, Layers,
   MapPin, ChevronDown, ChevronUp, Clock, Zap,
   Signal, Eye, Navigation, Activity, ArrowUpRight,
+  TrendingUp, MousePointerClick,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
+/* ───────────────────── Types ───────────────────── */
 interface ClickEvent {
   type: "click";
   linkId: string;
@@ -24,6 +26,7 @@ interface ClickEvent {
   _id: string;
 }
 
+/* ───────────────────── Helpers ───────────────────── */
 function DeviceIcon({ device, className }: { device: string | null; className?: string }) {
   const cls = className ?? "w-4 h-4";
   if (device === "mobile") return <Smartphone className={cls} />;
@@ -47,9 +50,7 @@ function countryFlag(code: string | null) {
 }
 
 function slugColor(slug: string): string {
-  const colors = [
-    "#4F46E5", "#7C5CC4", "#2E9A72", "#E07B30", "#E05050", "#0EA5E9", "#728DA7"
-  ];
+  const colors = ["#818CF8", "#A78BFA", "#34D399", "#FB923C", "#F87171", "#38BDF8", "#94A3B8"];
   let hash = 0;
   for (let i = 0; i < slug.length; i++) hash = slug.charCodeAt(i) + ((hash << 5) - hash);
   return colors[Math.abs(hash) % colors.length];
@@ -57,11 +58,7 @@ function slugColor(slug: string): string {
 
 function countryName(code: string | null): string {
   if (!code) return "Unknown";
-  try {
-    return new Intl.DisplayNames(["en"], { type: "region" }).of(code) ?? code;
-  } catch {
-    return code;
-  }
+  try { return new Intl.DisplayNames(["en"], { type: "region" }).of(code) ?? code; } catch { return code; }
 }
 
 function browserIcon(browser: string | null) {
@@ -83,16 +80,81 @@ function osIcon(os: string | null) {
   return "💻";
 }
 
-function PulseRing({ active }: { active: boolean }) {
-  if (!active) return null;
+/* ───── Mini Sparkline (SVG) ───── */
+function MiniSparkline({ data, color, height = 32 }: { data: number[]; color: string; height?: number }) {
+  if (data.length < 2) return null;
+  const max = Math.max(...data, 1);
+  const w = 120;
+  const pts = data.map((v, i) => `${(i / (data.length - 1)) * w},${height - (v / max) * (height - 4)}`).join(" ");
+  const fillPts = `0,${height} ${pts} ${w},${height}`;
   return (
-    <span className="relative flex h-2.5 w-2.5">
-      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#2E9A72] opacity-40" />
-      <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#2E9A72]" />
-    </span>
+    <svg width={w} height={height} className="shrink-0 opacity-80">
+      <defs>
+        <linearGradient id={`sg-${color.replace("#", "")}`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={color} stopOpacity="0.3" />
+          <stop offset="100%" stopColor={color} stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      <polygon points={fillPts} fill={`url(#sg-${color.replace("#", "")})`} />
+      <polyline points={pts} fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
   );
 }
 
+/* ───── Donut Ring ───── */
+function DonutRing({ segments, size = 80 }: { segments: { value: number; color: string }[]; size?: number }) {
+  const total = segments.reduce((s, x) => s + x.value, 0);
+  if (total === 0) return null;
+  const r = (size - 8) / 2;
+  const cx = size / 2;
+  const cy = size / 2;
+  const circ = 2 * Math.PI * r;
+  let offset = 0;
+  return (
+    <svg width={size} height={size}>
+      {segments.map((seg, i) => {
+        const pct = seg.value / total;
+        const dash = pct * circ;
+        const gap = circ - dash;
+        const el = (
+          <circle
+            key={i}
+            cx={cx} cy={cy} r={r}
+            fill="none"
+            stroke={seg.color}
+            strokeWidth="6"
+            strokeDasharray={`${dash} ${gap}`}
+            strokeDashoffset={-offset}
+            strokeLinecap="round"
+            className="transition-all duration-700"
+            style={{ transform: "rotate(-90deg)", transformOrigin: "center" }}
+          />
+        );
+        offset += dash;
+        return el;
+      })}
+    </svg>
+  );
+}
+
+/* ────────────────── Dark-Theme Styles ────────────────── */
+const darkBg = "#0B0F1A";
+const cardBg = "rgba(17,24,39,0.65)";
+const cardBorder = "rgba(255,255,255,0.06)";
+const cardStyle = {
+  background: cardBg,
+  backdropFilter: "blur(16px)",
+  WebkitBackdropFilter: "blur(16px)",
+  border: `1px solid ${cardBorder}`,
+  borderRadius: "16px",
+} as const;
+
+const cardHeaderStyle = {
+  background: "rgba(255,255,255,0.03)",
+  borderBottom: `1px solid ${cardBorder}`,
+} as const;
+
+/* ══════════════════════════ MAIN COMPONENT ══════════════════════════ */
 export default function Live() {
   const [events, setEvents] = useState<ClickEvent[]>([]);
   const [status, setStatus] = useState<"connecting" | "connected" | "disconnected">("connecting");
@@ -100,422 +162,532 @@ export default function Live() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const esRef = useRef<EventSource | null>(null);
   const eventsRef = useRef<ClickEvent[]>([]);
+  const seenIds = useRef<Set<string>>(new Set());
 
+  /* ── Seed from DB ── */
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/analytics/events?limit=100", { credentials: "include" });
+        if (!res.ok || cancelled) return;
+        const data = await res.json();
+        const dbEvents: ClickEvent[] = (data.events ?? []).map((e: any) => {
+          const _id = e.id ?? (Math.random().toString(36).slice(2) + Date.now().toString(36));
+          seenIds.current.add(_id);
+          return {
+            type: "click" as const,
+            linkId: e.link_id ?? e.linkId ?? "",
+            slug: e.slug ?? "",
+            country: e.country ?? null,
+            city: e.city ?? null,
+            device: e.device ?? null,
+            browser: e.browser ?? null,
+            os: e.os ?? null,
+            referrer: e.referrer ?? null,
+            isQr: e.is_qr ?? e.isQr ?? false,
+            timestamp: e.timestamp ?? new Date().toISOString(),
+            _id,
+          };
+        });
+        if (cancelled || dbEvents.length === 0) return;
+        eventsRef.current = dbEvents.slice(0, 200);
+        setEvents([...eventsRef.current]);
+        setTotalSession(dbEvents.length);
+      } catch { /* SSE is primary */ }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  /* ── SSE ── */
   useEffect(() => {
     let retryTimeout: ReturnType<typeof setTimeout>;
-
+    let retryCount = 0;
+    let cancelled = false;
     function connect() {
+      if (cancelled) return;
       setStatus("connecting");
       const es = new EventSource("/api/realtime/stream", { withCredentials: true });
       esRef.current = es;
-
-      es.onopen = () => setStatus("connected");
-
+      es.onopen = () => { retryCount = 0; setStatus("connected"); };
       es.onmessage = (e) => {
         try {
           const data = JSON.parse(e.data);
           if (data.type === "click") {
-            const event: ClickEvent = { ...data, _id: Math.random().toString(36).slice(2) };
+            const _id = Math.random().toString(36).slice(2) + Date.now().toString(36);
+            if (data.linkId && seenIds.current.has(data.linkId + data.timestamp)) return;
+            seenIds.current.add(data.linkId + data.timestamp);
+            const event: ClickEvent = { ...data, _id };
             eventsRef.current = [event, ...eventsRef.current].slice(0, 200);
             setEvents([...eventsRef.current]);
             setTotalSession(t => t + 1);
           }
-        } catch {}
+        } catch { }
       };
-
       es.onerror = () => {
         setStatus("disconnected");
         es.close();
-        retryTimeout = setTimeout(connect, 4000);
+        if (cancelled) return;
+        if (retryTimeout) clearTimeout(retryTimeout);
+        const delay = Math.min(2000 * Math.pow(2, retryCount), 30_000);
+        retryCount++;
+        retryTimeout = setTimeout(connect, delay);
       };
     }
-
     connect();
-
-    return () => {
-      esRef.current?.close();
-      clearTimeout(retryTimeout);
-    };
+    return () => { cancelled = true; esRef.current?.close(); clearTimeout(retryTimeout); };
   }, []);
 
+  /* ── Polling fallback ── */
+  useEffect(() => {
+    if (status === "connected") return;
+    const poll = async () => {
+      try {
+        const res = await fetch("/api/analytics/events?limit=100", { credentials: "include" });
+        if (!res.ok) return;
+        const data = await res.json();
+        const dbEvents: ClickEvent[] = (data.events ?? [])
+          .filter((e: any) => {
+            const key = (e.id ?? "") + (e.timestamp ?? "");
+            if (seenIds.current.has(key)) return false;
+            seenIds.current.add(key);
+            return true;
+          })
+          .map((e: any) => ({
+            type: "click" as const,
+            linkId: e.link_id ?? e.linkId ?? "",
+            slug: e.slug ?? "",
+            country: e.country ?? null,
+            city: e.city ?? null,
+            device: e.device ?? null,
+            browser: e.browser ?? null,
+            os: e.os ?? null,
+            referrer: e.referrer ?? null,
+            isQr: e.is_qr ?? e.isQr ?? false,
+            timestamp: e.timestamp ?? new Date().toISOString(),
+            _id: e.id ?? (Math.random().toString(36).slice(2) + Date.now().toString(36)),
+          }));
+        if (dbEvents.length === 0) return;
+        const merged = [...dbEvents, ...eventsRef.current].slice(0, 200);
+        merged.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+        eventsRef.current = merged;
+        setEvents([...merged]);
+        setTotalSession(merged.length);
+      } catch { }
+    };
+    const iv = setInterval(poll, 15_000);
+    poll();
+    return () => clearInterval(iv);
+  }, [status]);
+
+  /* ── Tick: prune events > 5min, recalc ── */
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const iv = setInterval(() => {
+      const cutoff = Date.now() - 5 * 60 * 1000;
+      const before = eventsRef.current.length;
+      eventsRef.current = eventsRef.current.filter(e => new Date(e.timestamp).getTime() > cutoff);
+      if (eventsRef.current.length !== before) setEvents([...eventsRef.current]);
+      setTick(t => t + 1);
+    }, 10_000);
+    return () => clearInterval(iv);
+  }, []);
+
+  /* ── Derived data ── */
   const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000);
   const recentEvents = events.filter(e => new Date(e.timestamp) > fiveMinAgo);
 
+  // Clicks-per-minute velocity
+  const velocity = useMemo(() => {
+    if (recentEvents.length < 2) return recentEvents.length;
+    const oldest = new Date(recentEvents[recentEvents.length - 1].timestamp).getTime();
+    const span = (Date.now() - oldest) / 60_000; // minutes
+    return span > 0 ? Math.round(recentEvents.length / span) : recentEvents.length;
+  }, [recentEvents]);
+
+  // Sparkline data: clicks per 30-second bucket over last 5 min (10 buckets)
+  const sparkData = useMemo(() => {
+    const buckets = new Array(10).fill(0);
+    const now = Date.now();
+    recentEvents.forEach(e => {
+      const age = now - new Date(e.timestamp).getTime();
+      const idx = Math.min(9, Math.floor(age / 30_000));
+      buckets[9 - idx]++;
+    });
+    return buckets;
+  }, [recentEvents]);
+
   const deviceCounts = useMemo(() => {
     const counts = { mobile: 0, desktop: 0, tablet: 0 };
-    events.forEach(e => {
+    recentEvents.forEach(e => {
       const d = e.device ?? "desktop";
       if (d === "mobile") counts.mobile++;
       else if (d === "tablet") counts.tablet++;
       else counts.desktop++;
     });
     return counts;
-  }, [events]);
-
+  }, [recentEvents]);
   const deviceTotal = deviceCounts.mobile + deviceCounts.desktop + deviceCounts.tablet;
-
-  const osCounts = useMemo(() => {
-    const counts: Record<string, number> = {};
-    events.forEach(e => {
-      const key = e.os ?? "Unknown";
-      counts[key] = (counts[key] ?? 0) + 1;
-    });
-    return Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 5);
-  }, [events]);
 
   const browserCounts = useMemo(() => {
     const counts: Record<string, number> = {};
-    events.forEach(e => {
-      const key = e.browser ?? "Unknown";
-      counts[key] = (counts[key] ?? 0) + 1;
-    });
+    recentEvents.forEach(e => { const k = e.browser ?? "Unknown"; counts[k] = (counts[k] ?? 0) + 1; });
     return Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 5);
-  }, [events]);
+  }, [recentEvents]);
+
+  const osCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    recentEvents.forEach(e => { const k = e.os ?? "Unknown"; counts[k] = (counts[k] ?? 0) + 1; });
+    return Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 5);
+  }, [recentEvents]);
 
   const slugCounts = useMemo(() => {
     const counts: Record<string, number> = {};
-    events.forEach(e => { counts[e.slug] = (counts[e.slug] ?? 0) + 1; });
+    recentEvents.forEach(e => { counts[e.slug] = (counts[e.slug] ?? 0) + 1; });
     return Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 6);
-  }, [events]);
+  }, [recentEvents]);
 
   const countryCounts = useMemo(() => {
     const counts: Record<string, number> = {};
-    events.forEach(e => {
-      const key = e.country ?? "Unknown";
-      counts[key] = (counts[key] ?? 0) + 1;
-    });
+    recentEvents.forEach(e => { const k = e.country ?? "Unknown"; counts[k] = (counts[k] ?? 0) + 1; });
     return Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 8);
-  }, [events]);
+  }, [recentEvents]);
 
-  const uniqueCountries = Object.keys(
-    events.reduce<Record<string, boolean>>((acc, e) => {
-      if (e.country) acc[e.country] = true;
-      return acc;
-    }, {})
-  ).length;
+  const uniqueCountries = useMemo(() => {
+    const set = new Set<string>();
+    recentEvents.forEach(e => { if (e.country) set.add(e.country); });
+    return set.size;
+  }, [recentEvents]);
 
   const referrerCounts = useMemo(() => {
     const counts: Record<string, number> = {};
-    events.forEach(e => {
-      const key = e.referrer || "Direct";
-      counts[key] = (counts[key] ?? 0) + 1;
-    });
+    recentEvents.forEach(e => { const k = e.referrer || "Direct"; counts[k] = (counts[k] ?? 0) + 1; });
     return Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 5);
-  }, [events]);
+  }, [recentEvents]);
 
-  const toggleExpand = useCallback((id: string) => {
-    setExpandedId(prev => prev === id ? null : id);
-  }, []);
+  const toggleExpand = useCallback((id: string) => { setExpandedId(prev => prev === id ? null : id); }, []);
 
-  const statusConfig = {
-    connected: { label: "LIVE", bg: "bg-[#E8F7F1]", text: "text-[#2E9A72]", border: "border-[#B4E8CE]", dot: true },
-    connecting: { label: "Connecting…", bg: "bg-[#FEF3E8]", text: "text-[#E07B30]", border: "border-[#FDDCB6]", dot: false },
-    disconnected: { label: "Reconnecting…", bg: "bg-[#FFF0F0]", text: "text-[#E05050]", border: "border-[#FFD5D5]", dot: false },
-  };
-  const sc = statusConfig[status];
+  // Velocity color
+  const velColor = velocity === 0 ? "#64748B" : velocity < 5 ? "#38BDF8" : velocity < 15 ? "#34D399" : velocity < 40 ? "#FB923C" : "#F87171";
 
+  /* ── Time-decay opacity: events > 3min get dimmer ── */
+  function eventOpacity(ts: string) {
+    const age = (Date.now() - new Date(ts).getTime()) / 1000;
+    if (age < 60) return 1;
+    if (age < 180) return 0.85;
+    return 0.6;
+  }
+
+  /* ═══════════════════ RENDER ═══════════════════ */
   return (
     <ProtectedLayout>
-      <div className="px-4 sm:px-6 lg:px-8 py-6 max-w-[1400px] mx-auto w-full space-y-5 pt-14 lg:pt-6">
+      {/* Dark overlay background */}
+      <div style={{ background: darkBg, minHeight: "100vh" }} className="relative overflow-hidden">
+        {/* Ambient glow blobs */}
+        <div className="pointer-events-none absolute inset-0 overflow-hidden">
+          <div className="absolute -top-32 -left-32 w-[500px] h-[500px] rounded-full opacity-[0.07]" style={{ background: "radial-gradient(circle, #818CF8, transparent 70%)" }} />
+          <div className="absolute top-1/3 -right-40 w-[600px] h-[600px] rounded-full opacity-[0.05]" style={{ background: "radial-gradient(circle, #34D399, transparent 70%)" }} />
+          <div className="absolute bottom-0 left-1/3 w-[400px] h-[400px] rounded-full opacity-[0.04]" style={{ background: "radial-gradient(circle, #FB923C, transparent 70%)" }} />
+        </div>
 
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 animate-fade-up">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#E8F7F1] to-[#D0EFE0] flex items-center justify-center shrink-0 relative">
-              <Activity className="w-6 h-6 text-[#2E9A72]" />
-              {status === "connected" && (
-                <span className="absolute -top-0.5 -right-0.5 flex h-3 w-3">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#2E9A72] opacity-50" />
-                  <span className="relative inline-flex rounded-full h-3 w-3 bg-[#2E9A72] border-2 border-white" />
-                </span>
-              )}
-            </div>
-            <div>
-              <div className="flex items-center gap-2.5">
-                <p className="text-[10px] font-bold tracking-[0.22em] uppercase text-[#728DA7]">Real-Time</p>
-                <span className={`inline-flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-0.5 rounded-full ${sc.bg} ${sc.text} border ${sc.border}`}>
-                  {sc.dot && <span className="w-1.5 h-1.5 rounded-full bg-[#2E9A72] animate-pulse" />}
-                  {!sc.dot && status === "connecting" && <RefreshCw className="w-2.5 h-2.5 animate-spin" />}
-                  {!sc.dot && status === "disconnected" && <WifiOff className="w-2.5 h-2.5" />}
-                  {sc.label}
-                </span>
+        <div className="relative z-10 px-4 sm:px-6 lg:px-8 py-6 max-w-[1400px] mx-auto w-full space-y-5 pt-14 lg:pt-6">
+
+          {/* ── Header ── */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 flex items-center justify-center shrink-0 relative rounded-2xl" style={{ background: "linear-gradient(135deg, #818CF8, #6366F1)" }}>
+                <Radio className="w-6 h-6 text-white" />
+                {status === "connected" && (
+                  <span className="absolute -top-0.5 -right-0.5 flex h-3 w-3">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#34D399] opacity-50" />
+                    <span className="relative inline-flex rounded-full h-3 w-3 bg-[#34D399] border-2 border-[#0B0F1A]" />
+                  </span>
+                )}
               </div>
-              <h1 className="text-[26px] font-display font-black tracking-tight text-[#0A0A0A] leading-none">Live Tracking</h1>
-              <p className="text-[13px] text-[#8888A0] mt-1">Monitor every click as it happens — full visitor details in real time</p>
+              <div>
+                <div className="flex items-center gap-2.5">
+                  <p className="text-[10px] font-bold tracking-[0.22em] uppercase text-[#64748B]">Real-Time</p>
+                  <StatusBadge status={status} />
+                </div>
+                <h1 className="text-[28px] font-[family-name:var(--font-space-grotesk)] font-black tracking-tight text-[#F1F5F9] leading-none">Live Tracking</h1>
+                <p className="text-[13px] text-[#64748B] mt-1">Monitor every click as it happens — last 5 minutes</p>
+              </div>
             </div>
           </div>
-        </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-          {[
-            {
-              label: "Active Now",
-              value: recentEvents.length,
-              sub: "last 5 minutes",
-              icon: <Zap className="w-4 h-4" />,
-              iconBg: "bg-[#E8F7F1]",
-              iconColor: "text-[#2E9A72]",
-              pulse: recentEvents.length > 0,
-            },
-            {
-              label: "Session Total",
-              value: totalSession,
-              sub: "since page load",
-              icon: <Eye className="w-4 h-4" />,
-              iconBg: "bg-[#F0EBF9]",
-              iconColor: "text-[#7C5CC4]",
-            },
-            {
-              label: "Mobile",
-              value: deviceCounts.mobile,
-              sub: deviceTotal > 0 ? `${Math.round((deviceCounts.mobile / deviceTotal) * 100)}%` : "—",
-              icon: <Smartphone className="w-4 h-4" />,
-              iconBg: "bg-[#FEF3E8]",
-              iconColor: "text-[#E07B30]",
-            },
-            {
-              label: "Desktop",
-              value: deviceCounts.desktop,
-              sub: deviceTotal > 0 ? `${Math.round((deviceCounts.desktop / deviceTotal) * 100)}%` : "—",
-              icon: <Monitor className="w-4 h-4" />,
-              iconBg: "bg-[#EEF3F7]",
-              iconColor: "text-[#728DA7]",
-            },
-            {
-              label: "Countries",
-              value: uniqueCountries,
-              sub: uniqueCountries === 1 ? "region" : "regions",
-              icon: <Globe className="w-4 h-4" />,
-              iconBg: "bg-[#E8F7F1]",
-              iconColor: "text-[#2E9A72]",
-            },
-          ].map((kpi) => (
-            <div key={kpi.label} className="bg-white border border-[#EBEBF0] rounded-2xl p-3 sm:p-4 shadow-[0_1px_3px_rgba(0,0,0,0.04)] sf-card-hover animate-fade-up">
-              <div className="flex items-center justify-between mb-2">
-                <p className="text-[10px] font-bold text-[#A0A0AE] uppercase tracking-[0.12em]">{kpi.label}</p>
-                <div className={`w-8 h-8 rounded-xl ${kpi.iconBg} ${kpi.iconColor} flex items-center justify-center`}>
-                  {kpi.icon}
-                </div>
-              </div>
-              <div className="flex items-end gap-1.5">
-                <span className="text-[26px] sm:text-[30px] font-display font-black text-[#0A0A0A] leading-none tabular-nums">{kpi.value}</span>
-                {kpi.pulse && <PulseRing active />}
-              </div>
-              <p className="text-[11px] text-[#A0A0AE] mt-1">{kpi.sub}</p>
-            </div>
-          ))}
-        </div>
+          {/* ── KPI Row ── */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+            {/* Active Now */}
+            <KpiCard
+              label="Active Now"
+              value={recentEvents.length}
+              sub="last 5 min"
+              icon={<Zap className="w-4 h-4 text-white" />}
+              gradient="linear-gradient(135deg, #34D399, #10B981)"
+              glow="#34D399"
+              sparkline={<MiniSparkline data={sparkData} color="#34D399" />}
+              pulse={recentEvents.length > 0}
+            />
+            {/* Velocity */}
+            <KpiCard
+              label="Clicks/Min"
+              value={velocity}
+              sub={velocity === 0 ? "waiting" : velocity < 5 ? "low" : velocity < 15 ? "normal" : velocity < 40 ? "high" : "spike!"}
+              icon={<TrendingUp className="w-4 h-4 text-white" />}
+              gradient={`linear-gradient(135deg, ${velColor}, ${velColor}cc)`}
+              glow={velColor}
+            />
+            {/* Session Total */}
+            <KpiCard
+              label="Session Total"
+              value={totalSession}
+              sub="since page load"
+              icon={<Eye className="w-4 h-4 text-white" />}
+              gradient="linear-gradient(135deg, #A78BFA, #8B5CF6)"
+              glow="#A78BFA"
+            />
+            {/* Mobile */}
+            <KpiCard
+              label="Mobile"
+              value={deviceCounts.mobile}
+              sub={deviceTotal > 0 ? `${Math.round((deviceCounts.mobile / deviceTotal) * 100)}%` : "—"}
+              icon={<Smartphone className="w-4 h-4 text-white" />}
+              gradient="linear-gradient(135deg, #FB923C, #F59E0B)"
+              glow="#FB923C"
+            />
+            {/* Countries */}
+            <KpiCard
+              label="Countries"
+              value={uniqueCountries}
+              sub={uniqueCountries === 1 ? "region" : "regions"}
+              icon={<Globe className="w-4 h-4 text-white" />}
+              gradient="linear-gradient(135deg, #38BDF8, #0EA5E9)"
+              glow="#38BDF8"
+            />
+          </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+          {/* ── Main Grid ── */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
 
-          <div className="lg:col-span-7 bg-white rounded-2xl border border-[#EBEBF0] overflow-hidden flex flex-col shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
-            <div className="px-5 py-3.5 border-b border-[#F0F0F6] bg-[#FAFAFE] flex items-center justify-between">
-              <h3 className="font-semibold text-[14px] text-[#0A0A0A] flex items-center gap-2">
-                <div className="w-7 h-7 rounded-lg bg-[#F0EBF9] flex items-center justify-center">
-                  <Radio className="w-3.5 h-3.5 text-[#7C5CC4]" />
-                </div>
-                Live Activity Feed
-              </h3>
-              <span className="text-[11px] text-[#A0A0AE] font-medium">
-                {events.length === 0 ? "Waiting for visits…" : `${events.length} events`}
-              </span>
-            </div>
-
-            <div className="flex-1 overflow-y-auto max-h-[600px]" style={{ scrollbarWidth: "thin", scrollbarColor: "#E4E4EC transparent" }}>
-              {events.length === 0 ? (
-                <div className="flex flex-col items-center justify-center gap-4 py-24 px-6 text-center">
-                  <div className="relative">
-                    <div className="w-16 h-16 rounded-2xl bg-[#F0EBF9] flex items-center justify-center">
-                      <Signal className="w-8 h-8 text-[#7C5CC4]" />
-                    </div>
-                    {status === "connected" && (
-                      <span className="absolute -top-1 -right-1 flex h-3.5 w-3.5">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#2E9A72] opacity-40" />
-                        <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-[#2E9A72] border-2 border-white" />
-                      </span>
-                    )}
+            {/* ── Activity Feed (left 7col) ── */}
+            <div className="lg:col-span-7 overflow-hidden flex flex-col" style={cardStyle}>
+              <div className="px-5 py-3.5 flex items-center justify-between" style={cardHeaderStyle}>
+                <h3 className="font-semibold text-[14px] text-[#F1F5F9] flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-[10px] flex items-center justify-center" style={{ background: "linear-gradient(135deg, #818CF8, #6366F1)" }}>
+                    <Activity className="w-3.5 h-3.5 text-white" />
                   </div>
-                  <div>
-                    <p className="text-[15px] font-semibold text-[#0A0A0A]">Listening for clicks</p>
-                    <p className="text-[13px] text-[#8888A0] mt-1 max-w-xs">
-                      {status === "connected"
-                        ? "Click any of your short links to see detailed visitor information appear here instantly."
-                        : "Connecting to the live stream…"}
-                    </p>
-                  </div>
-                </div>
-              ) : (
-                <div className="divide-y divide-[#F5F5F8]">
-                  {events.map((ev) => {
-                    const isExpanded = expandedId === ev._id;
-                    const evColor = slugColor(ev.slug);
-                    return (
-                      <div key={ev._id} className="animate-in fade-in slide-in-from-top-1 duration-300">
-                        <button
-                          onClick={() => toggleExpand(ev._id)}
-                          aria-expanded={isExpanded}
-                          className="w-full flex items-center gap-3 px-5 py-3.5 hover:bg-[#FAFAFE] transition-colors text-left"
-                        >
-                          <div
-                            className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 text-white text-[11px] font-bold shadow-sm"
-                            style={{ background: evColor }}
-                          >
-                            {ev.slug.slice(0, 2).toUpperCase()}
-                          </div>
+                  Live Activity Feed
+                </h3>
+                <span className="text-[11px] text-[#64748B] font-medium tabular-nums">
+                  {recentEvents.length === 0 ? "Waiting for clicks..." : `${recentEvents.length} events · 5 min`}
+                </span>
+              </div>
 
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                              <span className="text-[13px] font-semibold text-[#0A0A0A]">/{ev.slug}</span>
-                              {ev.isQr && (
-                                <span className="inline-flex items-center gap-0.5 text-[9px] font-bold bg-[#FEF3E8] text-[#E07B30] px-1.5 py-0.5 rounded-full border border-[#FDDCB6]">
-                                  <QrCode className="w-2.5 h-2.5" /> QR
-                                </span>
-                              )}
-                            </div>
-                            <div className="flex items-center gap-2 mt-0.5 flex-wrap text-[11px] text-[#8888A0]">
-                              <span className="flex items-center gap-1">
-                                {countryFlag(ev.country)}
-                                <span className="hidden sm:inline">{ev.city ? `${ev.city}, ` : ""}{ev.country ? countryName(ev.country) : "Unknown"}</span>
-                                <span className="sm:hidden">{ev.country ?? "—"}</span>
-                              </span>
-                              <span className="text-[#E4E4EC]">·</span>
-                              <span className="flex items-center gap-1">
-                                <DeviceIcon device={ev.device} className="w-3 h-3" />
-                                {ev.device ?? "desktop"}
-                              </span>
-                              <span className="hidden sm:inline text-[#E4E4EC]">·</span>
-                              <span className="hidden sm:inline">{ev.browser ?? "Unknown"}</span>
-                            </div>
-                          </div>
-
-                          <div className="flex items-center gap-2 shrink-0">
-                            <span className="text-[10px] text-[#A0A0AE] whitespace-nowrap hidden sm:inline">
-                              {formatDistanceToNow(new Date(ev.timestamp), { addSuffix: true })}
-                            </span>
-                            {isExpanded
-                              ? <ChevronUp className="w-3.5 h-3.5 text-[#C0C0CC]" />
-                              : <ChevronDown className="w-3.5 h-3.5 text-[#C0C0CC]" />
-                            }
-                          </div>
-                        </button>
-
-                        {isExpanded && (
-                          <div className="mx-5 mb-3 rounded-xl bg-[#FAFAFE] border border-[#EBEBF0] overflow-hidden animate-in fade-in slide-in-from-top-1 duration-200">
-                            <div className="px-4 py-2.5 border-b border-[#F0F0F6] bg-[#F6F6F9]">
-                              <p className="text-[10px] font-bold text-[#A0A0AE] uppercase tracking-[0.12em]">Visitor Details</p>
-                            </div>
-                            <div className="grid grid-cols-2 gap-x-4 gap-y-3 p-4">
-                              <DetailRow icon={<MapPin className="w-3.5 h-3.5 text-[#2E9A72]" />} label="Location" value={`${ev.city ? ev.city + ", " : ""}${ev.country ? countryName(ev.country) : "Unknown"}`} />
-                              <DetailRow icon={<span className="flex items-center w-5">{countryFlag(ev.country)}</span>} label="Country" value={ev.country ?? "N/A"} />
-                              <DetailRow icon={<DeviceIcon device={ev.device} className="w-3.5 h-3.5 text-[#7C5CC4]" />} label="Device" value={ev.device ?? "desktop"} />
-                              <DetailRow icon={<span className="text-[14px]">{osIcon(ev.os)}</span>} label="OS" value={ev.os ?? "Unknown"} />
-                              <DetailRow icon={<span className="text-[14px]">{browserIcon(ev.browser)}</span>} label="Browser" value={ev.browser ?? "Unknown"} />
-                              <DetailRow icon={<Navigation className="w-3.5 h-3.5 text-[#728DA7]" />} label="Referrer" value={ev.referrer ?? "Direct"} />
-                              <DetailRow icon={<Clock className="w-3.5 h-3.5 text-[#E07B30]" />} label="Time" value={new Date(ev.timestamp).toLocaleString()} />
-                              <DetailRow icon={<QrCode className="w-3.5 h-3.5 text-[#7C5CC4]" />} label="QR Scan" value={ev.isQr ? "Yes" : "No"} />
-                            </div>
-                          </div>
-                        )}
+              <div className="flex-1 overflow-y-auto max-h-[640px]" style={{ scrollbarWidth: "thin", scrollbarColor: "#1E293B transparent" }}>
+                {recentEvents.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center gap-4 py-24 px-6 text-center">
+                    <div className="relative">
+                      <div className="w-16 h-16 rounded-2xl flex items-center justify-center" style={{ background: "rgba(129,140,248,0.1)" }}>
+                        <Signal className="w-8 h-8 text-[#818CF8]" />
                       </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div className="lg:col-span-5 space-y-4">
-
-            <div className="bg-white rounded-2xl border border-[#EBEBF0] overflow-hidden shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
-              <div className="px-5 py-3.5 border-b border-[#F0F0F6] bg-[#FAFAFE] flex items-center gap-2">
-                <div className="w-7 h-7 rounded-lg bg-[#FEF3E8] flex items-center justify-center">
-                  <Smartphone className="w-3.5 h-3.5 text-[#E07B30]" />
-                </div>
-                <h3 className="font-semibold text-[14px] text-[#0A0A0A]">Devices & Browsers</h3>
-              </div>
-              <div className="p-5">
-                {deviceTotal === 0 ? (
-                  <div className="text-center py-8">
-                    <div className="w-12 h-12 rounded-2xl bg-[#FEF3E8] flex items-center justify-center mx-auto mb-2">
-                      <Smartphone className="w-6 h-6 text-[#E07B30]/40" />
+                      {status === "connected" && (
+                        <span className="absolute -top-1 -right-1 flex h-3.5 w-3.5">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#34D399] opacity-40" />
+                          <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-[#34D399] border-2 border-[#111827]" />
+                        </span>
+                      )}
                     </div>
-                    <p className="text-[13px] text-[#8888A0]">Device data appears after first click</p>
+                    <div>
+                      <p className="text-[15px] font-semibold text-[#E2E8F0]">Listening for clicks</p>
+                      <p className="text-[13px] text-[#64748B] mt-1 max-w-xs">
+                        {status === "connected"
+                          ? "No clicks in the last 5 minutes. Visit any of your short links to see live data."
+                          : "Connecting to the live stream..."}
+                      </p>
+                    </div>
                   </div>
                 ) : (
-                  <div className="space-y-3">
-                    {[
-                      { label: "Mobile", count: deviceCounts.mobile, icon: <Smartphone className="w-4 h-4" />, color: "#E07B30", bg: "bg-[#FEF3E8]" },
-                      { label: "Desktop", count: deviceCounts.desktop, icon: <Monitor className="w-4 h-4" />, color: "#728DA7", bg: "bg-[#EEF3F7]" },
-                      { label: "Tablet", count: deviceCounts.tablet, icon: <Tablet className="w-4 h-4" />, color: "#7C5CC4", bg: "bg-[#F0EBF9]" },
-                    ].map(d => {
-                      const pct = deviceTotal > 0 ? Math.round((d.count / deviceTotal) * 100) : 0;
+                  <div>
+                    {recentEvents.map((ev, idx) => {
+                      const isExpanded = expandedId === ev._id;
+                      const evColor = slugColor(ev.slug);
+                      const op = eventOpacity(ev.timestamp);
                       return (
-                        <div key={d.label} className="flex items-center gap-3">
-                          <div className={`w-9 h-9 rounded-xl ${d.bg} flex items-center justify-center shrink-0`} style={{ color: d.color }}>
-                            {d.icon}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex justify-between items-center mb-1">
-                              <span className="text-[12px] font-semibold text-[#0A0A0A]">{d.label}</span>
-                              <span className="text-[11px] font-bold text-[#0A0A0A] tabular-nums">{d.count} <span className="text-[#A0A0AE] font-normal">({pct}%)</span></span>
+                        <div
+                          key={ev._id}
+                          style={{ opacity: op, borderBottom: `1px solid ${cardBorder}` }}
+                          className="transition-opacity duration-500"
+                        >
+                          <button
+                            onClick={() => toggleExpand(ev._id)}
+                            aria-expanded={isExpanded}
+                            className="w-full flex items-center gap-3 px-5 py-3.5 hover:bg-[rgba(255,255,255,0.03)] transition-colors text-left"
+                          >
+                            {/* Slug badge */}
+                            <div
+                              className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 text-white text-[11px] font-bold"
+                              style={{ background: evColor, boxShadow: `0 0 12px ${evColor}40` }}
+                            >
+                              {ev.slug.slice(0, 2).toUpperCase()}
                             </div>
-                            <div className="h-1.5 bg-[#F2F2F6] rounded-full overflow-hidden">
-                              <div className="h-full rounded-full transition-all duration-700" style={{ width: `${pct}%`, background: d.color }} />
+
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="text-[13px] font-semibold text-[#E2E8F0]">/{ev.slug}</span>
+                                {ev.isQr && (
+                                  <span className="inline-flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: "rgba(251,146,60,0.15)", color: "#FB923C", border: "1px solid rgba(251,146,60,0.2)" }}>
+                                    <QrCode className="w-2.5 h-2.5" /> QR
+                                  </span>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-2 mt-0.5 flex-wrap text-[11px] text-[#64748B]">
+                                <span className="flex items-center gap-1">
+                                  {countryFlag(ev.country)}
+                                  <span className="hidden sm:inline">{ev.city ? `${ev.city}, ` : ""}{ev.country ? countryName(ev.country) : "Unknown"}</span>
+                                  <span className="sm:hidden">{ev.country ?? "—"}</span>
+                                </span>
+                                <span className="text-[#334155]">·</span>
+                                <span className="flex items-center gap-1">
+                                  <DeviceIcon device={ev.device} className="w-3 h-3" />
+                                  {ev.device ?? "desktop"}
+                                </span>
+                                <span className="hidden sm:inline text-[#334155]">·</span>
+                                <span className="hidden sm:inline">{ev.browser ?? "Unknown"}</span>
+                              </div>
                             </div>
-                          </div>
+
+                            <div className="flex items-center gap-2 shrink-0">
+                              <span className="text-[10px] text-[#475569] whitespace-nowrap hidden sm:inline tabular-nums">
+                                {formatDistanceToNow(new Date(ev.timestamp), { addSuffix: true })}
+                              </span>
+                              {isExpanded
+                                ? <ChevronUp className="w-3.5 h-3.5 text-[#475569]" />
+                                : <ChevronDown className="w-3.5 h-3.5 text-[#475569]" />
+                              }
+                            </div>
+                          </button>
+
+                          {isExpanded && (
+                            <div className="mx-5 mb-3 rounded-xl overflow-hidden" style={{ background: "rgba(255,255,255,0.03)", border: `1px solid ${cardBorder}` }}>
+                              <div className="px-4 py-2.5" style={{ background: "rgba(255,255,255,0.02)", borderBottom: `1px solid ${cardBorder}` }}>
+                                <p className="text-[10px] font-bold text-[#64748B] uppercase tracking-[0.12em]">Visitor Details</p>
+                              </div>
+                              <div className="grid grid-cols-2 gap-x-4 gap-y-3 p-4">
+                                <DetailRow icon={<MapPin className="w-3.5 h-3.5 text-[#34D399]" />} label="Location" value={`${ev.city ? ev.city + ", " : ""}${ev.country ? countryName(ev.country) : "Unknown"}`} />
+                                <DetailRow icon={<span className="flex items-center w-5">{countryFlag(ev.country)}</span>} label="Country" value={ev.country ?? "N/A"} />
+                                <DetailRow icon={<DeviceIcon device={ev.device} className="w-3.5 h-3.5 text-[#818CF8]" />} label="Device" value={ev.device ?? "desktop"} />
+                                <DetailRow icon={<span className="text-[14px]">{osIcon(ev.os)}</span>} label="OS" value={ev.os ?? "Unknown"} />
+                                <DetailRow icon={<span className="text-[14px]">{browserIcon(ev.browser)}</span>} label="Browser" value={ev.browser ?? "Unknown"} />
+                                <DetailRow icon={<Navigation className="w-3.5 h-3.5 text-[#94A3B8]" />} label="Referrer" value={ev.referrer ?? "Direct"} />
+                                <DetailRow icon={<Clock className="w-3.5 h-3.5 text-[#FB923C]" />} label="Time" value={new Date(ev.timestamp).toLocaleString()} />
+                                <DetailRow icon={<QrCode className="w-3.5 h-3.5 text-[#A78BFA]" />} label="QR Scan" value={ev.isQr ? "Yes" : "No"} />
+                              </div>
+                            </div>
+                          )}
                         </div>
                       );
                     })}
-
-                    {browserCounts.length > 0 && (
-                      <div className="border-t border-[#F0F0F6] pt-3 mt-1">
-                        <p className="text-[10px] font-bold text-[#A0A0AE] uppercase tracking-[0.12em] mb-2.5">Browsers</p>
-                        <div className="space-y-2">
-                          {browserCounts.map(([browser, count]) => (
-                            <div key={browser} className="flex items-center justify-between">
-                              <span className="text-[12px] text-[#3A3A3E] flex items-center gap-2">
-                                <span className="text-[13px]">{browserIcon(browser)}</span>
-                                {browser}
-                              </span>
-                              <span className="text-[12px] font-semibold text-[#0A0A0A] tabular-nums">{count}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {osCounts.length > 0 && (
-                      <div className="border-t border-[#F0F0F6] pt-3 mt-1">
-                        <p className="text-[10px] font-bold text-[#A0A0AE] uppercase tracking-[0.12em] mb-2.5">Operating Systems</p>
-                        <div className="space-y-2">
-                          {osCounts.map(([os, count]) => (
-                            <div key={os} className="flex items-center justify-between">
-                              <span className="text-[12px] text-[#3A3A3E] flex items-center gap-2">
-                                <span className="text-[13px]">{osIcon(os)}</span>
-                                {os}
-                              </span>
-                              <span className="text-[12px] font-semibold text-[#0A0A0A] tabular-nums">{count}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
                   </div>
                 )}
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-4">
+            {/* ── Right sidebar (5col) ── */}
+            <div className="lg:col-span-5 space-y-4">
 
-              <div className="bg-white rounded-2xl border border-[#EBEBF0] overflow-hidden shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
-                <div className="px-5 py-3.5 border-b border-[#F0F0F6] bg-[#FAFAFE] flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="w-7 h-7 rounded-lg bg-[#E8F7F1] flex items-center justify-center">
-                      <Globe className="w-3.5 h-3.5 text-[#2E9A72]" />
+              {/* Devices & Browsers */}
+              <div className="overflow-hidden" style={cardStyle}>
+                <div className="px-5 py-3.5 flex items-center gap-2" style={cardHeaderStyle}>
+                  <div className="w-7 h-7 rounded-[10px] flex items-center justify-center" style={{ background: "linear-gradient(135deg, #FB923C, #F59E0B)" }}>
+                    <Smartphone className="w-3.5 h-3.5 text-white" />
+                  </div>
+                  <h3 className="font-semibold text-[14px] text-[#F1F5F9]">Devices & Browsers</h3>
+                </div>
+                <div className="p-5">
+                  {deviceTotal === 0 ? (
+                    <div className="text-center py-8">
+                      <div className="w-12 h-12 rounded-2xl flex items-center justify-center mx-auto mb-2" style={{ background: "rgba(251,146,60,0.08)" }}>
+                        <Smartphone className="w-6 h-6 text-[#FB923C]/40" />
+                      </div>
+                      <p className="text-[13px] text-[#475569]">Device data appears after first click</p>
                     </div>
-                    <h3 className="font-semibold text-[14px] text-[#0A0A0A]">Countries</h3>
+                  ) : (
+                    <div className="space-y-4">
+                      {/* Donut + Legend */}
+                      <div className="flex items-center gap-5">
+                        <DonutRing segments={[
+                          { value: deviceCounts.mobile, color: "#FB923C" },
+                          { value: deviceCounts.desktop, color: "#818CF8" },
+                          { value: deviceCounts.tablet, color: "#A78BFA" },
+                        ]} />
+                        <div className="space-y-2.5 flex-1">
+                          {[
+                            { label: "Mobile", count: deviceCounts.mobile, color: "#FB923C", icon: <Smartphone className="w-3.5 h-3.5" /> },
+                            { label: "Desktop", count: deviceCounts.desktop, color: "#818CF8", icon: <Monitor className="w-3.5 h-3.5" /> },
+                            { label: "Tablet", count: deviceCounts.tablet, color: "#A78BFA", icon: <Tablet className="w-3.5 h-3.5" /> },
+                          ].map(d => {
+                            const pct = deviceTotal > 0 ? Math.round((d.count / deviceTotal) * 100) : 0;
+                            return (
+                              <div key={d.label} className="flex items-center justify-between">
+                                <span className="flex items-center gap-2 text-[12px] text-[#94A3B8]" style={{ color: d.color }}>
+                                  {d.icon} {d.label}
+                                </span>
+                                <span className="text-[12px] font-bold text-[#E2E8F0] tabular-nums">{d.count} <span className="text-[#475569] font-normal">({pct}%)</span></span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Browsers */}
+                      {browserCounts.length > 0 && (
+                        <div className="pt-3" style={{ borderTop: `1px solid ${cardBorder}` }}>
+                          <p className="text-[10px] font-bold text-[#475569] uppercase tracking-[0.12em] mb-2.5">Browsers</p>
+                          <div className="space-y-2">
+                            {browserCounts.map(([browser, count]) => (
+                              <div key={browser} className="flex items-center justify-between">
+                                <span className="text-[12px] text-[#94A3B8] flex items-center gap-2">
+                                  <span className="text-[13px]">{browserIcon(browser)}</span> {browser}
+                                </span>
+                                <span className="text-[12px] font-semibold text-[#E2E8F0] tabular-nums">{count}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* OS */}
+                      {osCounts.length > 0 && (
+                        <div className="pt-3" style={{ borderTop: `1px solid ${cardBorder}` }}>
+                          <p className="text-[10px] font-bold text-[#475569] uppercase tracking-[0.12em] mb-2.5">Operating Systems</p>
+                          <div className="space-y-2">
+                            {osCounts.map(([os, count]) => (
+                              <div key={os} className="flex items-center justify-between">
+                                <span className="text-[12px] text-[#94A3B8] flex items-center gap-2">
+                                  <span className="text-[13px]">{osIcon(os)}</span> {os}
+                                </span>
+                                <span className="text-[12px] font-semibold text-[#E2E8F0] tabular-nums">{count}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Countries */}
+              <div className="overflow-hidden" style={cardStyle}>
+                <div className="px-5 py-3.5 flex items-center justify-between" style={cardHeaderStyle}>
+                  <div className="flex items-center gap-2">
+                    <div className="w-7 h-7 rounded-[10px] flex items-center justify-center" style={{ background: "linear-gradient(135deg, #34D399, #10B981)" }}>
+                      <Globe className="w-3.5 h-3.5 text-white" />
+                    </div>
+                    <h3 className="font-semibold text-[14px] text-[#F1F5F9]">Countries</h3>
                   </div>
                   {uniqueCountries > 0 && (
-                    <span className="text-[10px] font-bold bg-[#E8F7F1] text-[#2E9A72] px-2 py-0.5 rounded-full border border-[#B4E8CE]">
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: "rgba(52,211,153,0.1)", color: "#34D399", border: "1px solid rgba(52,211,153,0.2)" }}>
                       {uniqueCountries}
                     </span>
                   )}
@@ -523,27 +695,27 @@ export default function Live() {
                 <div>
                   {countryCounts.length === 0 ? (
                     <div className="text-center py-8 px-4">
-                      <div className="w-12 h-12 rounded-2xl bg-[#E8F7F1] flex items-center justify-center mx-auto mb-2">
-                        <Globe className="w-6 h-6 text-[#2E9A72]/40" />
+                      <div className="w-12 h-12 rounded-2xl flex items-center justify-center mx-auto mb-2" style={{ background: "rgba(52,211,153,0.08)" }}>
+                        <Globe className="w-6 h-6 text-[#34D399]/40" />
                       </div>
-                      <p className="text-[13px] text-[#8888A0]">Country data appears after first click</p>
+                      <p className="text-[13px] text-[#475569]">Country data appears after first click</p>
                     </div>
                   ) : (
-                    <div className="divide-y divide-[#F5F5F8]">
+                    <div>
                       {countryCounts.map(([country, count], i) => {
                         const maxCount = countryCounts[0][1];
-                        const pct = deviceTotal > 0 ? Math.round((count / deviceTotal) * 100) : 0;
+                        const pct = recentEvents.length > 0 ? Math.round((count / recentEvents.length) * 100) : 0;
                         return (
-                          <div key={country} className="flex items-center gap-3 px-5 py-3 hover:bg-[#FAFAFE] transition-colors">
-                            <span className="text-[10px] font-bold text-[#C0C0CC] w-4 shrink-0 tabular-nums">#{i + 1}</span>
+                          <div key={country} className="flex items-center gap-3 px-5 py-3 hover:bg-[rgba(255,255,255,0.02)] transition-colors" style={{ borderBottom: `1px solid ${cardBorder}` }}>
+                            <span className="text-[10px] font-bold text-[#475569] w-4 shrink-0 tabular-nums">#{i + 1}</span>
                             <span className="flex items-center shrink-0 w-5">{countryFlag(country)}</span>
                             <div className="flex-1 min-w-0">
                               <div className="flex justify-between items-center mb-1">
-                                <span className="text-[12px] font-semibold text-[#0A0A0A]">{country === "Unknown" ? "Unknown" : countryName(country)}</span>
-                                <span className="text-[11px] font-bold text-[#0A0A0A] tabular-nums">{count} <span className="text-[#A0A0AE] font-normal">({pct}%)</span></span>
+                                <span className="text-[12px] font-semibold text-[#E2E8F0]">{country === "Unknown" ? "Unknown" : countryName(country)}</span>
+                                <span className="text-[11px] font-bold text-[#E2E8F0] tabular-nums">{count} <span className="text-[#475569] font-normal">({pct}%)</span></span>
                               </div>
-                              <div className="h-1 bg-[#F2F2F6] rounded-full overflow-hidden">
-                                <div className="h-full rounded-full transition-all duration-700" style={{ width: `${(count / maxCount) * 100}%`, background: "#2E9A72" }} />
+                              <div className="h-[3px] rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.06)" }}>
+                                <div className="h-full rounded-full transition-all duration-700" style={{ width: `${(count / maxCount) * 100}%`, background: "linear-gradient(90deg, #34D399, #10B981)" }} />
                               </div>
                             </div>
                           </div>
@@ -554,75 +726,138 @@ export default function Live() {
                 </div>
               </div>
 
-              <div className="bg-white rounded-2xl border border-[#EBEBF0] overflow-hidden shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
-                <div className="px-5 py-3.5 border-b border-[#F0F0F6] bg-[#FAFAFE] flex items-center gap-2">
-                  <div className="w-7 h-7 rounded-lg bg-[#F0EBF9] flex items-center justify-center">
-                    <Layers className="w-3.5 h-3.5 text-[#7C5CC4]" />
+              {/* Top Links + Referrers side-by-side on lg */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-4">
+                {/* Top Links */}
+                <div className="overflow-hidden" style={cardStyle}>
+                  <div className="px-5 py-3.5 flex items-center gap-2" style={cardHeaderStyle}>
+                    <div className="w-7 h-7 rounded-[10px] flex items-center justify-center" style={{ background: "linear-gradient(135deg, #818CF8, #6366F1)" }}>
+                      <Layers className="w-3.5 h-3.5 text-white" />
+                    </div>
+                    <h3 className="font-semibold text-[14px] text-[#F1F5F9]">Top Active Links</h3>
                   </div>
-                  <h3 className="font-semibold text-[14px] text-[#0A0A0A]">Top Active Links</h3>
-                </div>
-                <div>
-                  {slugCounts.length === 0 ? (
-                    <div className="text-center py-8 px-4">
-                      <div className="w-12 h-12 rounded-2xl bg-[#F0EBF9] flex items-center justify-center mx-auto mb-2">
-                        <Layers className="w-6 h-6 text-[#7C5CC4]/40" />
+                  <div>
+                    {slugCounts.length === 0 ? (
+                      <div className="text-center py-8 px-4">
+                        <div className="w-12 h-12 rounded-2xl flex items-center justify-center mx-auto mb-2" style={{ background: "rgba(129,140,248,0.08)" }}>
+                          <Layers className="w-6 h-6 text-[#818CF8]/40" />
+                        </div>
+                        <p className="text-[13px] text-[#475569]">Link activity appears after first click</p>
                       </div>
-                      <p className="text-[13px] text-[#8888A0]">Link activity appears after first click</p>
-                    </div>
-                  ) : (
-                    <div className="divide-y divide-[#F5F5F8]">
-                      {slugCounts.map(([slug, count], i) => {
-                        const maxCount = slugCounts[0][1];
-                        return (
-                          <div key={slug} className="flex items-center gap-3 px-5 py-3 hover:bg-[#FAFAFE] transition-colors">
-                            <span className="text-[10px] font-bold text-[#C0C0CC] w-4 shrink-0 tabular-nums">#{i + 1}</span>
-                            <div
-                              className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-[10px] font-bold shrink-0"
-                              style={{ background: slugColor(slug) }}
-                            >
-                              {slug.slice(0, 2).toUpperCase()}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-[12px] font-semibold text-[#0A0A0A] truncate">/{slug}</p>
-                              <div className="mt-1 h-1 bg-[#F2F2F6] rounded-full overflow-hidden">
-                                <div className="h-full rounded-full transition-all duration-700" style={{ width: `${(count / maxCount) * 100}%`, background: slugColor(slug) }} />
+                    ) : (
+                      <div>
+                        {slugCounts.map(([slug, count], i) => {
+                          const maxCount = slugCounts[0][1];
+                          return (
+                            <div key={slug} className="flex items-center gap-3 px-5 py-3 hover:bg-[rgba(255,255,255,0.02)] transition-colors" style={{ borderBottom: `1px solid ${cardBorder}` }}>
+                              <div
+                                className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-[10px] font-bold shrink-0"
+                                style={{ background: slugColor(slug), boxShadow: `0 0 10px ${slugColor(slug)}30` }}
+                              >
+                                {slug.slice(0, 2).toUpperCase()}
                               </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-[12px] font-semibold text-[#E2E8F0] truncate">/{slug}</p>
+                                <div className="mt-1 h-[3px] rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.06)" }}>
+                                  <div className="h-full rounded-full transition-all duration-700" style={{ width: `${(count / maxCount) * 100}%`, background: `linear-gradient(90deg, ${slugColor(slug)}, ${slugColor(slug)}88)` }} />
+                                </div>
+                              </div>
+                              <span className="text-[12px] font-bold text-[#E2E8F0] shrink-0 tabular-nums">{count}</span>
                             </div>
-                            <span className="text-[12px] font-bold text-[#0A0A0A] shrink-0 tabular-nums">{count}</span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
                 </div>
+
+                {/* Referrers */}
+                {referrerCounts.length > 0 && recentEvents.length > 0 && (
+                  <div className="overflow-hidden" style={cardStyle}>
+                    <div className="px-5 py-3.5 flex items-center gap-2" style={cardHeaderStyle}>
+                      <div className="w-7 h-7 rounded-[10px] flex items-center justify-center" style={{ background: "linear-gradient(135deg, #38BDF8, #0EA5E9)" }}>
+                        <ArrowUpRight className="w-3.5 h-3.5 text-white" />
+                      </div>
+                      <h3 className="font-semibold text-[14px] text-[#F1F5F9]">Top Referrers</h3>
+                    </div>
+                    <div>
+                      {referrerCounts.map(([ref, count]) => (
+                        <div key={ref} className="flex items-center justify-between px-5 py-3 hover:bg-[rgba(255,255,255,0.02)] transition-colors" style={{ borderBottom: `1px solid ${cardBorder}` }}>
+                          <span className="text-[12px] text-[#94A3B8] truncate mr-3">{ref}</span>
+                          <span className="text-[12px] font-semibold text-[#E2E8F0] shrink-0 tabular-nums">{count}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
 
             </div>
-
-            {referrerCounts.length > 0 && events.length > 0 && (
-              <div className="bg-white rounded-2xl border border-[#EBEBF0] overflow-hidden shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
-                <div className="px-5 py-3.5 border-b border-[#F0F0F6] bg-[#FAFAFE] flex items-center gap-2">
-                  <div className="w-7 h-7 rounded-lg bg-[#EEF3F7] flex items-center justify-center">
-                    <ArrowUpRight className="w-3.5 h-3.5 text-[#728DA7]" />
-                  </div>
-                  <h3 className="font-semibold text-[14px] text-[#0A0A0A]">Top Referrers</h3>
-                </div>
-                <div className="divide-y divide-[#F5F5F8]">
-                  {referrerCounts.map(([ref, count]) => (
-                    <div key={ref} className="flex items-center justify-between px-5 py-3 hover:bg-[#FAFAFE] transition-colors">
-                      <span className="text-[12px] text-[#3A3A3E] truncate mr-3">{ref}</span>
-                      <span className="text-[12px] font-semibold text-[#0A0A0A] shrink-0 tabular-nums">{count}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
           </div>
-        </div>
 
+        </div>
       </div>
     </ProtectedLayout>
+  );
+}
+
+/* ───────────── Sub-components ───────────── */
+
+function StatusBadge({ status }: { status: "connecting" | "connected" | "disconnected" }) {
+  const cfg = {
+    connected: { label: "LIVE", bg: "rgba(52,211,153,0.12)", color: "#34D399", border: "rgba(52,211,153,0.25)" },
+    connecting: { label: "Connecting...", bg: "rgba(251,146,60,0.12)", color: "#FB923C", border: "rgba(251,146,60,0.25)" },
+    disconnected: { label: "Reconnecting...", bg: "rgba(248,113,113,0.12)", color: "#F87171", border: "rgba(248,113,113,0.25)" },
+  }[status];
+  return (
+    <span
+      className="inline-flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-0.5 rounded-[14px]"
+      style={{ background: cfg.bg, color: cfg.color, border: `1px solid ${cfg.border}` }}
+    >
+      {status === "connected" && <span className="w-1.5 h-1.5 rounded-full bg-[#34D399] animate-pulse" />}
+      {status === "connecting" && <RefreshCw className="w-2.5 h-2.5 animate-spin" />}
+      {status === "disconnected" && <WifiOff className="w-2.5 h-2.5" />}
+      {cfg.label}
+    </span>
+  );
+}
+
+function KpiCard({ label, value, sub, icon, gradient, glow, sparkline, pulse }: {
+  label: string; value: number; sub: string;
+  icon: React.ReactNode; gradient: string; glow: string;
+  sparkline?: React.ReactNode; pulse?: boolean;
+}) {
+  return (
+    <div className="p-4 relative overflow-hidden group" style={{
+      ...cardStyle as any,
+      boxShadow: `0 0 0 1px ${cardBorder}, 0 0 20px ${glow}08`,
+    }}>
+      {/* Subtle glow on hover */}
+      <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" style={{ background: `radial-gradient(circle at 50% 50%, ${glow}08, transparent 70%)` }} />
+      <div className="relative z-10">
+        <div className="flex items-center justify-between mb-3">
+          <p className="text-[10px] font-bold text-[#64748B] uppercase tracking-[0.12em]">{label}</p>
+          <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: gradient, boxShadow: `0 0 12px ${glow}30` }}>
+            {icon}
+          </div>
+        </div>
+        <div className="flex items-end justify-between gap-2">
+          <div>
+            <div className="flex items-end gap-1.5">
+              <span className="text-[28px] font-extrabold text-[#F1F5F9] leading-none tabular-nums">{value}</span>
+              {pulse && (
+                <span className="relative flex h-2.5 w-2.5 mb-1">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-40" style={{ background: glow }} />
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5" style={{ background: glow }} />
+                </span>
+              )}
+            </div>
+            <p className="text-[11px] text-[#475569] mt-1">{sub}</p>
+          </div>
+          {sparkline}
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -631,8 +866,8 @@ function DetailRow({ icon, label, value }: { icon: React.ReactNode; label: strin
     <div className="flex items-start gap-2.5">
       <div className="mt-0.5 shrink-0">{icon}</div>
       <div className="min-w-0">
-        <p className="text-[10px] font-bold text-[#A0A0AE] uppercase tracking-[0.08em]">{label}</p>
-        <p className="text-[12px] font-medium text-[#0A0A0A] break-all">{value}</p>
+        <p className="text-[10px] font-bold text-[#475569] uppercase tracking-[0.08em]">{label}</p>
+        <p className="text-[12px] font-medium text-[#E2E8F0] break-all">{value}</p>
       </div>
     </div>
   );

@@ -27,7 +27,7 @@ export default function LinkRules() {
   const { data: link, isLoading: linkLoading } = useGetLink(id || "");
   const { data: fetchedRules, isLoading: rulesLoading } = useGetLinkRules(id || "");
   const setRulesMutation = useSetLinkRules();
-  
+
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -159,7 +159,7 @@ export default function LinkRules() {
     return (
       <ProtectedLayout>
         <div className="flex h-[50vh] items-center justify-center">
-          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          <Loader2 className="w-8 h-8 animate-spin text-[#818CF8]" />
         </div>
       </ProtectedLayout>
     );
@@ -168,166 +168,236 @@ export default function LinkRules() {
   if (!link) {
     return (
       <ProtectedLayout>
-        <div className="p-8 text-center text-muted-foreground mt-20">Link not found.</div>
+        <div className="p-8 text-center text-[#64748B] mt-20">Link not found.</div>
       </ProtectedLayout>
     );
   }
 
   return (
     <ProtectedLayout>
-      <div className="p-8 max-w-5xl mx-auto w-full">
-        <Link href="/links" className="inline-flex items-center text-sm font-medium text-muted-foreground hover:text-foreground transition-colors mb-6">
+      <div className="p-8 pt-14 lg:pt-6 max-w-5xl mx-auto w-full">
+        <Link href="/links" className="inline-flex items-center text-sm font-medium text-[#64748B] hover:text-[#E2E8F0] transition-colors mb-6">
           <ArrowLeft className="w-4 h-4 mr-1.5" /> Back to Links
         </Link>
 
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8 bg-card p-6 rounded-3xl border border-border shadow-sm">
+        {/* Page Header */}
+        <div className="flex items-center gap-4 mb-8">
+          <div className="w-12 h-12 rounded-[14px] flex items-center justify-center" style={{ background: "linear-gradient(135deg, #818CF8, #A78BFA)" }}>
+            <GitBranch className="w-6 h-6 text-white" />
+          </div>
+          <div>
+            <h1 className="text-[28px] font-[family-name:var(--font-space-grotesk)] font-bold tracking-tight text-[#F1F5F9]">Smart Routing Rules</h1>
+            <p className="text-[#64748B] text-sm">Configure conditional redirects for your link</p>
+          </div>
+        </div>
+
+        <div
+          className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8 p-6 rounded-[20px]"
+          style={{
+            background: "rgba(17,24,39,0.65)",
+            backdropFilter: "blur(24px)",
+            WebkitBackdropFilter: "blur(24px)",
+            border: "1px solid rgba(255,255,255,0.06)",
+            boxShadow: "0 1px 2px rgba(0,0,0,0.3), 0 8px 32px rgba(0,0,0,0.3)",
+          }}
+        >
           <div className="flex-1 min-w-0">
-            <h1 className="text-3xl font-display font-extrabold tracking-tight mb-2">Smart Routing Rules</h1>
-            <div className="flex items-center gap-2 text-muted-foreground truncate">
-              <span className="font-mono bg-muted/50 px-2 py-0.5 rounded text-sm text-foreground">/{link.slug}</span>
+            <div className="flex items-center gap-2 text-[#64748B] truncate">
+              <span className="font-mono px-2 py-0.5 rounded-[8px] text-sm text-[#E2E8F0]" style={{ background: "rgba(255,255,255,0.05)" }}>/{link.slug}</span>
               <span className="text-sm">redirects to</span>
               <span className="text-sm truncate max-w-[300px]">{link.destinationUrl}</span>
             </div>
           </div>
           <div className="shrink-0 flex gap-3">
-            <Button onClick={handleSaveAll} disabled={setRulesMutation.isPending} className="rounded-xl h-11 px-6 shadow-lg shadow-primary/20 hover:-translate-y-0.5 transition-all">
+            <button
+              onClick={handleSaveAll}
+              disabled={setRulesMutation.isPending}
+              className="inline-flex items-center h-11 px-6 text-white font-semibold rounded-[14px] hover:-translate-y-0.5 transition-all disabled:opacity-50"
+              style={{
+                background: "linear-gradient(135deg, #818CF8, #A78BFA)",
+                boxShadow: "0 4px 14px rgba(129,140,248,0.25)",
+              }}
+            >
               {setRulesMutation.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
               Save Configuration
-            </Button>
+            </button>
           </div>
         </div>
 
-        <div className="mb-6 p-4 bg-[#728DA7]/5 border border-[#728DA7]/30 rounded-2xl text-sm text-[#728DA7]">
+        <div className="mb-6 p-4 rounded-[14px] text-sm text-[#728DA7]" style={{ background: "rgba(114,141,167,0.05)", border: "1px solid rgba(114,141,167,0.2)" }}>
           <p><strong>Evaluation Order:</strong> Rules are evaluated from top to bottom. Country targeting matches first, then City/Region, then Device rules. If no targeting rules match, A/B and Rotator rules are evaluated as a group.</p>
         </div>
 
         <div className="space-y-4 mb-8">
           {rules.length === 0 ? (
-            <div className="py-16 text-center bg-card rounded-3xl border border-border border-dashed">
-              <Shuffle className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
-              <h3 className="text-lg font-bold text-foreground mb-1">No rules active</h3>
-              <p className="text-muted-foreground text-sm max-w-md mx-auto mb-4">All traffic currently goes to the default destination URL.</p>
+            <div
+              className="py-16 text-center rounded-[20px]"
+              style={{
+                background: "rgba(17,24,39,0.65)",
+                backdropFilter: "blur(24px)",
+                WebkitBackdropFilter: "blur(24px)",
+                border: "2px dashed rgba(255,255,255,0.1)",
+                boxShadow: "0 1px 2px rgba(0,0,0,0.3), 0 8px 32px rgba(0,0,0,0.3)",
+              }}
+            >
+              <Shuffle className="w-12 h-12 text-[#94A3B8]/30 mx-auto mb-4" />
+              <h3 className="text-lg font-bold text-[#F1F5F9] mb-1">No rules active</h3>
+              <p className="text-[#64748B] text-sm max-w-md mx-auto mb-4">All traffic currently goes to the default destination URL.</p>
             </div>
           ) : (
             rules.map((rule, index) => {
               const typeConfig = RULE_TYPES.find(t => t.value === rule.type)!;
               const Icon = typeConfig.icon;
               return (
-                <Card key={index} className="p-4 rounded-2xl border-border shadow-sm flex items-center gap-4 group bg-card hover:border-primary/30 transition-colors">
+                <div
+                  key={index}
+                  className="p-4 rounded-[20px] flex items-center gap-4 group hover:border-[#818CF8]/30 transition-colors"
+                  style={{
+                    background: "rgba(17,24,39,0.65)",
+                    backdropFilter: "blur(24px)",
+                    WebkitBackdropFilter: "blur(24px)",
+                    border: "1px solid rgba(255,255,255,0.06)",
+                    boxShadow: "0 1px 2px rgba(0,0,0,0.3), 0 8px 32px rgba(0,0,0,0.3)",
+                  }}
+                >
                   <div className="flex flex-col gap-1 items-center justify-center px-1">
-                    <button onClick={() => handleMoveRule(index, -1)} disabled={index === 0} className="text-muted-foreground hover:text-foreground disabled:opacity-30 p-1">
+                    <button onClick={() => handleMoveRule(index, -1)} disabled={index === 0} className="text-[#64748B] hover:text-[#E2E8F0] disabled:opacity-30 p-1">
                       <ArrowLeft className="w-3.5 h-3.5 rotate-90" />
                     </button>
-                    <button onClick={() => handleMoveRule(index, 1)} disabled={index === rules.length - 1} className="text-muted-foreground hover:text-foreground disabled:opacity-30 p-1">
+                    <button onClick={() => handleMoveRule(index, 1)} disabled={index === rules.length - 1} className="text-[#64748B] hover:text-[#E2E8F0] disabled:opacity-30 p-1">
                       <ArrowLeft className="w-3.5 h-3.5 -rotate-90" />
                     </button>
                   </div>
-                  
-                  <div className={`p-3 rounded-xl shrink-0 ${typeConfig.color}`}>
+
+                  <div className={`p-3 rounded-[14px] shrink-0 ${typeConfig.color}`}>
                     <Icon className="w-5 h-5" />
                   </div>
-                  
+
                   <div className="flex-1 min-w-0 grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-6">
                     <div>
                       <div className="flex items-center gap-2 mb-1">
-                        <span className="font-bold font-display text-base text-foreground">{typeConfig.label}</span>
-                        {rule.label && <span className="text-xs bg-muted px-2 py-0.5 rounded-full text-muted-foreground truncate max-w-[120px]">{rule.label}</span>}
+                        <span className="font-bold font-[family-name:var(--font-space-grotesk)] text-base text-[#F1F5F9]">{typeConfig.label}</span>
+                        {rule.label && <span className="text-xs px-2 py-0.5 rounded-full text-[#94A3B8] truncate max-w-[120px]" style={{ background: "rgba(255,255,255,0.05)" }}>{rule.label}</span>}
                       </div>
-                      <p className="text-sm font-medium text-primary bg-primary/5 inline-block px-2 py-0.5 rounded-md border border-primary/10">
+                      <p className="text-sm font-medium text-[#818CF8] bg-[#818CF8]/5 inline-block px-2 py-0.5 rounded-md border border-[#818CF8]/10">
                         {formatConditions(rule)}
                       </p>
                     </div>
                     <div className="flex flex-col justify-center">
-                      <span className="text-xs text-muted-foreground uppercase tracking-wider font-semibold mb-0.5">Redirects To</span>
-                      <span className="text-sm font-mono truncate text-foreground/80">{rule.destinationUrl}</span>
+                      <span className="text-xs text-[#64748B] uppercase tracking-wider font-semibold mb-0.5">Redirects To</span>
+                      <span className="text-sm font-mono truncate text-[#E2E8F0]/80">{rule.destinationUrl}</span>
                     </div>
                   </div>
-                  
+
                   <div className="shrink-0 pl-2">
-                    <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-xl" onClick={() => handleRemoveRule(index)}>
+                    <Button variant="ghost" size="icon" className="text-[#64748B] hover:text-destructive hover:bg-destructive/10 rounded-[14px]" onClick={() => handleRemoveRule(index)}>
                       <Trash2 className="w-5 h-5" />
                     </Button>
                   </div>
-                </Card>
+                </div>
               );
             })
           )}
         </div>
 
         {!isAdding ? (
-          <Button variant="outline" onClick={() => setIsAdding(true)} className="w-full py-8 border-dashed border-2 rounded-3xl text-muted-foreground hover:text-primary hover:border-primary/50 transition-all bg-transparent hover:bg-primary/5">
+          <button
+            onClick={() => setIsAdding(true)}
+            className="w-full py-8 rounded-[20px] text-[#64748B] hover:text-[#818CF8] transition-all flex items-center justify-center font-semibold"
+            style={{
+              background: "transparent",
+              border: "2px dashed rgba(255,255,255,0.1)",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.borderColor = "rgba(129,140,248,0.5)";
+              e.currentTarget.style.background = "rgba(129,140,248,0.05)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)";
+              e.currentTarget.style.background = "transparent";
+            }}
+          >
             <Plus className="w-5 h-5 mr-2" /> Add Routing Rule
-          </Button>
+          </button>
         ) : (
-          <Card className="p-6 rounded-3xl border-primary/30 shadow-xl shadow-primary/5 bg-card/50 backdrop-blur-sm animate-in slide-in-from-bottom-4 fade-in">
-            <h3 className="text-xl font-display font-bold mb-6">Configure New Rule</h3>
+          <div
+            className="p-6 rounded-[20px] animate-in slide-in-from-bottom-4 fade-in"
+            style={{
+              background: "rgba(17,24,39,0.65)",
+              backdropFilter: "blur(24px)",
+              WebkitBackdropFilter: "blur(24px)",
+              border: "1px solid rgba(129,140,248,0.3)",
+              boxShadow: "0 1px 2px rgba(0,0,0,0.3), 0 8px 32px rgba(129,140,248,0.08)",
+            }}
+          >
+            <h3 className="text-xl font-[family-name:var(--font-space-grotesk)] font-bold mb-6 text-[#F1F5F9]">Configure New Rule</h3>
             <div className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <label className="text-sm font-semibold">Rule Type</label>
+                  <label className="text-sm font-semibold text-[#E2E8F0]">Rule Type</label>
                   <Select value={newType} onValueChange={(v: any) => { setNewType(v); resetNewRule(); }}>
-                    <SelectTrigger className="rounded-xl h-11 bg-background">
+                    <SelectTrigger className="rounded-[14px] h-11 text-[#E2E8F0]" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }}>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       {RULE_TYPES.map(t => (
                         <SelectItem key={t.value} value={t.value}>
                           <div className="flex items-center gap-2">
-                            <t.icon className="w-4 h-4 text-muted-foreground" /> {t.label}
+                            <t.icon className="w-4 h-4 text-[#64748B]" /> {t.label}
                           </div>
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
-                
+
                 <div className="space-y-2">
-                  <label className="text-sm font-semibold">Label (Optional)</label>
-                  <Input placeholder="e.g. European Traffic" value={newLabel} onChange={e => setNewLabel(e.target.value)} className="rounded-xl h-11 bg-background" />
+                  <label className="text-sm font-semibold text-[#E2E8F0]">Label (Optional)</label>
+                  <Input placeholder="e.g. European Traffic" value={newLabel} onChange={e => setNewLabel(e.target.value)} className="rounded-[14px] h-11 text-[#E2E8F0] placeholder:text-[#64748B] focus:border-[#818CF8] focus:ring-[#818CF8]/20" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }} />
                 </div>
               </div>
 
-              <div className="p-5 rounded-2xl bg-background border border-border/60">
-                <h4 className="text-sm font-bold text-muted-foreground uppercase tracking-wider mb-4">Rule Conditions</h4>
-                
+              <div className="p-5 rounded-[14px]" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                <h4 className="text-sm font-bold text-[#64748B] uppercase tracking-wider mb-4">Rule Conditions</h4>
+
                 {newType === "geo" && (
                   <div className="space-y-2 animate-in fade-in">
-                    <label className="text-sm font-semibold">Target Countries</label>
-                    <Input placeholder="US, GB, CA, AU" value={geoCountries} onChange={e => setGeoCountries(e.target.value)} className="rounded-xl h-11" />
-                    <p className="text-xs text-muted-foreground">Enter 2-letter ISO country codes separated by commas.</p>
+                    <label className="text-sm font-semibold text-[#E2E8F0]">Target Countries</label>
+                    <Input placeholder="US, GB, CA, AU" value={geoCountries} onChange={e => setGeoCountries(e.target.value)} className="rounded-[14px] h-11 text-[#E2E8F0] placeholder:text-[#64748B] focus:border-[#818CF8] focus:ring-[#818CF8]/20" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }} />
+                    <p className="text-xs text-[#64748B]">Enter 2-letter ISO country codes separated by commas.</p>
                   </div>
                 )}
 
                 {newType === "city" && (
                   <div className="space-y-4 animate-in fade-in">
                     <div className="space-y-2">
-                      <label className="text-sm font-semibold">Target Cities</label>
-                      <Input placeholder="New York, London, Tokyo" value={cityCities} onChange={e => setCityCities(e.target.value)} className="rounded-xl h-11" />
-                      <p className="text-xs text-muted-foreground">Enter city names separated by commas. Matched against visitor GeoIP data.</p>
+                      <label className="text-sm font-semibold text-[#E2E8F0]">Target Cities</label>
+                      <Input placeholder="New York, London, Tokyo" value={cityCities} onChange={e => setCityCities(e.target.value)} className="rounded-[14px] h-11 text-[#E2E8F0] placeholder:text-[#64748B] focus:border-[#818CF8] focus:ring-[#818CF8]/20" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }} />
+                      <p className="text-xs text-[#64748B]">Enter city names separated by commas. Matched against visitor GeoIP data.</p>
                     </div>
                     <div className="space-y-2">
-                      <label className="text-sm font-semibold">Target Regions (optional)</label>
-                      <Input placeholder="CA, TX, ON" value={cityRegions} onChange={e => setCityRegions(e.target.value)} className="rounded-xl h-11" />
-                      <p className="text-xs text-muted-foreground">Enter region/state codes (e.g. CA for California). Used as fallback if no city match.</p>
+                      <label className="text-sm font-semibold text-[#E2E8F0]">Target Regions (optional)</label>
+                      <Input placeholder="CA, TX, ON" value={cityRegions} onChange={e => setCityRegions(e.target.value)} className="rounded-[14px] h-11 text-[#E2E8F0] placeholder:text-[#64748B] focus:border-[#818CF8] focus:ring-[#818CF8]/20" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }} />
+                      <p className="text-xs text-[#64748B]">Enter region/state codes (e.g. CA for California). Used as fallback if no city match.</p>
                     </div>
                   </div>
                 )}
 
                 {newType === "device" && (
                   <div className="space-y-3 animate-in fade-in">
-                    <label className="text-sm font-semibold mb-2 block">Target Devices</label>
+                    <label className="text-sm font-semibold mb-2 block text-[#E2E8F0]">Target Devices</label>
                     <div className="flex flex-wrap gap-4">
-                      <label className="flex items-center gap-2 cursor-pointer p-3 border rounded-xl hover:border-primary/50 transition-colors bg-card">
+                      <label className="flex items-center gap-2 cursor-pointer p-3 rounded-[14px] hover:border-[#818CF8]/50 transition-colors" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
                         <Checkbox checked={deviceMobile} onCheckedChange={(c: boolean) => setDeviceMobile(c)} />
-                        <span className="font-medium text-sm">Mobile</span>
+                        <span className="font-medium text-sm text-[#E2E8F0]">Mobile</span>
                       </label>
-                      <label className="flex items-center gap-2 cursor-pointer p-3 border rounded-xl hover:border-primary/50 transition-colors bg-card">
+                      <label className="flex items-center gap-2 cursor-pointer p-3 rounded-[14px] hover:border-[#818CF8]/50 transition-colors" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
                         <Checkbox checked={deviceTablet} onCheckedChange={(c: boolean) => setDeviceTablet(c)} />
-                        <span className="font-medium text-sm">Tablet</span>
+                        <span className="font-medium text-sm text-[#E2E8F0]">Tablet</span>
                       </label>
-                      <label className="flex items-center gap-2 cursor-pointer p-3 border rounded-xl hover:border-primary/50 transition-colors bg-card">
+                      <label className="flex items-center gap-2 cursor-pointer p-3 rounded-[14px] hover:border-[#818CF8]/50 transition-colors" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
                         <Checkbox checked={deviceDesktop} onCheckedChange={(c: boolean) => setDeviceDesktop(c)} />
-                        <span className="font-medium text-sm">Desktop</span>
+                        <span className="font-medium text-sm text-[#E2E8F0]">Desktop</span>
                       </label>
                     </div>
                   </div>
@@ -335,33 +405,42 @@ export default function LinkRules() {
 
                 {newType === "ab" && (
                   <div className="space-y-2 animate-in fade-in max-w-xs">
-                    <label className="text-sm font-semibold">Traffic Weight (%)</label>
+                    <label className="text-sm font-semibold text-[#E2E8F0]">Traffic Weight (%)</label>
                     <div className="relative">
-                      <Input type="number" min="1" max="100" value={abWeight} onChange={e => setAbWeight(e.target.value)} className="rounded-xl h-11 pr-8" />
-                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">%</span>
+                      <Input type="number" min="1" max="100" value={abWeight} onChange={e => setAbWeight(e.target.value)} className="rounded-[14px] h-11 pr-8 text-[#E2E8F0] focus:border-[#818CF8] focus:ring-[#818CF8]/20" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }} />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[#64748B]">%</span>
                     </div>
-                    <p className="text-xs text-muted-foreground">Percentage of unrouted traffic to send here.</p>
+                    <p className="text-xs text-[#64748B]">Percentage of unrouted traffic to send here.</p>
                   </div>
                 )}
 
                 {newType === "rotator" && (
-                  <div className="text-sm text-muted-foreground py-2 italic">
+                  <div className="text-sm text-[#64748B] py-2 italic">
                     Rotator rules distribute traffic evenly among all active rotators. No specific conditions needed.
                   </div>
                 )}
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-semibold">Destination URL *</label>
-                <Input placeholder="https://example.com/target" value={newDest} onChange={e => setNewDest(e.target.value)} className="rounded-xl h-12 bg-background shadow-sm border-primary/20 focus:border-primary" />
+                <label className="text-sm font-semibold text-[#E2E8F0]">Destination URL *</label>
+                <Input placeholder="https://example.com/target" value={newDest} onChange={e => setNewDest(e.target.value)} className="rounded-[14px] h-12 text-[#E2E8F0] placeholder:text-[#64748B] focus:border-[#818CF8] focus:ring-[#818CF8]/20" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(129,140,248,0.2)", boxShadow: "0 1px 2px rgba(0,0,0,0.3)" }} />
               </div>
 
-              <div className="flex gap-3 pt-2 border-t border-border">
-                <Button onClick={handleAddRule} className="rounded-xl h-11 px-8 shadow-md">Add Rule</Button>
-                <Button variant="ghost" onClick={() => setIsAdding(false)} className="rounded-xl h-11">Cancel</Button>
+              <div className="flex gap-3 pt-2" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+                <button
+                  onClick={handleAddRule}
+                  className="inline-flex items-center h-11 px-8 text-white font-semibold rounded-[14px] transition-all"
+                  style={{
+                    background: "linear-gradient(135deg, #818CF8, #A78BFA)",
+                    boxShadow: "0 4px 14px rgba(129,140,248,0.25)",
+                  }}
+                >
+                  Add Rule
+                </button>
+                <Button variant="ghost" onClick={() => setIsAdding(false)} className="rounded-[14px] h-11 text-[#64748B]">Cancel</Button>
               </div>
             </div>
-          </Card>
+          </div>
         )}
       </div>
     </ProtectedLayout>

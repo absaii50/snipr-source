@@ -5,10 +5,11 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
 
-export function useAuth() {
+export function useAuth(opts?: { redirectTo?: string }) {
   const queryClient = useQueryClient();
   const router = useRouter();
   const { toast } = useToast();
+  const redirectTo = opts?.redirectTo ?? "/dashboard";
 
   const { data, isLoading, error } = useGetMe({
     query: {
@@ -27,13 +28,13 @@ export function useAuth() {
       onSuccess: (data: any) => {
         queryClient.setQueryData(getGetMeQueryKey(), data);
         toast({ title: "Welcome back!", description: "You have successfully logged in." });
-        router.push("/dashboard");
+        router.push(redirectTo);
       },
       onError: (err: any) => {
-        toast({ 
-          title: "Login failed", 
-          description: err.message || "Please check your credentials and try again.", 
-          variant: "destructive" 
+        toast({
+          title: "Login failed",
+          description: err.message || "Please check your credentials and try again.",
+          variant: "destructive"
         });
       }
     }
@@ -44,7 +45,7 @@ export function useAuth() {
       onSuccess: (data: any) => {
         queryClient.setQueryData(getGetMeQueryKey(), data);
         toast({ title: "Account created!", description: "Check your email to verify your account." });
-        router.push("/dashboard");
+        router.push(redirectTo);
       },
       onError: (err: any) => {
         toast({ 

@@ -6,7 +6,9 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useAuth } from "@/hooks/use-auth";
-import { Link2, CheckCircle2, Shield, Sparkles } from "lucide-react";
+import { useSearchParams } from "next/navigation";
+import { CheckCircle2, Shield, Sparkles } from "lucide-react";
+import { SniprLogo } from "@/components/SniprLogo";
 
 const registerSchema = z.object({
   name: z.string().min(1, { message: "Name is required" }),
@@ -17,7 +19,11 @@ const registerSchema = z.object({
 type RegisterForm = z.infer<typeof registerSchema>;
 
 export default function Signup() {
-  const { register: authRegister, isRegistering } = useAuth();
+  const searchParams = useSearchParams();
+  const inviteToken = searchParams.get("invite");
+  const { register: authRegister, isRegistering } = useAuth(
+    inviteToken ? { redirectTo: `/join?token=${inviteToken}` } : undefined
+  );
 
   const form = useForm<RegisterForm>({
     resolver: zodResolver(registerSchema),
@@ -35,8 +41,8 @@ export default function Signup() {
         <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, white 1px, transparent 0)', backgroundSize: '24px 24px' }} />
         <div className="relative z-10">
           <div className="flex items-center gap-2.5 mb-16">
-            <div className="bg-white/10 p-2 rounded-xl backdrop-blur-sm">
-              <Link2 className="w-5 h-5 text-white" />
+            <div className="bg-white/10 p-2 rounded-xl backdrop-blur-sm flex items-center justify-center">
+              <SniprLogo size={20} color="white" />
             </div>
             <span className="font-bold text-lg text-white tracking-tight">Snipr</span>
           </div>
@@ -66,26 +72,26 @@ export default function Signup() {
         <div className="w-full max-w-[380px]">
           {/* Mobile logo */}
           <div className="flex flex-col items-center mb-10 lg:hidden">
-            <div className="bg-[#0A0A0A] text-white p-2.5 rounded-xl mb-3">
-              <Link2 className="w-5 h-5" />
+            <div className="bg-[#0A0A0A] p-2.5 rounded-xl mb-3 flex items-center justify-center">
+              <SniprLogo size={20} color="white" />
             </div>
             <span className="font-bold text-lg text-[#0A0A0A]">Snipr</span>
           </div>
 
           <div className="mb-8">
             <h1 className="text-[26px] font-bold text-[#0A0A0A] tracking-tight">Create your account</h1>
-            <p className="text-[#6B7280] text-[15px] mt-1.5">Get started in under 30 seconds</p>
+            <p className="text-[#7A7A84] text-[15px] mt-1.5">Get started in under 30 seconds</p>
           </div>
 
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
             <div className="space-y-1.5">
-              <Label htmlFor="name" className="text-[13px] font-medium text-[#374151]">Full name</Label>
+              <Label htmlFor="name" className="text-[13px] font-medium text-[#3A3A3E]">Full name</Label>
               <Input
                 id="name"
                 placeholder="Jane Doe"
                 autoComplete="name"
                 {...form.register("name")}
-                className="rounded-xl h-11 text-[14px] bg-white border border-[#E5E7EB] text-[#0A0A0A] placeholder:text-[#C0C0C8] focus-visible:ring-2 focus-visible:ring-[#0A0A0A]/10 focus-visible:border-[#0A0A0A] transition-all shadow-sm"
+                className="rounded-xl h-11 text-[14px] bg-white border border-[#E2E8F0] text-[#0A0A0A] placeholder:text-[#C0C0C8] focus-visible:ring-2 focus-visible:ring-[#0A0A0A]/10 focus-visible:border-[#0A0A0A] transition-all shadow-sm"
               />
               {form.formState.errors.name && (
                 <p className="text-xs text-red-500 font-medium mt-1">{form.formState.errors.name.message}</p>
@@ -93,14 +99,14 @@ export default function Signup() {
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="email" className="text-[13px] font-medium text-[#374151]">Work email</Label>
+              <Label htmlFor="email" className="text-[13px] font-medium text-[#3A3A3E]">Work email</Label>
               <Input
                 id="email"
                 type="email"
                 placeholder="name@company.com"
                 autoComplete="email"
                 {...form.register("email")}
-                className="rounded-xl h-11 text-[14px] bg-white border border-[#E5E7EB] text-[#0A0A0A] placeholder:text-[#C0C0C8] focus-visible:ring-2 focus-visible:ring-[#0A0A0A]/10 focus-visible:border-[#0A0A0A] transition-all shadow-sm"
+                className="rounded-xl h-11 text-[14px] bg-white border border-[#E2E8F0] text-[#0A0A0A] placeholder:text-[#C0C0C8] focus-visible:ring-2 focus-visible:ring-[#0A0A0A]/10 focus-visible:border-[#0A0A0A] transition-all shadow-sm"
               />
               {form.formState.errors.email && (
                 <p className="text-xs text-red-500 font-medium mt-1">{form.formState.errors.email.message}</p>
@@ -108,14 +114,14 @@ export default function Signup() {
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="password" className="text-[13px] font-medium text-[#374151]">Password</Label>
+              <Label htmlFor="password" className="text-[13px] font-medium text-[#3A3A3E]">Password</Label>
               <Input
                 id="password"
                 type="password"
                 placeholder="Min. 8 characters"
                 autoComplete="new-password"
                 {...form.register("password")}
-                className="rounded-xl h-11 text-[14px] bg-white border border-[#E5E7EB] text-[#0A0A0A] placeholder:text-[#C0C0C8] focus-visible:ring-2 focus-visible:ring-[#0A0A0A]/10 focus-visible:border-[#0A0A0A] transition-all shadow-sm"
+                className="rounded-xl h-11 text-[14px] bg-white border border-[#E2E8F0] text-[#0A0A0A] placeholder:text-[#C0C0C8] focus-visible:ring-2 focus-visible:ring-[#0A0A0A]/10 focus-visible:border-[#0A0A0A] transition-all shadow-sm"
               />
               {form.formState.errors.password && (
                 <p className="text-xs text-red-500 font-medium mt-1">{form.formState.errors.password.message}</p>
@@ -136,13 +142,13 @@ export default function Signup() {
             </button>
           </form>
 
-          <p className="mt-6 text-center text-[11px] text-[#9CA3AF] leading-relaxed">
+          <p className="mt-6 text-center text-[11px] text-[#7A7A84] leading-relaxed">
             By creating an account, you agree to our{" "}
-            <Link href="/terms" className="underline hover:text-[#6B7280]">Terms</Link> and{" "}
-            <Link href="/privacy" className="underline hover:text-[#6B7280]">Privacy Policy</Link>
+            <Link href="/terms" className="underline hover:text-[#7A7A84]">Terms</Link> and{" "}
+            <Link href="/privacy" className="underline hover:text-[#7A7A84]">Privacy Policy</Link>
           </p>
 
-          <p className="mt-4 text-center text-[13px] text-[#9CA3AF]">
+          <p className="mt-4 text-center text-[13px] text-[#7A7A84]">
             Already have an account?{" "}
             <Link href="/login" className="text-[#0A0A0A] font-semibold hover:underline">
               Sign in

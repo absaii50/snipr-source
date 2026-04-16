@@ -5,8 +5,34 @@ import { db, linksTable, linkRulesTable, pixelsTable, clickEventsTable, domainsT
 import { getLinkBySlug } from "../lib/link-cache";
 import { trackClick } from "../lib/click-tracker";
 import { buildPixelPage } from "../lib/pixels";
+import { isBot } from "../lib/bot-detector";
 
 const router: IRouter = Router();
+
+/* ── In-memory domain cache (5 min TTL) ─────────────────────────────────── */
+const _domainCache = new Map<string, { id: string; workspaceId: string; ts: number } | null>();
+const DOMAIN_CACHE_TTL = 5 * 60 * 1000;
+
+async function lookupDomainCached(host: string, subdomain: string | null, parentDomain: string): Promise<{ id: string; workspaceId: string } | null> {
+  const now = Date.now();
+  const cached = _domainCache.get(host);
+  if (cached !== undefined && now - (cached?.ts ?? 0) < DOMAIN_CACHE_TTL) {
+    return cached ? { id: cached.id, workspaceId: cached.workspaceId } : null;
+  }
+  let [rec] = await db
+    .select({ id: domainsTable.id, workspaceId: domainsTable.workspaceId })
+    .from(domainsTable)
+    .where(and(eq(domainsTable.domain, host), eq(domainsTable.verified, true)));
+  if (!rec && subdomain) {
+    [rec] = await db
+      .select({ id: domainsTable.id, workspaceId: domainsTable.workspaceId })
+      .from(domainsTable)
+      .where(and(eq(domainsTable.domain, parentDomain), eq(domainsTable.verified, true), eq(domainsTable.supportsSubdomains, true)));
+  }
+  const result = rec ? { id: rec.id, workspaceId: rec.workspaceId, ts: now } : null;
+  _domainCache.set(host, result);
+  return rec ? { id: rec.id, workspaceId: rec.workspaceId } : null;
+}
 
 function escapeHtml(str: string): string {
   return str
@@ -30,10 +56,20 @@ function escapeJsString(str: string): string {
 function isSafeUrl(url: string): boolean {
   try {
     const parsed = new URL(url);
-    return ["http:", "https:"].includes(parsed.protocol) || url.includes("://");
+    return ["http:", "https:"].includes(parsed.protocol);
   } catch {
-    return url.startsWith("http://") || url.startsWith("https://") || /^[a-z][a-z0-9+.-]*:\/\//i.test(url);
+    // Strict fallback — only allow http/https prefixes
+    return url.startsWith("http://") || url.startsWith("https://");
   }
+}
+
+/** Check if a deep link URL is safe — allows custom app schemes (myapp://) but blocks dangerous ones */
+function isSafeDeepLink(url: string): boolean {
+  if (!url || typeof url !== "string") return false;
+  const dangerous = /^(javascript|data|vbscript|file):/i;
+  if (dangerous.test(url)) return false;
+  // Must contain :// to be a valid deep link scheme
+  return url.includes("://");
 }
 
 /**
@@ -65,8 +101,9 @@ function weightedRandom<T extends { conditions: any; destinationUrl: string }>(r
   return rules[rules.length - 1] ?? null;
 }
 
-function servePasswordPage(req: Parameters<Router["get"]>[1], res: Parameters<Router["get"]>[2], slug: string, error?: string): void {
+function servePasswordPage(req: Parameters<Router["get"]>[1], res: Parameters<Router["get"]>[2], slug: string, error?: string, isCustomDomain?: boolean): void {
   const errorHtml = error ? `<p style="color:#dc2626;font-size:14px;margin:0 0 12px">${error}</p>` : "";
+  const formAction = isCustomDomain ? `/${escapeHtml(slug)}` : `/r/${escapeHtml(slug)}`;
   (res as any).status(200).send(`<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -75,7 +112,7 @@ function servePasswordPage(req: Parameters<Router["get"]>[1], res: Parameters<Ro
 <title>Protected Link</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{min-height:100vh;display:flex;align-items:center;justify-content:center;background:#f8fafc;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}
+body{min-height:100vh;display:flex;align-items:center;justify-center;background:#f8fafc;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}
 .card{background:#fff;border:1px solid #e2e8f0;border-radius:16px;padding:40px;width:100%;max-width:400px;box-shadow:0 4px 24px rgba(0,0,0,.06)}
 h2{font-size:22px;font-weight:700;color:#0f172a;margin-bottom:8px}
 p.sub{font-size:14px;color:#64748b;margin-bottom:24px}
@@ -93,7 +130,7 @@ button:hover{background:#4f46e5}
   <h2>Password Required</h2>
   <p class="sub">This link is password protected. Enter the password to continue.</p>
   ${errorHtml}
-  <form method="POST" action="/r/${slug}">
+  <form method="POST" action="${formAction}">
     <label for="password">Password</label>
     <input type="password" id="password" name="password" autofocus required placeholder="Enter password">
     <button type="submit">Unlock Link →</button>
@@ -105,10 +142,10 @@ button:hover{background:#4f46e5}
 
 function serveDeepLinkPage(res: any, destination: string, iosDeepLink: string | null, androidDeepLink: string | null): void {
   const safeDest = escapeJsString(destination);
-  const iosBlock = iosDeepLink && isSafeUrl(iosDeepLink)
+  const iosBlock = iosDeepLink && isSafeDeepLink(iosDeepLink)
     ? `if(/iPhone|iPad|iPod/i.test(ua)){window.location.href="${escapeJsString(iosDeepLink)}";setTimeout(function(){window.location.href="${safeDest}"},1500);return;}`
     : "";
-  const androidBlock = androidDeepLink && isSafeUrl(androidDeepLink)
+  const androidBlock = androidDeepLink && isSafeDeepLink(androidDeepLink)
     ? `if(/Android/i.test(ua)){window.location.href="${escapeJsString(androidDeepLink)}";setTimeout(function(){window.location.href="${safeDest}"},1500);return;}`
     : "";
   res.status(200).send(`<!DOCTYPE html>
@@ -141,6 +178,7 @@ window.location.href="${safeDest}";
 
 function serveCloakedPage(res: any, destination: string): void {
   const safeDest = escapeHtml(destination);
+  const safeDestJs = escapeJsString(destination);
   res.status(200).send(`<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -151,10 +189,27 @@ function serveCloakedPage(res: any, destination: string): void {
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{width:100%;height:100%;overflow:hidden}
 iframe{display:block;width:100%;height:100%;border:none}
+#loader{position:fixed;top:0;left:0;width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:#f8fafc;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;z-index:10}
+.spin{width:28px;height:28px;border:3px solid #e2e8f0;border-top-color:#6366f1;border-radius:50%;animation:r .7s linear infinite;margin-bottom:12px}
+@keyframes r{to{transform:rotate(360deg)}}
+.msg{color:#94a3b8;font-size:13px;text-align:center}
 </style>
 </head>
 <body>
-<iframe src="${safeDest}" sandbox="allow-forms allow-pointer-lock allow-popups allow-same-origin allow-scripts" allow="fullscreen; payment" referrerpolicy="no-referrer"></iframe>
+<div id="loader"><div><div class="spin"></div><div class="msg">Loading…</div></div></div>
+<iframe id="cf" src="${safeDest}" allow="fullscreen; payment" referrerpolicy="no-referrer" style="visibility:hidden"></iframe>
+<script>
+(function(){
+  var f=document.getElementById("cf"),l=document.getElementById("loader");
+  var t=setTimeout(function(){window.location.replace("${safeDestJs}");},8000);
+  f.onload=function(){
+    clearTimeout(t);
+    try{var d=f.contentDocument||f.contentWindow.document;if(d&&d.body){f.style.visibility="visible";l.style.display="none";}}
+    catch(e){f.style.visibility="visible";l.style.display="none";}
+  };
+  f.onerror=function(){clearTimeout(t);window.location.replace("${safeDestJs}");};
+})();
+</script>
 </body>
 </html>`);
 }
@@ -175,7 +230,7 @@ function serveGonePage(res: any, message: string, fallbackUrl?: string | null): 
 <div class="card">
 <div class="emoji">🚫</div>
 <h2>Link Unavailable</h2>
-<p>${message}</p>
+<p>${escapeHtml(message)}</p>
 </div>
 </body>
 </html>`);
@@ -189,7 +244,7 @@ function getCustomDomainLandingPage(domain: string): string {
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>${domain} — Branded Short Domain</title>
+<title>${escapeHtml(domain)} — Branded Short Domain</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔗</text></svg>">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -224,7 +279,7 @@ h1::after{content:'';display:block;width:40px;height:3px;background:#e5e7eb;bord
   </div>
   <div class="badge">ACTIVE</div>
   <h1>Branded Short Domain</h1>
-  <p class="desc"><span class="domain">${domain}</span> is configured for link redirection.</p>
+  <p class="desc"><span class="domain">${escapeHtml(domain)}</span> is configured for link redirection.</p>
   <p class="back-link">If you arrived here by mistake, you can <a href="javascript:history.back()">go back</a>.</p>
   <div class="divider"></div>
   <p class="cta-text">Create your own branded short links</p>
@@ -242,7 +297,7 @@ function getCustomDomain404Page(domain: string): string {
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Link Not Found — ${domain}</title>
+<title>Link Not Found — ${escapeHtml(domain)}</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#f8f9fb;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Inter',sans-serif}
@@ -265,7 +320,7 @@ p{font-size:14px;color:#6b7280;line-height:1.6}
     <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
   </div>
   <h1>Link Not Found</h1>
-  <p>This short link does not exist or has been removed from <strong>${domain}</strong>.</p>
+  <p>This short link does not exist or has been removed from <strong>${escapeHtml(domain)}</strong>.</p>
   <p class="back"><a href="javascript:history.back()">Go back</a></p>
 </div>
 <p class="powered">Powered by <a href="https://snipr.sh">Snipr</a></p>
@@ -276,7 +331,7 @@ p{font-size:14px;color:#6b7280;line-height:1.6}
 /* ── Custom Domain Routing ──────────────────────────────────────────────── */
 
 router.use(async (req, res, next): Promise<void> => {
-  if (req.method !== "GET" && req.method !== "HEAD") return next();
+  if (req.method !== "GET" && req.method !== "HEAD" && req.method !== "POST") return next();
 
   const rawHost = (req.headers["x-forwarded-host"] as string | undefined) || (req.headers.host ?? "");
   const host = rawHost.split(":")[0].toLowerCase().trim();
@@ -299,24 +354,8 @@ router.use(async (req, res, next): Promise<void> => {
   // Extract subdomain and parent domain
   const { subdomain, domain: parentDomain } = extractSubdomainAndDomain(host);
 
-  // Try exact domain match first
-  let [domainRecord] = await db
-    .select({ id: domainsTable.id, workspaceId: domainsTable.workspaceId })
-    .from(domainsTable)
-    .where(and(eq(domainsTable.domain, host), eq(domainsTable.verified, true)));
-
-  // If no exact match and subdomain exists, try parent domain with wildcard support
-  if (!domainRecord && subdomain) {
-    [domainRecord] = await db
-      .select({ id: domainsTable.id, workspaceId: domainsTable.workspaceId })
-      .from(domainsTable)
-      .where(and(
-        eq(domainsTable.domain, parentDomain),
-        eq(domainsTable.verified, true),
-        eq(domainsTable.supportsSubdomains, true)
-      ));
-  }
-
+  // Cached domain lookup — avoids DB hit on every request for the same domain
+  const domainRecord = await lookupDomainCached(host, subdomain, parentDomain);
   if (!domainRecord) return next();
 
   // If no slug (root path "/"), serve branded landing page
@@ -325,7 +364,7 @@ router.use(async (req, res, next): Promise<void> => {
     return;
   }
 
-  // Look up link by slug and domain (slug+domainId is unique — no workspaceId needed)
+  // Look up link by slug and domain using the new (slug, domain_id) index
   const [link] = await db
     .select()
     .from(linksTable)
@@ -339,7 +378,68 @@ router.use(async (req, res, next): Promise<void> => {
     return;
   }
 
-  setImmediate(() => { trackClick(req as any, link, false); });
+  // Check link expiry
+  if (link.expiresAt && new Date() > new Date(link.expiresAt)) {
+    if (link.fallbackUrl) {
+      res.redirect(302, link.fallbackUrl);
+    } else {
+      serveGonePage(res, "This link has expired.", null);
+    }
+    return;
+  }
+
+  // Handle POST for password unlock on custom domains
+  if (req.method === "POST" && link.passwordHash) {
+    const { password } = ((req.body ?? {}) as { password?: string });
+    if (!password) {
+      servePasswordPage(req, res, slug, "Please enter a password.", true);
+      return;
+    }
+    const valid = await bcrypt.compare(password, link.passwordHash);
+    if (!valid) {
+      servePasswordPage(req, res, slug, "Incorrect password. Please try again.", true);
+      return;
+    }
+    if (!(req.session as any).unlockedLinks) {
+      (req.session as any).unlockedLinks = {};
+    }
+    (req.session as any).unlockedLinks[link.id] = Date.now();
+    // Save session before redirect so unlock persists
+    req.session.save(() => {
+      res.redirect(302, `/${slug}`);
+    });
+    return;
+  }
+
+  // Check password protection (custom domain — form posts to /:slug)
+  if (link.passwordHash) {
+    const unlockedLinks = (req.session as any).unlockedLinks as Record<string, number> | undefined;
+    const unlockedTime = unlockedLinks?.[link.id];
+    const UNLOCK_DURATION_MS = 30 * 60 * 1000;
+    const isExpired = !unlockedTime || (Date.now() - unlockedTime) > UNLOCK_DURATION_MS;
+    if (isExpired) {
+      servePasswordPage(req, res, slug, undefined, true);
+      return;
+    }
+  }
+
+  // Check click limit
+  if (link.clickLimit !== null && link.clickLimit !== undefined) {
+    const [{ value }] = await db
+      .select({ value: count() })
+      .from(clickEventsTable)
+      .where(eq(clickEventsTable.linkId, link.id));
+    if (Number(value) >= link.clickLimit) {
+      serveGonePage(res, "This link has reached its click limit.", link.fallbackUrl);
+      return;
+    }
+  }
+
+  // Compute bot check once — reused for tracking + redirect decision
+  const bot = isBot(req as any);
+  if (!bot) {
+    setImmediate(() => { trackClick(req as any, link, req.query.qr === "1"); });
+  }
 
   if (link.iosDeepLink || link.androidDeepLink) {
     serveDeepLinkPage(res, link.destinationUrl, link.iosDeepLink, link.androidDeepLink);
@@ -358,7 +458,13 @@ router.use(async (req, res, next): Promise<void> => {
     return;
   }
 
-  res.redirect(301, link.destinationUrl);
+  // Bots/crawlers get a clean 301 for SEO link juice
+  if (bot) {
+    res.redirect(301, link.destinationUrl);
+    return;
+  }
+  // Real browsers get an instant HTML redirect — never cached by browser
+  res.status(200).send(`<!DOCTYPE html><html><head><meta charset="utf-8"><meta http-equiv="refresh" content="0;url=${escapeHtml(link.destinationUrl)}"><script>window.location.replace("${escapeJsString(link.destinationUrl)}")</script><title>Redirecting…</title></head><body></body></html>`);
 });
 
 /* ── Standard Redirect ──────────────────────────────────────────────────── */
@@ -494,9 +600,12 @@ router.get("/r/:slug", async (req, res): Promise<void> => {
   }
 
   const isQr = req.query.qr === "1";
+  const bot = isBot(req as any);
 
-  // Fire click tracking asynchronously — never blocks the redirect
-  setImmediate(() => { trackClick(req as any, link, isQr); });
+  // Fire click tracking asynchronously — skip bots
+  if (!bot) {
+    setImmediate(() => { trackClick(req as any, link, isQr); });
+  }
 
   const pixels = await db
     .select()
@@ -525,7 +634,13 @@ router.get("/r/:slug", async (req, res): Promise<void> => {
     return;
   }
 
-  res.redirect(301, destination);
+  // Bots/crawlers get a clean 301 for SEO link juice
+  if (bot) {
+    res.redirect(301, destination);
+    return;
+  }
+  // Real browsers get an instant HTML redirect — never cached by browser
+  res.status(200).send(`<!DOCTYPE html><html><head><meta charset="utf-8"><meta http-equiv="refresh" content="0;url=${escapeHtml(destination)}"><script>window.location.replace("${escapeJsString(destination)}")</script><title>Redirecting…</title></head><body></body></html>`);
 });
 
 router.post("/r/:slug", async (req, res): Promise<void> => {
@@ -558,7 +673,10 @@ router.post("/r/:slug", async (req, res): Promise<void> => {
   }
   (req.session as any).unlockedLinks[link.id] = Date.now();
 
-  res.redirect(302, `/r/${slug}`);
+  // Save session before redirect so unlock persists
+  req.session.save(() => {
+    res.redirect(302, `/r/${slug}`);
+  });
 });
 
 export default router;

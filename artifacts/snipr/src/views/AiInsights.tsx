@@ -26,6 +26,24 @@ const SNIPR_DOMAIN = "snipr.sh";
 type AuditFinding = { type: string; slug: string; message: string };
 type SmartSuggestion = { title: string; body: string; icon: string };
 
+const glassCard = {
+  background: "rgba(17,24,39,0.65)",
+  backdropFilter: "blur(16px)",
+  WebkitBackdropFilter: "blur(16px)",
+  border: "1px solid rgba(255,255,255,0.06)",
+  borderRadius: "16px",
+} as React.CSSProperties;
+
+const glassHeader = {
+  background: "rgba(255,255,255,0.03)",
+  borderBottom: "1px solid rgba(255,255,255,0.06)",
+} as React.CSSProperties;
+
+const gradientBtn = {
+  background: "linear-gradient(135deg, #818CF8, #A78BFA)",
+  boxShadow: "0 4px 14px rgba(129,140,248,0.25)",
+} as React.CSSProperties;
+
 function SuggestionIcon({ icon }: { icon: string }) {
   const map: Record<string, React.ReactNode> = {
     trend: <TrendingUp className="w-4 h-4" />,
@@ -38,19 +56,27 @@ function SuggestionIcon({ icon }: { icon: string }) {
 }
 
 function AuditFindingIcon({ type }: { type: string }) {
-  if (type === "expired") return <AlertCircle className="w-4 h-4 text-[#E05050]" />;
-  if (type === "zero_click") return <AlertTriangle className="w-4 h-4 text-[#E07B30]" />;
-  if (type === "no_title") return <Info className="w-4 h-4 text-[#728DA7]" />;
-  if (type === "improvement") return <ShieldAlert className="w-4 h-4 text-[#7C5CC4]" />;
-  return <BadgeCheck className="w-4 h-4 text-[#2E9A72]" />;
+  if (type === "expired") return <AlertCircle className="w-4 h-4 text-[#F87171]" />;
+  if (type === "zero_click") return <AlertTriangle className="w-4 h-4 text-[#FB923C]" />;
+  if (type === "no_title") return <Info className="w-4 h-4 text-[#94A3B8]" />;
+  if (type === "improvement") return <ShieldAlert className="w-4 h-4 text-[#A78BFA]" />;
+  return <BadgeCheck className="w-4 h-4 text-[#34D399]" />;
 }
 
 function AuditFindingBg(type: string) {
-  if (type === "expired") return "bg-[#FFF0F0] border-[#FFD5D5]";
-  if (type === "zero_click") return "bg-[#FEF8F0] border-[#FDDCB6]";
-  if (type === "no_title") return "bg-[#F0F6FF] border-[#C8DEFF]";
-  if (type === "improvement") return "bg-[#F5F0FE] border-[#DDD2F5]";
-  return "bg-[#F0FAF5] border-[#B4E8CE]";
+  if (type === "expired") return "border-[rgba(248,113,113,0.2)]";
+  if (type === "zero_click") return "border-[rgba(251,146,60,0.2)]";
+  if (type === "no_title") return "border-[rgba(148,163,184,0.2)]";
+  if (type === "improvement") return "border-[rgba(167,139,250,0.2)]";
+  return "border-[rgba(52,211,153,0.2)]";
+}
+
+function AuditFindingBgStyle(type: string): React.CSSProperties {
+  if (type === "expired") return { background: "rgba(248,113,113,0.06)" };
+  if (type === "zero_click") return { background: "rgba(251,146,60,0.06)" };
+  if (type === "no_title") return { background: "rgba(148,163,184,0.06)" };
+  if (type === "improvement") return { background: "rgba(167,139,250,0.06)" };
+  return { background: "rgba(52,211,153,0.06)" };
 }
 
 function renderFormattedText(text: string) {
@@ -60,7 +86,7 @@ function renderFormattedText(text: string) {
     const rendered = parts.map((part, partIdx) => {
       if (part.startsWith("**") && part.endsWith("**")) {
         return (
-          <strong key={partIdx} className="font-bold text-[#0A0A0A]">
+          <strong key={partIdx} className="font-bold text-[#F1F5F9]">
             {part.slice(2, -2)}
           </strong>
         );
@@ -282,31 +308,32 @@ export default function AiInsights() {
 
   return (
     <ProtectedLayout>
-      <div className="p-6 lg:p-8 max-w-6xl mx-auto w-full space-y-6">
+      <div className="pt-14 lg:pt-6 p-6 lg:p-8 max-w-6xl mx-auto w-full space-y-6">
 
         {/* Header */}
         <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-[#F0EBF9] flex items-center justify-center shrink-0">
-            <BrainCircuit className="w-6 h-6 text-[#7C5CC4]" />
+          <div className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0" style={{ background: "linear-gradient(135deg, #818CF8, #A78BFA)", boxShadow: "0 4px 14px rgba(129,140,248,0.25)" }}>
+            <BrainCircuit className="w-6 h-6 text-white" />
           </div>
           <div>
-            <p className="text-[10px] font-bold tracking-[0.22em] uppercase text-[#7C5CC4] mb-1">Intelligence</p>
-            <h1 className="text-[26px] font-display font-black tracking-tight text-[#0A0A0A] leading-none">AI Insights</h1>
-            <p className="text-[13px] text-[#8888A0] mt-1">Your personal analytics assistant powered by real data.</p>
+            <p className="text-[10px] font-bold tracking-[0.22em] uppercase text-[#818CF8] mb-1">Intelligence</p>
+            <h1 className="text-[28px] font-[family-name:var(--font-space-grotesk)] font-extrabold tracking-tight text-[#F1F5F9] leading-none">AI Insights</h1>
+            <p className="text-[13px] text-[#94A3B8] mt-1">Your personal analytics assistant powered by real data.</p>
           </div>
         </div>
 
         {/* Tab bar */}
-        <div className="flex gap-1 bg-[#F4F4F6] p-1 rounded-2xl flex-wrap">
+        <div className="flex gap-1 p-1 rounded-2xl flex-wrap" style={{ background: "rgba(17,24,39,0.65)", border: "1px solid rgba(255,255,255,0.06)" }}>
           {tabs.map((tab) => (
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
               className={`flex items-center gap-1.5 px-4 py-2 text-[12px] font-semibold rounded-xl transition-all ${
                 activeTab === tab.key
-                  ? "bg-white text-[#0A0A0A] shadow-sm"
-                  : "text-[#8888A0] hover:text-[#0A0A0A]"
+                  ? "text-[#A5B4FC]"
+                  : "text-[#94A3B8] hover:text-[#E2E8F0]"
               }`}
+              style={activeTab === tab.key ? { background: "rgba(129,140,248,0.12)", boxShadow: "0 1px 2px rgba(0,0,0,0.3)" } : undefined}
             >
               {tab.icon}
               {tab.label}
@@ -319,15 +346,16 @@ export default function AiInsights() {
           <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-6 items-start">
             <div className="space-y-5">
               {/* Ask box */}
-              <div className="bg-white border border-[#E4E4EC] rounded-2xl overflow-hidden">
-                <div className="px-5 py-4 border-b border-[#F0F0F6] bg-[#FAFAFE] flex items-center gap-2">
-                  <Sparkles className="w-4 h-4 text-[#7C5CC4]" />
-                  <h2 className="text-[14px] font-semibold text-[#0A0A0A]">Ask your analytics</h2>
+              <div className="overflow-hidden" style={glassCard}>
+                <div className="px-5 py-4 flex items-center gap-2" style={glassHeader}>
+                  <Sparkles className="w-4 h-4 text-[#818CF8]" />
+                  <h2 className="text-[14px] font-semibold text-[#F1F5F9]">Ask your analytics</h2>
                 </div>
                 <div className="p-5 space-y-4">
                   <textarea
                     placeholder="e.g. Which campaign drove the most clicks this week?"
-                    className="w-full min-h-[100px] px-4 py-3 text-[13px] bg-[#FAFAFE] border border-[#E4E4EC] rounded-xl outline-none focus:border-[#7C5CC4] focus:ring-2 focus:ring-[#7C5CC4]/10 transition-all placeholder:text-[#CCCCDA] resize-none"
+                    className="w-full min-h-[100px] px-4 py-3 text-[13px] rounded-[14px] outline-none transition-all placeholder:text-[#64748B] resize-none text-[#E2E8F0] focus:ring-2 focus:ring-[#818CF8]/15"
+                    style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }}
                     value={question}
                     onChange={e => setQuestion(e.target.value)}
                     onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleAsk(); } }}
@@ -336,10 +364,11 @@ export default function AiInsights() {
                   <button
                     onClick={() => handleAsk()}
                     disabled={isStreaming || !question.trim()}
-                    className="w-full inline-flex items-center justify-center gap-2 bg-[#7C5CC4] hover:bg-[#6A4BB0] active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed text-white text-[13px] font-semibold px-4 py-3 rounded-xl transition-all"
+                    className="w-full inline-flex items-center justify-center gap-2 active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed text-white text-[13px] font-semibold px-4 py-3 rounded-[14px] transition-all"
+                    style={gradientBtn}
                   >
                     {isStreaming
-                      ? <><Loader2 className="w-4 h-4 animate-spin" /> Thinking…</>
+                      ? <><Loader2 className="w-4 h-4 animate-spin" /> Thinking...</>
                       : <><Sparkles className="w-4 h-4" /> Ask AI</>
                     }
                   </button>
@@ -347,16 +376,16 @@ export default function AiInsights() {
 
                 {/* Streaming answer */}
                 {(isStreaming || streamingAnswer) && (
-                  <div className="mx-5 mb-5 p-4 bg-[#F5F1FC] border border-[#E0D8F5] rounded-xl">
+                  <div className="mx-5 mb-5 p-4 rounded-[14px]" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
                     {currentQ && (
-                      <p className="text-[11px] font-bold text-[#7C5CC4] uppercase tracking-wider mb-2">Q: {currentQ}</p>
+                      <p className="text-[11px] font-bold text-[#818CF8] uppercase tracking-wider mb-2">Q: {currentQ}</p>
                     )}
-                    <div className="text-[13px] text-[#3A3A3E] leading-[1.75]">
+                    <div className="text-[13px] text-[#64748B] leading-[1.75]">
                       {renderFormattedText(streamingAnswer)}
-                      {isStreaming && <span className="inline-block w-1.5 h-3.5 bg-[#7C5CC4] ml-0.5 align-middle animate-pulse rounded-sm" />}
+                      {isStreaming && <span className="inline-block w-1.5 h-3.5 bg-[#818CF8] ml-0.5 align-middle animate-pulse rounded-sm" />}
                     </div>
                     {!isStreaming && (
-                      <p className="mt-3 text-[11px] text-[#8888A0]">Based on your last 30 days of data</p>
+                      <p className="mt-3 text-[11px] text-[#94A3B8]">Based on your last 30 days of data</p>
                     )}
                   </div>
                 )}
@@ -364,22 +393,22 @@ export default function AiInsights() {
 
               {/* Q&A History */}
               {qaHistory.length > 0 && (
-                <div className="bg-white border border-[#E4E4EC] rounded-2xl overflow-hidden">
-                  <div className="px-5 py-4 border-b border-[#F0F0F6] bg-[#FAFAFE]">
-                    <h3 className="text-[14px] font-semibold text-[#0A0A0A]">Recent Questions</h3>
+                <div className="overflow-hidden" style={glassCard}>
+                  <div className="px-5 py-4" style={glassHeader}>
+                    <h3 className="text-[14px] font-semibold text-[#F1F5F9]">Recent Questions</h3>
                   </div>
-                  <div className="divide-y divide-[#F0F0F6]">
+                  <div className="divide-y" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
                     {qaHistory.slice(0, 6).map(item => {
                       const meta = (item as AiInsight & { metadata?: { question?: string } | null }).metadata;
                       const q = meta?.question || "Unknown question";
                       return (
-                        <div key={item.id} className="px-5 py-4 hover:bg-[#FAFAFE] transition-colors">
-                          <p className="text-[12px] font-semibold text-[#0A0A0A] mb-1.5">"{q}"</p>
-                          <div className="text-[12px] text-[#3A3A3E] leading-[1.7] flex gap-2 items-start">
-                            <ArrowRight className="w-3.5 h-3.5 shrink-0 mt-0.5 text-[#7C5CC4]" />
+                        <div key={item.id} className="px-5 py-4 transition-colors" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }} onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,255,255,0.03)")} onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
+                          <p className="text-[12px] font-semibold text-[#E2E8F0] mb-1.5">"{q}"</p>
+                          <div className="text-[12px] text-[#64748B] leading-[1.7] flex gap-2 items-start">
+                            <ArrowRight className="w-3.5 h-3.5 shrink-0 mt-0.5 text-[#818CF8]" />
                             <div>{renderFormattedText(item.content)}</div>
                           </div>
-                          <p className="text-[11px] text-[#AAAAB4] mt-2">
+                          <p className="text-[11px] text-[#94A3B8] mt-2">
                             {format(new Date(item.createdAt), "MMM d, h:mm a")}
                           </p>
                         </div>
@@ -391,10 +420,10 @@ export default function AiInsights() {
             </div>
 
             {/* Quick questions sidebar */}
-            <div className="bg-white border border-[#E4E4EC] rounded-2xl overflow-hidden">
-              <div className="px-5 py-4 border-b border-[#F0F0F6] bg-[#FAFAFE] flex items-center gap-2">
-                <Zap className="w-4 h-4 text-[#E07B30]" />
-                <h3 className="text-[14px] font-semibold text-[#0A0A0A]">Quick Questions</h3>
+            <div className="overflow-hidden" style={glassCard}>
+              <div className="px-5 py-4 flex items-center gap-2" style={glassHeader}>
+                <Zap className="w-4 h-4 text-[#FB923C]" />
+                <h3 className="text-[14px] font-semibold text-[#F1F5F9]">Quick Questions</h3>
               </div>
               <div className="p-3 space-y-1">
                 {QUICK_QUESTIONS.map((q) => (
@@ -402,10 +431,12 @@ export default function AiInsights() {
                     key={q}
                     onClick={() => { setActiveTab("ask"); handleAsk(q); }}
                     disabled={isStreaming}
-                    className="w-full text-left flex items-center gap-2.5 px-3.5 py-3 rounded-xl text-[12.5px] text-[#3A3A3E] hover:bg-[#F4F4F6] hover:text-[#0A0A0A] transition-colors group disabled:opacity-50"
+                    className="w-full text-left flex items-center gap-2.5 px-3.5 py-3 rounded-xl text-[12.5px] text-[#64748B] transition-colors group disabled:opacity-50"
+                    onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.03)"; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
                   >
                     <span className="flex-1">{q}</span>
-                    <ChevronRight className="w-3.5 h-3.5 text-[#CCCCDA] group-hover:text-[#7C5CC4] transition-colors shrink-0" />
+                    <ChevronRight className="w-3.5 h-3.5 text-[#94A3B8] group-hover:text-[#818CF8] transition-colors shrink-0" />
                   </button>
                 ))}
               </div>
@@ -416,17 +447,18 @@ export default function AiInsights() {
         {/* SMART SUGGESTIONS TAB */}
         {activeTab === "suggestions" && (
           <div className="space-y-5">
-            <div className="bg-white border border-[#E4E4EC] rounded-2xl overflow-hidden">
-              <div className="px-5 py-4 border-b border-[#F0F0F6] bg-[#FAFAFE] flex items-center justify-between">
+            <div className="overflow-hidden" style={glassCard}>
+              <div className="px-5 py-4 flex items-center justify-between" style={glassHeader}>
                 <div className="flex items-center gap-2">
-                  <Zap className="w-4 h-4 text-[#E07B30]" />
-                  <h2 className="text-[14px] font-semibold text-[#0A0A0A]">Smart Suggestions</h2>
-                  <span className="text-[11px] text-[#AAAAB4] ml-1">Based on your last 30 days</span>
+                  <Zap className="w-4 h-4 text-[#FB923C]" />
+                  <h2 className="text-[14px] font-semibold text-[#F1F5F9]">Smart Suggestions</h2>
+                  <span className="text-[11px] text-[#94A3B8] ml-1">Based on your last 30 days</span>
                 </div>
                 <button
                   onClick={handleLoadSuggestions}
                   disabled={isLoadingSuggestions}
-                  className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-[#E07B30] hover:text-[#C96A20] border border-[#FDDCB6] hover:border-[#E07B30] bg-[#FEF3E8] hover:bg-[#FEECD6] px-3.5 py-2 rounded-xl transition-all disabled:opacity-50 active:scale-95"
+                  className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-[#FB923C] hover:text-[#F59E0B] px-3.5 py-2 rounded-[14px] transition-all disabled:opacity-50 active:scale-95"
+                  style={{ background: "rgba(251,146,60,0.1)", border: "1px solid rgba(251,146,60,0.2)" }}
                 >
                   {isLoadingSuggestions
                     ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -439,44 +471,45 @@ export default function AiInsights() {
                 {isLoadingSuggestions ? (
                   <div className="h-full flex flex-col items-center justify-center gap-4 py-12">
                     <div className="relative">
-                      <div className="w-12 h-12 rounded-2xl bg-[#FEF3E8] flex items-center justify-center">
-                        <Zap className="w-6 h-6 text-[#E07B30]" />
+                      <div className="w-12 h-12 rounded-2xl flex items-center justify-center" style={{ background: "rgba(251,146,60,0.1)" }}>
+                        <Zap className="w-6 h-6 text-[#FB923C]" />
                       </div>
-                      <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-[#E07B30] rounded-full animate-ping opacity-60" />
+                      <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-[#FB923C] rounded-full animate-ping opacity-60" />
                     </div>
                     <div className="text-center">
-                      <p className="text-[13px] font-semibold text-[#0A0A0A]">Analysing your data…</p>
-                      <p className="text-[12px] text-[#8888A0] mt-1">Generating personalised suggestions.</p>
+                      <p className="text-[13px] font-semibold text-[#F1F5F9]">Analysing your data...</p>
+                      <p className="text-[12px] text-[#94A3B8] mt-1">Generating personalised suggestions.</p>
                     </div>
                   </div>
                 ) : smartSuggestions.length > 0 ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {smartSuggestions.map((s, i) => (
-                      <div key={i} className="bg-[#FAFAFE] border border-[#EBEBF8] rounded-2xl p-5 space-y-3">
+                      <div key={i} className="rounded-[14px] p-5 space-y-3" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
                         <div className="flex items-center gap-2">
-                          <div className="w-8 h-8 rounded-xl bg-[#F0EBF9] flex items-center justify-center text-[#7C5CC4] shrink-0">
+                          <div className="w-8 h-8 rounded-xl flex items-center justify-center text-[#818CF8] shrink-0" style={{ background: "rgba(129,140,248,0.12)" }}>
                             <SuggestionIcon icon={s.icon} />
                           </div>
-                          <p className="text-[13px] font-semibold text-[#0A0A0A] leading-tight">{s.title}</p>
+                          <p className="text-[13px] font-semibold text-[#E2E8F0] leading-tight">{s.title}</p>
                         </div>
-                        <p className="text-[12.5px] text-[#3A3A3E] leading-relaxed">{s.body}</p>
+                        <p className="text-[12.5px] text-[#64748B] leading-relaxed">{s.body}</p>
                       </div>
                     ))}
                   </div>
                 ) : (
                   <div className="h-full flex flex-col items-center justify-center gap-4 py-12 text-center max-w-xs mx-auto">
-                    <div className="w-14 h-14 rounded-2xl bg-[#FEF3E8] flex items-center justify-center">
-                      <Zap className="w-7 h-7 text-[#E07B30]/50" />
+                    <div className="w-14 h-14 rounded-2xl flex items-center justify-center" style={{ background: "rgba(251,146,60,0.1)" }}>
+                      <Zap className="w-7 h-7 text-[#FB923C]/40" />
                     </div>
                     <div>
-                      <p className="text-[14px] font-semibold text-[#0A0A0A] mb-1">No suggestions yet</p>
-                      <p className="text-[12px] text-[#8888A0]">
-                        Click "Generate" and AI will analyse your real link performance to produce 3–5 actionable insights.
+                      <p className="text-[14px] font-semibold text-[#F1F5F9] mb-1">No suggestions yet</p>
+                      <p className="text-[12px] text-[#94A3B8]">
+                        Click "Generate" and AI will analyse your real link performance to produce 3-5 actionable insights.
                       </p>
                     </div>
                     <button
                       onClick={handleLoadSuggestions}
-                      className="inline-flex items-center gap-2 bg-[#E07B30] hover:bg-[#C96A20] text-white text-[13px] font-semibold px-5 py-2.5 rounded-xl transition-all active:scale-95"
+                      className="inline-flex items-center gap-2 text-white text-[13px] font-semibold px-5 py-2.5 rounded-[14px] transition-all active:scale-95"
+                      style={gradientBtn}
                     >
                       <Zap className="w-4 h-4" />
                       Generate suggestions
@@ -491,13 +524,13 @@ export default function AiInsights() {
         {/* LINK AUDIT TAB */}
         {activeTab === "audit" && (
           <div className="space-y-5">
-            <div className="bg-white border border-[#E4E4EC] rounded-2xl overflow-hidden">
-              <div className="px-5 py-4 border-b border-[#F0F0F6] bg-[#FAFAFE] flex items-center justify-between">
+            <div className="overflow-hidden" style={glassCard}>
+              <div className="px-5 py-4 flex items-center justify-between" style={glassHeader}>
                 <div className="flex items-center gap-2">
-                  <ClipboardList className="w-4 h-4 text-[#728DA7]" />
-                  <h2 className="text-[14px] font-semibold text-[#0A0A0A]">AI Link Audit</h2>
+                  <ClipboardList className="w-4 h-4 text-[#94A3B8]" />
+                  <h2 className="text-[14px] font-semibold text-[#F1F5F9]">AI Link Audit</h2>
                   {auditDone && (
-                    <span className="text-[11px] text-[#AAAAB4] ml-1">
+                    <span className="text-[11px] text-[#94A3B8] ml-1">
                       · {auditTotal} links reviewed, {auditFindings.length} findings
                     </span>
                   )}
@@ -505,7 +538,8 @@ export default function AiInsights() {
                 <button
                   onClick={handleAudit}
                   disabled={isAuditing}
-                  className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-[#728DA7] hover:text-[#4A7A94] border border-[#EBEBF0] hover:border-[#728DA7] bg-[#EEF3F7] hover:bg-[#E2EDF4] px-3.5 py-2 rounded-xl transition-all disabled:opacity-50 active:scale-95"
+                  className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-[#94A3B8] hover:text-[#E2E8F0] px-3.5 py-2 rounded-[14px] transition-all disabled:opacity-50 active:scale-95"
+                  style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }}
                 >
                   {isAuditing
                     ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -518,47 +552,48 @@ export default function AiInsights() {
                 {isAuditing ? (
                   <div className="h-full flex flex-col items-center justify-center gap-4 py-16">
                     <div className="relative">
-                      <div className="w-14 h-14 rounded-2xl bg-[#EEF3F7] flex items-center justify-center">
-                        <ClipboardList className="w-7 h-7 text-[#728DA7]" />
+                      <div className="w-14 h-14 rounded-2xl flex items-center justify-center" style={{ background: "rgba(255,255,255,0.05)" }}>
+                        <ClipboardList className="w-7 h-7 text-[#94A3B8]" />
                       </div>
-                      <span className="absolute -top-1 -right-1 w-4 h-4 bg-[#728DA7] rounded-full animate-ping opacity-60" />
+                      <span className="absolute -top-1 -right-1 w-4 h-4 bg-[#94A3B8] rounded-full animate-ping opacity-60" />
                     </div>
                     <div className="text-center">
-                      <p className="text-[14px] font-semibold text-[#0A0A0A]">Auditing your links…</p>
-                      <p className="text-[12px] text-[#8888A0] mt-1">AI is reviewing all your links for issues and opportunities.</p>
+                      <p className="text-[14px] font-semibold text-[#F1F5F9]">Auditing your links...</p>
+                      <p className="text-[12px] text-[#94A3B8] mt-1">AI is reviewing all your links for issues and opportunities.</p>
                     </div>
                   </div>
                 ) : auditFindings.length > 0 ? (
                   <div className="space-y-3">
                     {auditFindings.map((f, i) => (
-                      <div key={i} className={`flex items-start gap-3 p-4 rounded-xl border ${AuditFindingBg(f.type)}`}>
+                      <div key={i} className={`flex items-start gap-3 p-4 rounded-[14px] border ${AuditFindingBg(f.type)}`} style={AuditFindingBgStyle(f.type)}>
                         <div className="shrink-0 mt-0.5">
                           <AuditFindingIcon type={f.type} />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-[12px] font-bold text-[#0A0A0A] mb-0.5">
-                            <span className="font-mono bg-white/60 px-1.5 py-0.5 rounded text-[11px] mr-1.5">/{f.slug}</span>
+                          <p className="text-[12px] font-bold text-[#E2E8F0] mb-0.5">
+                            <span className="font-mono px-1.5 py-0.5 rounded text-[11px] mr-1.5" style={{ background: "rgba(255,255,255,0.06)" }}>/{f.slug}</span>
                             {f.type === "expired" ? "Expired" : f.type === "zero_click" ? "No Clicks" : f.type === "no_title" ? "Missing Title" : f.type === "improvement" ? "Improvement" : "Good"}
                           </p>
-                          <p className="text-[12.5px] text-[#3A3A3E] leading-relaxed">{f.message}</p>
+                          <p className="text-[12.5px] text-[#64748B] leading-relaxed">{f.message}</p>
                         </div>
                       </div>
                     ))}
                   </div>
                 ) : (
                   <div className="h-full flex flex-col items-center justify-center gap-4 py-16 text-center max-w-sm mx-auto">
-                    <div className="w-16 h-16 rounded-2xl bg-[#EEF3F7] flex items-center justify-center">
-                      <ClipboardList className="w-8 h-8 text-[#728DA7]/50" />
+                    <div className="w-16 h-16 rounded-2xl flex items-center justify-center" style={{ background: "rgba(255,255,255,0.05)" }}>
+                      <ClipboardList className="w-8 h-8 text-[#94A3B8]/40" />
                     </div>
                     <div>
-                      <p className="text-[15px] font-semibold text-[#0A0A0A] mb-1">Ready to audit</p>
-                      <p className="text-[13px] text-[#8888A0]">
+                      <p className="text-[15px] font-semibold text-[#F1F5F9] mb-1">Ready to audit</p>
+                      <p className="text-[13px] text-[#94A3B8]">
                         Click "Audit my links" to have AI review all your links for expired URLs, zero-click links, missing titles, and improvement opportunities.
                       </p>
                     </div>
                     <button
                       onClick={handleAudit}
-                      className="inline-flex items-center gap-2 bg-[#728DA7] hover:bg-[#5C7A96] text-white text-[13px] font-semibold px-5 py-2.5 rounded-xl transition-all active:scale-95"
+                      className="inline-flex items-center gap-2 text-white text-[13px] font-semibold px-5 py-2.5 rounded-[14px] transition-all active:scale-95"
+                      style={gradientBtn}
                     >
                       <ClipboardList className="w-4 h-4" />
                       Audit my links
@@ -572,13 +607,13 @@ export default function AiInsights() {
 
         {/* WEEKLY SUMMARY TAB */}
         {activeTab === "summary" && (
-          <div className="bg-white border border-[#E4E4EC] rounded-2xl overflow-hidden">
-            <div className="px-5 py-4 border-b border-[#F0F0F6] bg-[#FAFAFE] flex items-center justify-between">
+          <div className="overflow-hidden" style={glassCard}>
+            <div className="px-5 py-4 flex items-center justify-between" style={glassHeader}>
               <div className="flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-[#7C5CC4]" />
-                <h2 className="text-[14px] font-semibold text-[#0A0A0A]">Weekly Performance Summary</h2>
+                <Sparkles className="w-4 h-4 text-[#818CF8]" />
+                <h2 className="text-[14px] font-semibold text-[#F1F5F9]">Weekly Performance Summary</h2>
                 {latestSummary && (
-                  <span className="text-[11px] text-[#AAAAB4] ml-1">
+                  <span className="text-[11px] text-[#94A3B8] ml-1">
                     · Generated {format(new Date(latestSummary.createdAt), "MMM d 'at' h:mm a")}
                   </span>
                 )}
@@ -586,12 +621,13 @@ export default function AiInsights() {
               <button
                 onClick={handleGenerateSummary}
                 disabled={summaryMutation.isPending}
-                className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-[#7C5CC4] hover:text-[#6A4BB0] border border-[#E0D8F5] hover:border-[#7C5CC4] bg-[#F5F1FC] hover:bg-[#EDE6FA] px-3.5 py-2 rounded-xl transition-all disabled:opacity-50 active:scale-95"
+                className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-[#818CF8] hover:text-[#A5B4FC] px-3.5 py-2 rounded-[14px] transition-all disabled:opacity-50 active:scale-95"
+                style={{ background: "rgba(129,140,248,0.1)", border: "1px solid rgba(129,140,248,0.2)" }}
               >
                 {summaryMutation.isPending
                   ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
                   : <RefreshCw className="w-3.5 h-3.5" />}
-                {summaryMutation.isPending ? "Generating…" : "Regenerate"}
+                {summaryMutation.isPending ? "Generating..." : "Regenerate"}
               </button>
             </div>
 
@@ -599,40 +635,41 @@ export default function AiInsights() {
               {summaryMutation.isPending ? (
                 <div className="h-full flex flex-col items-center justify-center gap-4 py-16">
                   <div className="relative">
-                    <div className="w-14 h-14 rounded-2xl bg-[#F0EBF9] flex items-center justify-center">
-                      <Sparkles className="w-7 h-7 text-[#7C5CC4]" />
+                    <div className="w-14 h-14 rounded-2xl flex items-center justify-center" style={{ background: "rgba(129,140,248,0.12)" }}>
+                      <Sparkles className="w-7 h-7 text-[#818CF8]" />
                     </div>
-                    <span className="absolute -top-1 -right-1 w-4 h-4 bg-[#7C5CC4] rounded-full animate-ping opacity-60" />
+                    <span className="absolute -top-1 -right-1 w-4 h-4 bg-[#818CF8] rounded-full animate-ping opacity-60" />
                   </div>
                   <div className="text-center">
-                    <p className="text-[14px] font-semibold text-[#0A0A0A]">Analysing your data…</p>
-                    <p className="text-[12px] text-[#8888A0] mt-1">Generating your weekly intelligence report.</p>
+                    <p className="text-[14px] font-semibold text-[#F1F5F9]">Analysing your data...</p>
+                    <p className="text-[12px] text-[#94A3B8] mt-1">Generating your weekly intelligence report.</p>
                   </div>
                 </div>
               ) : isLoading && !latestSummary ? (
                 <div className="flex items-center justify-center py-16">
-                  <Loader2 className="w-6 h-6 animate-spin text-[#7C5CC4]/40" />
+                  <Loader2 className="w-6 h-6 animate-spin text-[#818CF8]/40" />
                 </div>
               ) : latestSummary ? (
                 <div className="max-w-none">
-                  <div className="text-[14px] text-[#3A3A3E] leading-[1.75]">
+                  <div className="text-[14px] text-[#64748B] leading-[1.75]">
                     {renderFormattedText(latestSummary.content)}
                   </div>
                 </div>
               ) : (
                 <div className="flex flex-col items-center justify-center text-center gap-4 py-16 max-w-sm mx-auto">
-                  <div className="w-16 h-16 rounded-2xl bg-[#F0EBF9] flex items-center justify-center">
-                    <BrainCircuit className="w-8 h-8 text-[#7C5CC4]/60" />
+                  <div className="w-16 h-16 rounded-2xl flex items-center justify-center" style={{ background: "rgba(129,140,248,0.12)" }}>
+                    <BrainCircuit className="w-8 h-8 text-[#818CF8]/40" />
                   </div>
                   <div>
-                    <p className="text-[15px] font-semibold text-[#0A0A0A] mb-1">No summary yet</p>
-                    <p className="text-[13px] text-[#8888A0]">
+                    <p className="text-[15px] font-semibold text-[#F1F5F9] mb-1">No summary yet</p>
+                    <p className="text-[13px] text-[#94A3B8]">
                       Click "Regenerate" to get an AI-powered weekly report based on your real analytics data.
                     </p>
                   </div>
                   <button
                     onClick={handleGenerateSummary}
-                    className="inline-flex items-center gap-2 bg-[#7C5CC4] hover:bg-[#6A4BB0] text-white text-[13px] font-semibold px-5 py-2.5 rounded-xl transition-all active:scale-95"
+                    className="inline-flex items-center gap-2 text-white text-[13px] font-semibold px-5 py-2.5 rounded-[14px] transition-all active:scale-95"
+                    style={gradientBtn}
                   >
                     <Sparkles className="w-4 h-4" />
                     Generate first summary
@@ -646,43 +683,46 @@ export default function AiInsights() {
         {/* SLUG IDEAS TAB */}
         {activeTab === "slugs" && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
-            <div className="bg-white border border-[#E4E4EC] rounded-2xl overflow-hidden">
-              <div className="px-5 py-4 border-b border-[#F0F0F6] bg-[#FAFAFE] flex items-center gap-2">
-                <Lightbulb className="w-4 h-4 text-[#E07B30]" />
-                <h2 className="text-[14px] font-semibold text-[#0A0A0A]">AI Slug Generator</h2>
+            <div className="overflow-hidden" style={glassCard}>
+              <div className="px-5 py-4 flex items-center gap-2" style={glassHeader}>
+                <Lightbulb className="w-4 h-4 text-[#FB923C]" />
+                <h2 className="text-[14px] font-semibold text-[#F1F5F9]">AI Slug Generator</h2>
               </div>
               <div className="p-5 space-y-4">
-                <p className="text-[12px] text-[#8888A0]">
+                <p className="text-[12px] text-[#94A3B8]">
                   Enter a URL or title and get 5 smart, memorable slug suggestions powered by AI.
                 </p>
                 <div className="space-y-3">
                   <div>
-                    <label className="block text-[12px] font-semibold text-[#3A3A3E] mb-1.5">Destination URL</label>
+                    <label className="block text-[12px] font-semibold text-[#64748B] mb-1.5">Destination URL</label>
                     <input
                       type="url"
                       placeholder="https://example.com/blog/my-article"
                       value={slugUrl}
                       onChange={e => setSlugUrl(e.target.value)}
-                      className="w-full px-4 py-2.5 text-[13px] bg-[#FAFAFE] border border-[#E4E4EC] rounded-xl outline-none focus:border-[#E07B30] focus:ring-2 focus:ring-[#E07B30]/10 transition-all placeholder:text-[#CCCCDA]"
+                      className="w-full px-4 py-2.5 text-[13px] rounded-[14px] outline-none transition-all placeholder:text-[#64748B] text-[#E2E8F0] focus:ring-2 focus:ring-[#818CF8]/15"
+                      style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }}
                     />
                   </div>
                   <div>
-                    <label className="block text-[12px] font-semibold text-[#3A3A3E] mb-1.5">Link Title (optional)</label>
+                    <label className="block text-[12px] font-semibold text-[#64748B] mb-1.5">Link Title (optional)</label>
                     <input
                       type="text"
                       placeholder="e.g. Summer Campaign 2025"
                       value={slugTitle}
                       onChange={e => setSlugTitle(e.target.value)}
-                      className="w-full px-4 py-2.5 text-[13px] bg-[#FAFAFE] border border-[#E4E4EC] rounded-xl outline-none focus:border-[#E07B30] focus:ring-2 focus:ring-[#E07B30]/10 transition-all placeholder:text-[#CCCCDA]"
+                      className="w-full px-4 py-2.5 text-[13px] rounded-[14px] outline-none transition-all placeholder:text-[#64748B] text-[#E2E8F0] focus:ring-2 focus:ring-[#818CF8]/15"
+                      style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }}
                     />
                   </div>
                   <button
                     onClick={handleSlugSuggest}
                     disabled={isLoadingSlug || (!slugUrl.trim() && !slugTitle.trim())}
-                    className="w-full inline-flex items-center justify-center gap-2 bg-[#E07B30] hover:bg-[#C96A20] active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed text-white text-[13px] font-semibold px-4 py-3 rounded-xl transition-all"
+                    className="w-full inline-flex items-center justify-center gap-2 active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed text-white text-[13px] font-semibold px-4 py-3 rounded-[14px] transition-all"
+                    style={gradientBtn}
                   >
                     {isLoadingSlug
-                      ? <><Loader2 className="w-4 h-4 animate-spin" /> Generating…</>
+                      ? <><Loader2 className="w-4 h-4 animate-spin" /> Generating...</>
                       : <><Lightbulb className="w-4 h-4" /> Suggest Slugs</>
                     }
                   </button>
@@ -691,25 +731,25 @@ export default function AiInsights() {
             </div>
 
             {/* Results with full URL preview */}
-            <div className="bg-white border border-[#E4E4EC] rounded-2xl overflow-hidden">
-              <div className="px-5 py-4 border-b border-[#F0F0F6] bg-[#FAFAFE] flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-[#E07B30]" />
-                <h3 className="text-[14px] font-semibold text-[#0A0A0A]">Suggested Slugs</h3>
+            <div className="overflow-hidden" style={glassCard}>
+              <div className="px-5 py-4 flex items-center gap-2" style={glassHeader}>
+                <Sparkles className="w-4 h-4 text-[#FB923C]" />
+                <h3 className="text-[14px] font-semibold text-[#F1F5F9]">Suggested Slugs</h3>
               </div>
               <div className="p-5">
                 {isLoadingSlug ? (
                   <div className="py-12 flex flex-col items-center justify-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-[#FEF3E8] flex items-center justify-center">
-                      <Loader2 className="w-5 h-5 animate-spin text-[#E07B30]" />
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: "rgba(251,146,60,0.1)" }}>
+                      <Loader2 className="w-5 h-5 animate-spin text-[#FB923C]" />
                     </div>
-                    <p className="text-[12px] text-[#8888A0]">Generating slug ideas…</p>
+                    <p className="text-[12px] text-[#94A3B8]">Generating slug ideas...</p>
                   </div>
                 ) : slugError ? (
                   <div className="py-8 flex flex-col items-center justify-center gap-3 text-center">
-                    <div className="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center">
-                      <Lightbulb className="w-5 h-5 text-red-400" />
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: "rgba(248,113,113,0.1)" }}>
+                      <Lightbulb className="w-5 h-5 text-[#F87171]" />
                     </div>
-                    <p className="text-[13px] text-[#3A3A3E]">{slugError}</p>
+                    <p className="text-[13px] text-[#64748B]">{slugError}</p>
                   </div>
                 ) : slugSuggestions.length > 0 ? (
                   <div className="space-y-2">
@@ -719,16 +759,19 @@ export default function AiInsights() {
                       return (
                         <div
                           key={i}
-                          className="flex flex-col gap-2 px-4 py-3.5 bg-[#FAFAFE] border border-[#F0F0F6] hover:border-[#E07B30]/30 hover:bg-[#FEF8F3] rounded-xl transition-all"
+                          className="flex flex-col gap-2 px-4 py-3.5 rounded-[14px] transition-all"
+                          style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}
+                          onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.05)"; e.currentTarget.style.borderColor = "rgba(129,140,248,0.3)"; }}
+                          onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.03)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.06)"; }}
                         >
                           <div className="flex items-center justify-between gap-2">
                             <div className="flex items-center gap-2 min-w-0">
-                              <span className="text-[11px] font-bold text-[#CCCCDA] shrink-0">#{i + 1}</span>
-                              <span className="font-mono text-[13px] font-semibold text-[#0A0A0A] truncate">{slug}</span>
+                              <span className="text-[11px] font-bold text-[#94A3B8] shrink-0">#{i + 1}</span>
+                              <span className="font-mono text-[13px] font-semibold text-[#E2E8F0] truncate">{slug}</span>
                             </div>
                           </div>
                           <div className="flex items-center justify-between gap-2">
-                            <span className="text-[11.5px] text-[#728DA7] font-medium truncate">
+                            <span className="text-[11.5px] text-[#64748B] font-medium truncate">
                               {fullUrl}
                             </span>
                             <div className="flex items-center gap-1 shrink-0">
@@ -736,9 +779,10 @@ export default function AiInsights() {
                                 onClick={() => handleCopySlug(slug)}
                                 className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1.5 rounded-lg transition-all ${
                                   isCopied
-                                    ? "bg-[#E8F7F1] text-[#2E9A72]"
-                                    : "bg-[#F2F2F6] text-[#728DA7] hover:bg-[#EEF3F7]"
+                                    ? "text-[#34D399]"
+                                    : "text-[#94A3B8]"
                                 }`}
+                                style={isCopied ? { background: "rgba(52,211,153,0.1)" } : { background: "rgba(255,255,255,0.06)" }}
                                 title="Copy full URL"
                               >
                                 {isCopied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
@@ -746,7 +790,8 @@ export default function AiInsights() {
                               </button>
                               <button
                                 onClick={() => handleUseSlug(slug)}
-                                className="inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1.5 rounded-lg bg-[#0A0A0A] hover:bg-[#1A1A2E] text-white transition-all"
+                                className="inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1.5 rounded-lg text-white transition-all"
+                                style={{ background: "rgba(129,140,248,0.2)", border: "1px solid rgba(129,140,248,0.3)" }}
                                 title="Create a link with this slug"
                               >
                                 Use
@@ -756,15 +801,15 @@ export default function AiInsights() {
                         </div>
                       );
                     })}
-                    <p className="text-[11px] text-[#AAAAB4] text-center pt-1">Click "Copy" to copy the full URL or "Use" to create a link</p>
+                    <p className="text-[11px] text-[#94A3B8] text-center pt-1">Click "Copy" to copy the full URL or "Use" to create a link</p>
                   </div>
                 ) : (
                   <div className="py-12 flex flex-col items-center justify-center gap-3 text-center">
-                    <div className="w-12 h-12 rounded-2xl bg-[#FEF3E8] flex items-center justify-center">
-                      <Lightbulb className="w-6 h-6 text-[#E07B30]/50" />
+                    <div className="w-12 h-12 rounded-2xl flex items-center justify-center" style={{ background: "rgba(251,146,60,0.1)" }}>
+                      <Lightbulb className="w-6 h-6 text-[#FB923C]/40" />
                     </div>
-                    <p className="text-[13px] font-semibold text-[#0A0A0A]">No suggestions yet</p>
-                    <p className="text-[12px] text-[#8888A0]">Enter a URL or title and click "Suggest Slugs" to generate ideas.</p>
+                    <p className="text-[13px] font-semibold text-[#F1F5F9]">No suggestions yet</p>
+                    <p className="text-[12px] text-[#94A3B8]">Enter a URL or title and click "Suggest Slugs" to generate ideas.</p>
                   </div>
                 )}
               </div>

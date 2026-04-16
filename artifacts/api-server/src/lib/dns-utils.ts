@@ -149,6 +149,50 @@ function buildDiagnosis(resolvers: ResolverResult[], checkType: "cname" | "a-rec
   return { diagnosis: "DNS records found but not yet valid.", suggestions: [] };
 }
 
+/**
+ * HTTP probe: detect Cloudflare-proxied (or other CDN-proxied) domains.
+ * Makes a lightweight HEAD request to the domain and checks if our redirect
+ * server is behind it by looking for the X-Powered-By: Express header and
+ * the server responding on the expected port.
+ */
+async function httpProbeOk(domainName: string): Promise<boolean> {
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
+    // Try HTTPS first (most CDN proxies terminate SSL)
+    const res = await fetch(`https://${domainName}/__snipr_healthcheck`, {
+      method: "HEAD",
+      redirect: "manual",
+      signal: controller.signal,
+      headers: { "User-Agent": "SniprDNSCheck/1.0" },
+    });
+    clearTimeout(timeout);
+    // Our redirect server returns X-Powered-By: Express on all routes
+    const poweredBy = res.headers.get("x-powered-by") || "";
+    // Accept: the domain reaches an Express server (our redirect app)
+    if (poweredBy.toLowerCase().includes("express")) return true;
+    // Fallback: check via HTTP if HTTPS failed
+    return false;
+  } catch {
+    // Try HTTP as fallback
+    try {
+      const controller2 = new AbortController();
+      const timeout2 = setTimeout(() => controller2.abort(), 5000);
+      const res2 = await fetch(`http://${domainName}/__snipr_healthcheck`, {
+        method: "HEAD",
+        redirect: "manual",
+        signal: controller2.signal,
+        headers: { "User-Agent": "SniprDNSCheck/1.0" },
+      });
+      clearTimeout(timeout2);
+      const poweredBy2 = res2.headers.get("x-powered-by") || "";
+      return poweredBy2.toLowerCase().includes("express");
+    } catch {
+      return false;
+    }
+  }
+}
+
 export async function checkDomainDns(domainName: string, token: string): Promise<DnsCheckResult> {
   // Always check A record — all custom domains (root + subdomain) use A record pointing to SERVER_IP
   const checkType: "cname" | "a-record" = "a-record";
@@ -196,9 +240,27 @@ export async function checkDomainDns(domainName: string, token: string): Promise
 
   // ── Compute legacy fields ───────────────────────────────────────────
   const cnameOk = checkType === "cname" && resolverResults.some((r) => r.ok);
-  const aRecordOk = checkType === "a-record" && resolverResults.some((r) => r.ok);
+  let aRecordOk = checkType === "a-record" && resolverResults.some((r) => r.ok);
   const cnameTarget = checkType === "cname" ? (resolverResults.find((r) => r.found)?.found ?? null) : null;
   const aRecordIp = checkType === "a-record" ? (resolverResults.find((r) => r.found)?.found ?? null) : null;
+
+  // ── HTTP probe for CDN-proxied domains (Cloudflare, etc.) ─────────
+  // If A record shows an IP but it doesn't match our SERVER_IP, the domain
+  // might be behind Cloudflare proxy. Do an HTTP probe to confirm our server
+  // is actually reachable behind the proxy.
+  let proxyDetected = false;
+  if (!aRecordOk && !cnameOk && !txtOk && aRecordIp) {
+    const probeResult = await httpProbeOk(domainName);
+    if (probeResult) {
+      aRecordOk = true;
+      proxyDetected = true;
+      // Mark all resolvers that found an IP as "ok" (they're proxied but working)
+      resolverResults.forEach((r) => {
+        if (r.found && !r.ok) { r.ok = true; r.error = null; }
+      });
+    }
+  }
+
   const ready = cnameOk || aRecordOk || txtOk;
 
   // ── Propagation percentage ──────────────────────────────────────────
@@ -206,7 +268,11 @@ export async function checkDomainDns(domainName: string, token: string): Promise
   const propagation = Math.round((okCount / RESOLVERS.length) * 100);
 
   // ── Diagnosis ──────────────────────────────────────────────────────
-  const { diagnosis, suggestions } = buildDiagnosis(resolverResults, checkType);
+  let { diagnosis, suggestions } = buildDiagnosis(resolverResults, checkType);
+  if (proxyDetected) {
+    diagnosis = "Domain is behind a CDN/proxy (e.g. Cloudflare) — verified via HTTP probe.";
+    suggestions = [];
+  }
 
   return {
     cnameOk,

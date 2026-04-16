@@ -33,7 +33,7 @@ function detectKind(title?: React.ReactNode, variant?: string): KindConfig {
   if (variant === "destructive" || text.includes("fail") || text.includes("error") || text.includes("invalid") || text.includes("wrong") || text.includes("denied")) {
     return {
       icon: <XCircle className="w-5 h-5" />,
-      iconBg: "bg-red-50",
+      iconBg: "bg-[rgba(248,113,113,0.12)]",
       iconColor: "text-red-500",
       border: "border-l-red-400",
       progressColor: "bg-red-400",
@@ -44,7 +44,7 @@ function detectKind(title?: React.ReactNode, variant?: string): KindConfig {
   if (text.includes("warn") || text.includes("required") || text.includes("select") || text.includes("enter") || text.includes("must")) {
     return {
       icon: <AlertTriangle className="w-5 h-5" />,
-      iconBg: "bg-amber-50",
+      iconBg: "bg-[rgba(251,191,36,0.12)]",
       iconColor: "text-amber-500",
       border: "border-l-amber-400",
       progressColor: "bg-amber-400",
@@ -55,7 +55,7 @@ function detectKind(title?: React.ReactNode, variant?: string): KindConfig {
   if (text.includes("copied") || text.includes("copy")) {
     return {
       icon: <Copy className="w-4 h-4" />,
-      iconBg: "bg-violet-50",
+      iconBg: "bg-[rgba(167,139,250,0.12)]",
       iconColor: "text-violet-500",
       border: "border-l-violet-400",
       progressColor: "bg-violet-400",
@@ -66,7 +66,7 @@ function detectKind(title?: React.ReactNode, variant?: string): KindConfig {
   if (text.includes("welcome") || text.includes("logged in") || text.includes("login")) {
     return {
       icon: <LogIn className="w-5 h-5" />,
-      iconBg: "bg-blue-50",
+      iconBg: "bg-[rgba(96,165,250,0.12)]",
       iconColor: "text-blue-500",
       border: "border-l-blue-400",
       progressColor: "bg-blue-400",
@@ -75,7 +75,7 @@ function detectKind(title?: React.ReactNode, variant?: string): KindConfig {
   if (text.includes("account created") || text.includes("registered") || text.includes("sign")) {
     return {
       icon: <UserPlus className="w-5 h-5" />,
-      iconBg: "bg-emerald-50",
+      iconBg: "bg-[rgba(52,211,153,0.12)]",
       iconColor: "text-emerald-500",
       border: "border-l-emerald-400",
       progressColor: "bg-emerald-400",
@@ -84,8 +84,8 @@ function detectKind(title?: React.ReactNode, variant?: string): KindConfig {
   if (text.includes("logged out") || text.includes("logout")) {
     return {
       icon: <LogOut className="w-5 h-5" />,
-      iconBg: "bg-gray-100",
-      iconColor: "text-gray-500",
+      iconBg: "bg-[rgba(255,255,255,0.06)]",
+      iconColor: "text-[#64748B]",
       border: "border-l-gray-300",
       progressColor: "bg-gray-400",
     };
@@ -95,7 +95,7 @@ function detectKind(title?: React.ReactNode, variant?: string): KindConfig {
   if (text.includes("deleted") || text.includes("removed")) {
     return {
       icon: <Trash2 className="w-4 h-4" />,
-      iconBg: "bg-red-50",
+      iconBg: "bg-[rgba(248,113,113,0.12)]",
       iconColor: "text-red-400",
       border: "border-l-red-300",
       progressColor: "bg-red-300",
@@ -104,7 +104,7 @@ function detectKind(title?: React.ReactNode, variant?: string): KindConfig {
   if (text.includes("link")) {
     return {
       icon: <Link2 className="w-5 h-5" />,
-      iconBg: "bg-emerald-50",
+      iconBg: "bg-[rgba(52,211,153,0.12)]",
       iconColor: "text-emerald-500",
       border: "border-l-emerald-400",
       progressColor: "bg-emerald-400",
@@ -113,7 +113,7 @@ function detectKind(title?: React.ReactNode, variant?: string): KindConfig {
   if (text.includes("domain")) {
     return {
       icon: <Globe className="w-5 h-5" />,
-      iconBg: "bg-blue-50",
+      iconBg: "bg-[rgba(96,165,250,0.12)]",
       iconColor: "text-blue-500",
       border: "border-l-blue-400",
       progressColor: "bg-blue-400",
@@ -122,7 +122,7 @@ function detectKind(title?: React.ReactNode, variant?: string): KindConfig {
   if (text.includes("invit") || text.includes("team") || text.includes("member") || text.includes("role")) {
     return {
       icon: <Users className="w-5 h-5" />,
-      iconBg: "bg-indigo-50",
+      iconBg: "bg-[rgba(129,140,248,0.12)]",
       iconColor: "text-indigo-500",
       border: "border-l-indigo-400",
       progressColor: "bg-indigo-400",
@@ -131,7 +131,7 @@ function detectKind(title?: React.ReactNode, variant?: string): KindConfig {
   if (text.includes("folder")) {
     return {
       icon: <Folder className="w-5 h-5" />,
-      iconBg: "bg-amber-50",
+      iconBg: "bg-[rgba(251,191,36,0.12)]",
       iconColor: "text-amber-500",
       border: "border-l-amber-400",
       progressColor: "bg-amber-400",
@@ -140,7 +140,7 @@ function detectKind(title?: React.ReactNode, variant?: string): KindConfig {
   if (text.includes("tag")) {
     return {
       icon: <Tag className="w-5 h-5" />,
-      iconBg: "bg-violet-50",
+      iconBg: "bg-[rgba(167,139,250,0.12)]",
       iconColor: "text-violet-500",
       border: "border-l-violet-400",
       progressColor: "bg-violet-400",
@@ -149,7 +149,7 @@ function detectKind(title?: React.ReactNode, variant?: string): KindConfig {
   if (text.includes("pixel")) {
     return {
       icon: <Zap className="w-5 h-5" />,
-      iconBg: "bg-orange-50",
+      iconBg: "bg-[rgba(251,146,60,0.12)]",
       iconColor: "text-orange-500",
       border: "border-l-orange-400",
       progressColor: "bg-orange-400",
@@ -158,7 +158,7 @@ function detectKind(title?: React.ReactNode, variant?: string): KindConfig {
   if (text.includes("rule") || text.includes("routing") || text.includes("saved")) {
     return {
       icon: <CheckCircle2 className="w-5 h-5" />,
-      iconBg: "bg-emerald-50",
+      iconBg: "bg-[rgba(52,211,153,0.12)]",
       iconColor: "text-emerald-500",
       border: "border-l-emerald-400",
       progressColor: "bg-emerald-400",
@@ -173,7 +173,7 @@ function detectKind(title?: React.ReactNode, variant?: string): KindConfig {
   ) {
     return {
       icon: <CheckCircle2 className="w-5 h-5" />,
-      iconBg: "bg-emerald-50",
+      iconBg: "bg-[rgba(52,211,153,0.12)]",
       iconColor: "text-emerald-500",
       border: "border-l-emerald-400",
       progressColor: "bg-emerald-400",
@@ -183,7 +183,7 @@ function detectKind(title?: React.ReactNode, variant?: string): KindConfig {
   // Default: info
   return {
     icon: <Info className="w-5 h-5" />,
-    iconBg: "bg-blue-50",
+    iconBg: "bg-[rgba(96,165,250,0.12)]",
     iconColor: "text-blue-500",
     border: "border-l-blue-400",
     progressColor: "bg-blue-400",
@@ -209,7 +209,7 @@ function ProgressBar({ color }: { color: string }) {
   }, []);
 
   return (
-    <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-gray-100 overflow-hidden rounded-b-2xl">
+    <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-[rgba(255,255,255,0.06)] overflow-hidden rounded-b-2xl">
       <div
         className={`h-full transition-none ${color}`}
         style={{ width: `${width}%` }}

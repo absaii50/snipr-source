@@ -29,7 +29,7 @@ function BarList({ items, label, valueKey, nameKey }: {
 }) {
   const max = Math.max(...items.map((i) => Number(i[valueKey])), 1);
   return (
-    <div className="bg-white rounded-2xl border border-[#E4E4EC] p-5">
+    <div className="bg-white rounded-2xl border border-[#E2E8F0] p-5">
       <h3 className="text-sm font-semibold text-[#0A0A0A] mb-4">{label}</h3>
       {items.length === 0 && (
         <p className="text-sm text-[#8888A0] py-6 text-center">No data for this period</p>
@@ -119,7 +119,7 @@ export default function AnalyticsTab() {
   return (
     <div className="space-y-5">
       <div className="flex items-center gap-3 justify-between flex-wrap">
-        <div className="flex items-center gap-1 bg-white border border-[#E4E4EC] rounded-xl p-1">
+        <div className="flex items-center gap-1 bg-white border border-[#E2E8F0] rounded-xl p-1">
           {([["7", "7 days"], ["30", "30 days"], ["90", "90 days"]] as [Range, string][]).map(([v, l]) => (
             <button key={v} onClick={() => setRange(v)}
               className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${range === v ? "bg-[#E8EEF4] text-[#4A7A94]" : "text-[#8888A0] hover:text-[#3A3A3E]"}`}>
@@ -128,7 +128,7 @@ export default function AnalyticsTab() {
           ))}
         </div>
         <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1 bg-white border border-[#E4E4EC] rounded-xl p-1">
+          <div className="flex items-center gap-1 bg-white border border-[#E2E8F0] rounded-xl p-1">
             {([["clicks", "Traffic"], ["growth", "Growth"]] as ["clicks" | "growth", string][]).map(([v, l]) => (
               <button key={v} onClick={() => setActiveChart(v)}
                 className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${activeChart === v ? "bg-[#E8EEF4] text-[#4A7A94]" : "text-[#8888A0] hover:text-[#3A3A3E]"}`}>
@@ -136,11 +136,11 @@ export default function AnalyticsTab() {
               </button>
             ))}
           </div>
-          <button onClick={() => load(range)} className="p-2 rounded-xl border border-[#E4E4EC] bg-white hover:bg-[#F4F4F6] transition-all">
+          <button onClick={() => load(range)} className="p-2 rounded-xl border border-[#E2E8F0] bg-white hover:bg-[#F4F4F6] transition-all">
             <RefreshCw className={`w-3.5 h-3.5 text-[#8888A0] ${loading ? "animate-spin" : ""}`} />
           </button>
           <button onClick={async () => { try { const b = await apiFetchBlob("/admin/export/clicks"); downloadBlob(b, "snipr-clicks.csv"); } catch { alert("Export failed."); } }}
-            className="flex items-center gap-1 px-2.5 py-2 rounded-xl border border-[#E4E4EC] bg-white hover:bg-[#F4F4F6] transition-all text-xs text-[#8888A0]">
+            className="flex items-center gap-1 px-2.5 py-2 rounded-xl border border-[#E2E8F0] bg-white hover:bg-[#F4F4F6] transition-all text-xs text-[#8888A0]">
             <Download className="w-3.5 h-3.5" /> CSV
           </button>
         </div>
@@ -148,9 +148,9 @@ export default function AnalyticsTab() {
 
       {/* Main chart */}
       {loading ? (
-        <div className="bg-white rounded-2xl border border-[#E4E4EC] h-52 animate-pulse" />
+        <div className="bg-white rounded-2xl border border-[#E2E8F0] h-52 animate-pulse" />
       ) : (
-        <div className="bg-white rounded-2xl border border-[#E4E4EC] p-5">
+        <div className="bg-white rounded-2xl border border-[#E2E8F0] p-5">
           {activeChart === "clicks" ? (
             <>
               <div className="flex items-center gap-2 mb-4">
@@ -216,7 +216,7 @@ export default function AnalyticsTab() {
             { label: "New Users", value: platform.userGrowth.reduce((s, d) => s + d.users, 0), icon: Users, color: "text-[#2E9A72]", bg: "bg-[#E6F7F1]" },
             { label: "New Links", value: platform.linkGrowth.reduce((s, d) => s + d.links, 0), icon: Link2, color: "text-[#7C5CC4]", bg: "bg-[#F0EBF9]" },
           ].map(({ label, value, icon: Icon, color, bg }) => (
-            <div key={label} className="bg-white rounded-2xl border border-[#E4E4EC] p-4 flex items-center gap-3">
+            <div key={label} className="bg-white rounded-2xl border border-[#E2E8F0] p-4 flex items-center gap-3">
               <div className={`w-9 h-9 ${bg} rounded-xl flex items-center justify-center shrink-0`}>
                 <Icon className={`w-4 h-4 ${color}`} />
               </div>
@@ -232,7 +232,7 @@ export default function AnalyticsTab() {
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {[...Array(4)].map((_, i) => (
-            <div key={i} className="bg-white rounded-2xl border border-[#E4E4EC] h-52 animate-pulse" />
+            <div key={i} className="bg-white rounded-2xl border border-[#E2E8F0] h-52 animate-pulse" />
           ))}
         </div>
       ) : data ? (

@@ -18,7 +18,7 @@ interface SectionProps {
 function Section({ icon: Icon, title, badge, badgeColor = "bg-blue-100 text-blue-700", children, defaultOpen = false }: SectionProps) {
   const [open, setOpen] = useState(defaultOpen);
   return (
-    <div className="bg-white rounded-2xl border border-[#E4E4EC] overflow-hidden">
+    <div className="bg-white rounded-2xl border border-[#E2E8F0] overflow-hidden">
       <button
         onClick={() => setOpen(!open)}
         className="w-full flex items-center gap-3 px-5 py-4 text-left hover:bg-[#F8F8FC] transition-colors"
@@ -37,7 +37,7 @@ function Section({ icon: Icon, title, badge, badgeColor = "bg-blue-100 text-blue
           : <ChevronRight className="w-4 h-4 text-[#8888A0] shrink-0" />
         }
       </button>
-      {open && <div className="px-5 pb-5 pt-1 text-sm text-[#3A3A3E] space-y-3 border-t border-[#E4E4EC]">{children}</div>}
+      {open && <div className="px-5 pb-5 pt-1 text-sm text-[#3A3A3E] space-y-3 border-t border-[#E2E8F0]">{children}</div>}
     </div>
   );
 }
@@ -59,7 +59,7 @@ function Code({ children }: { children: string }) {
     setTimeout(() => setCopied(false), 1500);
   }
   return (
-    <div className="flex items-center gap-2 bg-[#F4F4F6] rounded-lg px-3 py-2 font-mono text-xs text-[#0A0A0A] border border-[#E4E4EC]">
+    <div className="flex items-center gap-2 bg-[#F4F4F6] rounded-lg px-3 py-2 font-mono text-xs text-[#0A0A0A] border border-[#E2E8F0]">
       <span className="flex-1 break-all">{children}</span>
       <button onClick={copy} className="text-[#8888A0] hover:text-[#0A0A0A] transition-colors shrink-0" title="Copy">
         {copied ? <CheckCircle2 className="w-3.5 h-3.5 text-green-500" /> : <Copy className="w-3.5 h-3.5" />}
@@ -129,7 +129,7 @@ export default function GuideTab() {
               <div className="mt-2 space-y-2">
                 <p className="font-medium text-[#0A0A0A] text-xs">Option A — CNAME Record (recommended):</p>
                 <div className="space-y-1.5">
-                  <div className="grid grid-cols-3 gap-2 text-xs font-mono bg-[#F8F8FC] rounded-xl p-3 border border-[#E4E4EC]">
+                  <div className="grid grid-cols-3 gap-2 text-xs font-mono bg-[#F8F8FC] rounded-xl p-3 border border-[#E2E8F0]">
                     <span className="text-[#8888A0] font-sans">Type</span>
                     <span className="text-[#8888A0] font-sans">Name</span>
                     <span className="text-[#8888A0] font-sans">Value</span>
@@ -141,7 +141,7 @@ export default function GuideTab() {
                 </div>
                 <p className="font-medium text-[#0A0A0A] text-xs">Option B — TXT Verification (for apex domains):</p>
                 <div className="space-y-1.5">
-                  <div className="grid grid-cols-3 gap-2 text-xs font-mono bg-[#F8F8FC] rounded-xl p-3 border border-[#E4E4EC]">
+                  <div className="grid grid-cols-3 gap-2 text-xs font-mono bg-[#F8F8FC] rounded-xl p-3 border border-[#E2E8F0]">
                     <span className="text-[#8888A0] font-sans">Type</span>
                     <span className="text-[#8888A0] font-sans">Name</span>
                     <span className="text-[#8888A0] font-sans">Value</span>
@@ -194,7 +194,7 @@ export default function GuideTab() {
             { label: "Per-Link Stats", desc: "Unique clicks, last click time, top country and device per link in the Links tab." },
             { label: "Top Users", desc: "Users ranked by total clicks on the Overview tab dashboard." },
           ].map(({ label, desc }) => (
-            <div key={label} className="bg-[#F8F8FC] rounded-xl p-3 border border-[#E4E4EC]">
+            <div key={label} className="bg-[#F8F8FC] rounded-xl p-3 border border-[#E2E8F0]">
               <p className="font-semibold text-[#0A0A0A] text-xs mb-1">{label}</p>
               <p className="text-[10px] text-[#6666A0] leading-relaxed">{desc}</p>
             </div>
@@ -213,7 +213,7 @@ export default function GuideTab() {
               { plan: "Pro", color: "bg-violet-100 text-violet-700", limits: "Unlimited links · 5 domains · Full analytics" },
               { plan: "Business", color: "bg-amber-100 text-amber-700", limits: "Unlimited everything · AI Insights · API access" },
             ].map(({ plan, color, limits }) => (
-              <div key={plan} className="bg-[#F8F8FC] rounded-xl p-3 border border-[#E4E4EC]">
+              <div key={plan} className="bg-[#F8F8FC] rounded-xl p-3 border border-[#E2E8F0]">
                 <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${color}`}>{plan}</span>
                 <p className="text-[10px] text-[#6666A0] mt-1.5 leading-relaxed">{limits}</p>
               </div>
@@ -238,7 +238,7 @@ export default function GuideTab() {
       <Section icon={ShieldCheck} title="Admin Security">
         <p className="text-[#6666A0] text-xs">The admin panel is protected by HTTP-only session cookies.</p>
         <div className="mt-3 space-y-2 text-xs">
-          <div className="bg-[#F8F8FC] rounded-xl p-4 border border-[#E4E4EC] space-y-2">
+          <div className="bg-[#F8F8FC] rounded-xl p-4 border border-[#E2E8F0] space-y-2">
             <div className="flex items-center gap-2">
               <Lock className="w-3.5 h-3.5 text-[#728DA7]" />
               <span className="font-semibold text-[#0A0A0A]">Change default admin credentials immediately</span>
@@ -263,7 +263,7 @@ export default function GuideTab() {
               { label: "Redirect Engine", value: "Express router · custom domain Host-header routing" },
               { label: "Analytics", value: "Click events stored in PostgreSQL · recharts visualization" },
             ].map(({ label, value }) => (
-              <div key={label} className="bg-[#F8F8FC] rounded-xl p-3 border border-[#E4E4EC]">
+              <div key={label} className="bg-[#F8F8FC] rounded-xl p-3 border border-[#E2E8F0]">
                 <p className="font-semibold text-[#0A0A0A] mb-0.5">{label}</p>
                 <p className="text-[10px] text-[#6666A0] leading-relaxed">{value}</p>
               </div>
@@ -283,7 +283,7 @@ export default function GuideTab() {
             { label: "Billing webhook", url: "/api/stripe/webhook" },
             { label: "Admin API base", url: "/api/admin/*" },
           ].map(({ label, url }) => (
-            <div key={label} className="flex items-center gap-3 bg-[#F8F8FC] rounded-xl px-3 py-2.5 border border-[#E4E4EC]">
+            <div key={label} className="flex items-center gap-3 bg-[#F8F8FC] rounded-xl px-3 py-2.5 border border-[#E2E8F0]">
               <span className="text-[#8888A0] w-32 shrink-0">{label}</span>
               <code className="text-[#4A7A94] text-[10px] break-all">{url}</code>
             </div>

@@ -9,6 +9,8 @@ import {
   MailCheck, MailX,
 } from "lucide-react";
 import { apiFetch, apiFetchBlob, downloadBlob, fmtDate, fmtNum } from "../utils";
+import { useToast } from "../Toast";
+import { ConfirmModal } from "../Toast";
 import UserProfile from "./UserProfile";
 
 interface PerformanceUser {
@@ -102,6 +104,8 @@ export default function UsersTab() {
   const [bulkPlanOpen, setBulkPlanOpen] = useState(false);
   const [inspectorData, setInspectorData] = useState<WorkspaceDetail | null>(null);
   const [inspectorLoading, setInspectorLoading] = useState(false);
+  const { toast } = useToast();
+  const [confirmModal, setConfirmModal] = useState<{ open: boolean; title: string; description: string; onConfirm: () => void } | null>(null);
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
@@ -139,7 +143,7 @@ export default function UsersTab() {
     try {
       await apiFetch(`/admin/users/${id}/suspend`, { method: "PATCH" });
       setUsers((u) => u.map((x) => x.id === id ? { ...x, suspended_at: new Date().toISOString() } : x));
-    } catch { alert("Failed to suspend user."); }
+    } catch { toast("Failed to suspend user.", "error"); }
     finally { setActionId(null); }
   }
 
@@ -148,18 +152,24 @@ export default function UsersTab() {
     try {
       await apiFetch(`/admin/users/${id}/activate`, { method: "PATCH" });
       setUsers((u) => u.map((x) => x.id === id ? { ...x, suspended_at: null } : x));
-    } catch { alert("Failed to activate user."); }
+    } catch { toast("Failed to activate user.", "error"); }
     finally { setActionId(null); }
   }
 
-  async function del(id: string, name: string) {
-    if (!confirm(`Delete user "${name}"? This cannot be undone.`)) return;
-    setActionId(id);
-    try {
-      await apiFetch(`/admin/users/${id}`, { method: "DELETE" });
-      setUsers((u) => u.filter((x) => x.id !== id));
-    } catch { alert("Failed to delete user."); }
-    finally { setActionId(null); }
+  function del(id: string, name: string) {
+    setConfirmModal({
+      open: true,
+      title: "Delete User",
+      description: `Delete user "${name}"? This cannot be undone.`,
+      onConfirm: async () => {
+        setActionId(id);
+        try {
+          await apiFetch(`/admin/users/${id}`, { method: "DELETE" });
+          setUsers((u) => u.filter((x) => x.id !== id));
+        } catch { toast("Failed to delete user.", "error"); }
+        finally { setActionId(null); }
+      },
+    });
   }
 
   async function quickChangePlan(id: string, newPlan: string) {
@@ -167,7 +177,7 @@ export default function UsersTab() {
     try {
       await apiFetch(`/admin/users/${id}/plan`, { method: "PATCH", body: JSON.stringify({ plan: newPlan }) });
       setUsers((u) => u.map((x) => x.id === id ? { ...x, plan: newPlan } : x));
-    } catch { alert("Failed to change plan."); }
+    } catch { toast("Failed to change plan.", "error"); }
     finally { setActionId(null); setPlanPopoverId(null); }
   }
 
@@ -178,26 +188,38 @@ export default function UsersTab() {
     setSelected((s) => s.size === filtered.length ? new Set() : new Set(filtered.map(u => u.id)));
   }
 
-  async function doBulkAction(action: string, plan?: string) {
+  function doBulkAction(action: string, plan?: string) {
     const ids = [...selected];
     if (ids.length === 0) return;
-    if (!confirm(`${action} ${ids.length} user(s)? This cannot be undone.`)) return;
-    setBulkAction(action);
-    try {
-      await apiFetch("/admin/users/bulk", { method: "POST", body: JSON.stringify({ action, userIds: ids, plan }) });
-      setSelected(new Set());
-      setBulkPlanOpen(false);
-      doLoad(search, "all" as PlanFilter, sort);
-    } catch { alert(`Failed to ${action}.`); }
-    finally { setBulkAction(null); }
+    setConfirmModal({
+      open: true,
+      title: `Bulk ${action}`,
+      description: `${action} ${ids.length} user(s)? This cannot be undone.`,
+      onConfirm: async () => {
+        setBulkAction(action);
+        try {
+          await apiFetch("/admin/users/bulk", { method: "POST", body: JSON.stringify({ action, userIds: ids, plan }) });
+          setSelected(new Set());
+          setBulkPlanOpen(false);
+          doLoad(search, "all" as PlanFilter, sort);
+        } catch { toast(`Failed to ${action}.`, "error"); }
+        finally { setBulkAction(null); }
+      },
+    });
   }
 
-  async function impersonate(id: string, name: string) {
-    if (!confirm(`Impersonate "${name}"? You'll view the platform as this user.`)) return;
-    try {
-      await apiFetch(`/admin/users/${id}/impersonate`, { method: "POST" });
-      window.open("/dashboard", "_blank");
-    } catch { alert("Failed to impersonate."); }
+  function impersonate(id: string, name: string) {
+    setConfirmModal({
+      open: true,
+      title: "Impersonate User",
+      description: `Impersonate "${name}"? You'll view the platform as this user.`,
+      onConfirm: async () => {
+        try {
+          await apiFetch(`/admin/users/${id}/impersonate`, { method: "POST" });
+          window.open("/dashboard", "_blank");
+        } catch { toast("Failed to impersonate.", "error"); }
+      },
+    });
   }
 
   async function toggleVerify(id: string, currentlyVerified: boolean) {
@@ -206,7 +228,7 @@ export default function UsersTab() {
       const endpoint = currentlyVerified ? "force-unverify" : "force-verify";
       await apiFetch(`/admin/${endpoint}/${id}`, { method: "POST" });
       setUsers((u) => u.map((x) => x.id === id ? { ...x, email_verified: !currentlyVerified } : x));
-    } catch { alert("Failed to update verification status."); }
+    } catch { toast("Failed to update verification status.", "error"); }
     finally { setActionId(null); }
   }
 
@@ -215,7 +237,7 @@ export default function UsersTab() {
     try {
       const data = await apiFetch(`/admin/users/${id}/workspace-detail`);
       setInspectorData(data);
-    } catch { alert("Failed to load workspace details."); }
+    } catch { toast("Failed to load workspace details.", "error"); }
     finally { setInspectorLoading(false); }
   }
 
@@ -223,7 +245,7 @@ export default function UsersTab() {
     try {
       const blob = await apiFetchBlob("/admin/export/users");
       downloadBlob(blob, "snipr-users.csv");
-    } catch { alert("Export failed."); }
+    } catch { toast("Export failed.", "error"); }
   }
 
   function exportSelectedUsers() {
@@ -251,7 +273,7 @@ export default function UsersTab() {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       {profileUserId && (
         <UserProfile userId={profileUserId} onClose={() => setProfileUserId(null)} />
       )}
@@ -261,10 +283,10 @@ export default function UsersTab() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8888A0]" />
           <input value={search} onChange={(e) => setSearch(e.target.value)}
             placeholder="Search by name or email…"
-            className="w-full pl-9 pr-3.5 py-2 rounded-xl border border-[#E4E4EC] bg-white text-sm text-[#0A0A0A] outline-none focus:border-[#728DA7] focus:ring-2 focus:ring-[#728DA7]/15 transition-all" />
+            className="w-full pl-9 pr-3.5 py-2 rounded-xl border border-[#E2E8F0] bg-white text-sm text-[#0A0A0A] outline-none focus:border-[#728DA7] focus:ring-2 focus:ring-[#728DA7]/15 transition-all" />
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <div className="flex items-center gap-1 bg-white border border-[#E4E4EC] rounded-xl p-1">
+          <div className="flex items-center gap-1 bg-white border border-[#E2E8F0] rounded-xl p-1">
             {(["all", "free", "starter", "growth", "pro", "business", "enterprise"] as PlanFilter[]).map((p) => (
               <button key={p} onClick={() => setPlan(p)}
                 className={`px-2.5 py-1.5 rounded-lg text-xs font-medium capitalize transition-all ${plan === p ? "bg-[#E8EEF4] text-[#4A7A94]" : "text-[#8888A0] hover:text-[#3A3A3E]"}`}>
@@ -272,7 +294,7 @@ export default function UsersTab() {
               </button>
             ))}
           </div>
-          <div className="flex items-center gap-1 bg-white border border-[#E4E4EC] rounded-xl p-1">
+          <div className="flex items-center gap-1 bg-white border border-[#E2E8F0] rounded-xl p-1">
             {(["all", "active", "suspended"] as StatusFilter[]).map((s) => (
               <button key={s} onClick={() => setStatus(s)}
                 className={`px-2.5 py-1.5 rounded-lg text-xs font-medium capitalize transition-all ${status === s ? "bg-[#E8EEF4] text-[#4A7A94]" : "text-[#8888A0] hover:text-[#3A3A3E]"}`}>
@@ -282,13 +304,13 @@ export default function UsersTab() {
           </div>
           <div className="relative">
             <button onClick={() => setSortOpen((v) => !v)}
-              className="flex items-center gap-1.5 px-3 py-2 bg-white border border-[#E4E4EC] rounded-xl text-xs text-[#3A3A3E] hover:bg-[#F4F4F6] transition-all">
+              className="flex items-center gap-1.5 px-3 py-2 bg-white border border-[#E2E8F0] rounded-xl text-xs text-[#3A3A3E] hover:bg-[#F4F4F6] transition-all">
               <ArrowUpDown className="w-3 h-3 text-[#8888A0]" />
               {sortLabel[sort]}
               <ChevronDown className="w-3 h-3 text-[#8888A0]" />
             </button>
             {sortOpen && (
-              <div className="absolute right-0 top-full mt-1 w-44 bg-white border border-[#E4E4EC] rounded-xl shadow-xl z-20 overflow-hidden">
+              <div className="absolute right-0 top-full mt-1 w-44 bg-white border border-[#E2E8F0] rounded-xl shadow-xl z-20 overflow-hidden">
                 {(Object.entries(sortLabel) as [SortKey, string][]).map(([k, v]) => (
                   <button key={k} onClick={() => { setSort(k); setSortOpen(false); }}
                     className={`w-full text-left px-3 py-2.5 text-xs transition-colors ${sort === k ? "bg-[#EEF3F7] text-[#4A7A94] font-medium" : "text-[#3A3A3E] hover:bg-[#F8F8FC]"}`}>
@@ -299,11 +321,11 @@ export default function UsersTab() {
             )}
           </div>
           <button onClick={exportUsers} title="Export CSV"
-            className="p-2 rounded-xl border border-[#E4E4EC] bg-white hover:bg-[#F4F4F6] transition-all">
+            className="p-2 rounded-xl border border-[#E2E8F0] bg-white hover:bg-[#F4F4F6] transition-all">
             <Download className="w-3.5 h-3.5 text-[#8888A0]" />
           </button>
           <button onClick={() => doLoad(search, plan, sort)}
-            className="p-2 rounded-xl border border-[#E4E4EC] bg-white hover:bg-[#F4F4F6] transition-all">
+            className="p-2 rounded-xl border border-[#E2E8F0] bg-white hover:bg-[#F4F4F6] transition-all">
             <RefreshCw className={`w-3.5 h-3.5 text-[#8888A0] ${loading ? "animate-spin" : ""}`} />
           </button>
         </div>
@@ -323,7 +345,7 @@ export default function UsersTab() {
             <button onClick={() => setBulkPlanOpen(v => !v)} disabled={!!bulkAction}
               className="px-2.5 py-1 rounded-lg text-xs font-medium bg-purple-50 text-purple-700 hover:bg-purple-100 disabled:opacity-40">Change Plan ▾</button>
             {bulkPlanOpen && (
-              <div className="absolute right-0 top-full mt-1 w-32 bg-white border border-[#E4E4EC] rounded-xl shadow-xl z-20 overflow-hidden">
+              <div className="absolute right-0 top-full mt-1 w-32 bg-white border border-[#E2E8F0] rounded-xl shadow-xl z-20 overflow-hidden">
                 {["free", "starter", "growth", "pro", "business", "enterprise"].map((p) => (
                   <button key={p} onClick={() => doBulkAction("change_plan", p)}
                     className="w-full text-left px-3 py-2 text-xs text-[#3A3A3E] hover:bg-[#F8F8FC] capitalize">{p}</button>
@@ -342,11 +364,11 @@ export default function UsersTab() {
 
       <div className="text-xs text-[#8888A0]">{filtered.length} user{filtered.length !== 1 ? "s" : ""}</div>
 
-      <div className="bg-white rounded-2xl border border-[#E4E4EC] overflow-hidden">
+      <div className="bg-white rounded-2xl border border-[#E2E8F0] overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm min-w-[900px]">
             <thead>
-              <tr className="bg-[#F8F8FC] border-b border-[#E4E4EC]">
+              <tr className="bg-[#F8F8FC] border-b border-[#E2E8F0]">
                 <th className="px-3 py-3 w-8">
                   <button onClick={toggleSelectAll} className="text-[#8888A0] hover:text-[#728DA7]">
                     {selected.size === filtered.length && filtered.length > 0
@@ -453,7 +475,7 @@ export default function UsersTab() {
                           <Crown className="w-3.5 h-3.5" />
                         </button>
                         {planPopoverId === u.id && (
-                          <div ref={planPopoverRef} className="absolute right-0 top-8 z-50 bg-white border border-[#E4E4EC] rounded-xl shadow-xl p-2 w-32 flex flex-col gap-1">
+                          <div ref={planPopoverRef} className="absolute right-0 top-8 z-50 bg-white border border-[#E2E8F0] rounded-xl shadow-xl p-2 w-32 flex flex-col gap-1">
                             <div className="text-[10px] text-[#8888A0] font-semibold px-1 pb-1 border-b border-[#F0F0F5]">Change Plan</div>
                             {PLAN_OPTIONS.map((p) => (
                               <button
@@ -499,7 +521,7 @@ export default function UsersTab() {
       {inspectorData && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40" onClick={() => setInspectorData(null)}>
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[85vh] overflow-y-auto m-4" onClick={(e) => e.stopPropagation()}>
-            <div className="sticky top-0 bg-white border-b border-[#E4E4EC] px-6 py-4 flex items-center justify-between rounded-t-2xl z-10">
+            <div className="sticky top-0 bg-white border-b border-[#E2E8F0] px-6 py-4 flex items-center justify-between rounded-t-2xl z-10">
               <div>
                 <h3 className="text-base font-bold text-[#0A0A0A]">Workspace Inspector</h3>
                 <p className="text-xs text-[#8888A0]">{inspectorData.user.name} — {inspectorData.user.email}</p>
@@ -522,14 +544,14 @@ export default function UsersTab() {
                 ))}
               </div>
               {inspectorData.workspace && (
-                <div className="rounded-xl border border-[#E4E4EC] p-4">
+                <div className="rounded-xl border border-[#E2E8F0] p-4">
                   <h4 className="text-xs font-semibold text-[#8888A0] uppercase mb-2">Workspace</h4>
                   <div className="text-sm font-medium text-[#0A0A0A]">{inspectorData.workspace.name}</div>
                   <div className="text-xs text-[#8888A0]">Slug: {inspectorData.workspace.slug} · Created: {fmtDate(inspectorData.workspace.createdAt)}</div>
                 </div>
               )}
               {inspectorData.storageUsage && (
-                <div className="rounded-xl border border-[#E4E4EC] p-4">
+                <div className="rounded-xl border border-[#E2E8F0] p-4">
                   <h4 className="text-xs font-semibold text-[#8888A0] uppercase mb-2">Storage Usage</h4>
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                     {[
@@ -549,7 +571,7 @@ export default function UsersTab() {
                 </div>
               )}
               {inspectorData.links.length > 0 && (
-                <div className="rounded-xl border border-[#E4E4EC] overflow-hidden">
+                <div className="rounded-xl border border-[#E2E8F0] overflow-hidden">
                   <h4 className="text-xs font-semibold text-[#8888A0] uppercase px-4 py-2.5 bg-[#F8F8FC]">Links ({inspectorData.links.length})</h4>
                   <div className="divide-y divide-[#F4F4F6] max-h-48 overflow-y-auto">
                     {inspectorData.links.map((l) => (
@@ -570,7 +592,7 @@ export default function UsersTab() {
                 </div>
               )}
               {inspectorData.members.length > 0 && (
-                <div className="rounded-xl border border-[#E4E4EC] overflow-hidden">
+                <div className="rounded-xl border border-[#E2E8F0] overflow-hidden">
                   <h4 className="text-xs font-semibold text-[#8888A0] uppercase px-4 py-2.5 bg-[#F8F8FC]">Members ({inspectorData.members.length})</h4>
                   <div className="divide-y divide-[#F4F4F6]">
                     {inspectorData.members.map((m, i) => (
@@ -583,7 +605,7 @@ export default function UsersTab() {
                 </div>
               )}
               {inspectorData.domains.length > 0 && (
-                <div className="rounded-xl border border-[#E4E4EC] overflow-hidden">
+                <div className="rounded-xl border border-[#E2E8F0] overflow-hidden">
                   <h4 className="text-xs font-semibold text-[#8888A0] uppercase px-4 py-2.5 bg-[#F8F8FC]">Domains ({inspectorData.domains.length})</h4>
                   <div className="divide-y divide-[#F4F4F6]">
                     {inspectorData.domains.map((d) => (
@@ -610,7 +632,7 @@ export default function UsersTab() {
         return (
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {best && (
-              <div className="rounded-2xl border border-[#E4E4EC] p-4 bg-green-50">
+              <div className="rounded-2xl border border-[#E2E8F0] p-4 bg-green-50">
                 <div className="flex items-center gap-2 mb-1">
                   <TrendingUp className="w-4 h-4 text-green-600" />
                   <span className="text-xs font-semibold text-[#8888A0] uppercase tracking-wide">Top by Clicks</span>
@@ -620,7 +642,7 @@ export default function UsersTab() {
               </div>
             )}
             {highAvg && (
-              <div className="rounded-2xl border border-[#E4E4EC] p-4 bg-[#EEF3F7]">
+              <div className="rounded-2xl border border-[#E2E8F0] p-4 bg-[#EEF3F7]">
                 <div className="flex items-center gap-2 mb-1">
                   <BarChart3 className="w-4 h-4 text-[#728DA7]" />
                   <span className="text-xs font-semibold text-[#8888A0] uppercase tracking-wide">Best Avg / Link</span>
@@ -629,7 +651,7 @@ export default function UsersTab() {
                 <div className="text-xs text-[#8888A0] mt-0.5">{Number(highAvg.avg_clicks).toFixed(1)} avg clicks per link</div>
               </div>
             )}
-            <div className="rounded-2xl border border-[#E4E4EC] p-4 bg-[#F4F4F6]">
+            <div className="rounded-2xl border border-[#E2E8F0] p-4 bg-[#F4F4F6]">
               <div className="flex items-center gap-2 mb-1">
                 <MousePointerClick className="w-4 h-4 text-[#8888A0]" />
                 <span className="text-xs font-semibold text-[#8888A0] uppercase tracking-wide">Never Clicked</span>
@@ -640,6 +662,18 @@ export default function UsersTab() {
           </div>
         );
       })()}
+
+      {confirmModal && (
+        <ConfirmModal
+          open={confirmModal.open}
+          title={confirmModal.title}
+          description={confirmModal.description}
+          onClose={() => setConfirmModal(null)}
+          onConfirm={() => { confirmModal.onConfirm(); setConfirmModal(null); }}
+          confirmText="Confirm"
+          variant="danger"
+        />
+      )}
     </div>
   );
 }

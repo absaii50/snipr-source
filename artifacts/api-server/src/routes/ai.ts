@@ -2,7 +2,18 @@ import { Router, type IRouter } from "express";
 import { eq, and, gte, sum, count, desc, lt, inArray } from "drizzle-orm";
 import { db, linksTable, clickEventsTable, conversionsTable, aiInsightsTable } from "@workspace/db";
 import OpenAI from "openai";
+import rateLimit from "express-rate-limit";
 import { requireAuth } from "../lib/auth";
+
+// Rate limiter for AI endpoints — 10 requests per minute per user
+const aiRateLimit = rateLimit({
+  windowMs: 60 * 1000,
+  max: 10,
+  keyGenerator: (req) => req.session?.userId ?? req.ip ?? "unknown",
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many AI requests. Please wait a moment and try again." },
+});
 
 let deepseek: OpenAI | null = null;
 function getDeepseek() {
@@ -146,7 +157,7 @@ async function gatherAnalyticsContext(workspaceId: string, days = 7) {
   };
 }
 
-router.post("/ai/insights/weekly", requireAuth, async (req, res): Promise<void> => {
+router.post("/ai/insights/weekly", requireAuth, aiRateLimit, async (req, res): Promise<void> => {
   const workspaceId = req.session.workspaceId!;
 
   try {
@@ -197,7 +208,7 @@ Write a weekly summary covering:
 
     res.json(insight);
   } catch (err: any) {
-    res.status(502).json({ error: "Failed to generate weekly insights.", detail: err.message ?? "Unknown error" });
+    res.status(502).json({ error: "Failed to generate weekly insights." });
   }
 });
 
@@ -226,7 +237,7 @@ router.get("/ai/insights", requireAuth, async (req, res): Promise<void> => {
   res.json(insights);
 });
 
-router.post("/ai/ask", requireAuth, async (req, res): Promise<void> => {
+router.post("/ai/ask", requireAuth, aiRateLimit, async (req, res): Promise<void> => {
   const workspaceId = req.session.workspaceId!;
   const body = req.body as Record<string, unknown>;
   const question = (body.question as string)?.trim();
@@ -280,12 +291,12 @@ Question: ${question}`;
 
     res.json({ question, answer, id: insight.id });
   } catch (err: any) {
-    res.status(502).json({ error: "Failed to generate answer.", detail: err.message ?? "Unknown error" });
+    res.status(502).json({ error: "Failed to generate answer." });
   }
 });
 
 // POST /api/ai/ask/stream — streaming SSE version of Ask AI
-router.post("/ai/ask/stream", requireAuth, async (req, res): Promise<void> => {
+router.post("/ai/ask/stream", requireAuth, aiRateLimit, async (req, res): Promise<void> => {
   const workspaceId = req.session.workspaceId!;
   const body = req.body as Record<string, unknown>;
   const question = (body.question as string)?.trim();
@@ -361,7 +372,7 @@ Question: ${question}`;
 });
 
 // POST /api/ai/smart-suggestions — proactive data-driven suggestions
-router.post("/ai/smart-suggestions", requireAuth, async (req, res): Promise<void> => {
+router.post("/ai/smart-suggestions", requireAuth, aiRateLimit, async (req, res): Promise<void> => {
   const workspaceId = req.session.workspaceId!;
   const ctx = await gatherAnalyticsContext(workspaceId, 30);
 
@@ -418,7 +429,7 @@ Generate 5 smart, actionable insights for this user. Return only a JSON array.`;
 });
 
 // POST /api/ai/audit — AI link audit report
-router.post("/ai/audit", requireAuth, async (req, res): Promise<void> => {
+router.post("/ai/audit", requireAuth, aiRateLimit, async (req, res): Promise<void> => {
   const workspaceId = req.session.workspaceId!;
 
   const allLinks = await db
@@ -525,7 +536,7 @@ Produce the audit report as a JSON array.`;
   res.json({ totalLinks: allLinks.length, findings });
 });
 
-router.post("/ai/slug-suggest", requireAuth, async (req, res): Promise<void> => {
+router.post("/ai/slug-suggest", requireAuth, aiRateLimit, async (req, res): Promise<void> => {
   const body = req.body as Record<string, unknown>;
   const url = (body.url as string)?.trim();
   const title = (body.title as string)?.trim();

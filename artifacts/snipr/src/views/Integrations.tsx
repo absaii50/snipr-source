@@ -1,6 +1,6 @@
 "use client";
 import { useState, type ReactNode } from "react";
-import { ProtectedSidebar } from "@/components/layout/ProtectedSidebar";
+import { ProtectedLayout } from "@/components/layout/ProtectedLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -82,12 +82,12 @@ const INTEGRATION_LOGOS: Record<string, ReactNode> = {
   segment: <SegmentLogo />,
 };
 
-const INTEGRATION_BG: Record<string, string> = {
-  slack:   "bg-white border border-[#EAEAF0] shadow-sm",
-  zapier:  "bg-[#FF4A00]",
-  ga4:     "bg-[#E8710A]",
-  webhook: "bg-[#728DA7]",
-  segment: "bg-[#52BD95]",
+const INTEGRATION_BG: Record<string, { bg: string; className?: string }> = {
+  slack:   { bg: "#FFFFFF", className: "border border-[rgba(226,232,240,0.6)]" },
+  zapier:  { bg: "#FF4A00" },
+  ga4:     { bg: "#E8710A" },
+  webhook: { bg: "#728DA7" },
+  segment: { bg: "#52BD95" },
 };
 
 const INTEGRATION_META: Record<string, {
@@ -163,6 +163,25 @@ async function apiFetch(path: string, init?: RequestInit) {
   return res.json();
 }
 
+/* ── Shared glassmorphism style tokens ──────────────────────────────── */
+
+const glassCard = {
+  background: "rgba(17,24,39,0.65)",
+  backdropFilter: "blur(16px)",
+  WebkitBackdropFilter: "blur(16px)",
+  border: "1px solid rgba(255,255,255,0.06)",
+  boxShadow: "0 1px 2px rgba(0,0,0,0.3)",
+  borderRadius: "20px",
+};
+
+const primaryGradientBtn = {
+  background: "linear-gradient(135deg, #4F46E5, #7C3AED)",
+  boxShadow: "0 4px 14px rgba(79,70,229,0.25)",
+  borderRadius: "14px",
+  color: "#fff",
+  border: "none",
+};
+
 export default function Integrations() {
   const qc = useQueryClient();
   const [configuring, setConfiguring] = useState<{ type: string; existing?: Integration } | null>(null);
@@ -226,19 +245,25 @@ export default function Integrations() {
   }, {});
 
   return (
-    <div className="flex min-h-screen bg-background">
-      <ProtectedSidebar />
-
-      <main className="flex-1 overflow-y-auto p-8">
-        <div className="max-w-4xl mx-auto">
+    <ProtectedLayout>
+      <div className="px-4 sm:px-7 py-6 sm:py-7 max-w-4xl mx-auto w-full space-y-5 pt-14 lg:pt-6">
 
           {/* Header */}
           <div className="mb-10">
-            <p className="text-[11px] font-semibold text-[#9CA3AF] uppercase tracking-[0.14em] mb-2">Integrations</p>
-            <h1 className="font-display text-[34px] font-bold text-[#0A0A0A] tracking-[-0.025em] leading-[1.1] mb-3">
-              Connect your tools
-            </h1>
-            <p className="text-[15px] text-[#555558] leading-[1.75]">
+            <div className="flex items-center gap-3 mb-3">
+              <div
+                className="w-10 h-10 rounded-[14px] flex items-center justify-center flex-shrink-0"
+                style={{ background: "linear-gradient(135deg, #4F46E5, #7C3AED)" }}
+              >
+                <Plug className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h1 className="font-[family-name:var(--font-space-grotesk)] text-[28px] font-bold text-[#F1F5F9]">
+                  Integrations
+                </h1>
+              </div>
+            </div>
+            <p className="text-[15px] text-[#94A3B8] leading-[1.75]">
               Send click events from Snipr to Slack, Zapier, Google Analytics, and more in real time.
             </p>
           </div>
@@ -249,48 +274,85 @@ export default function Integrations() {
               const meta = INTEGRATION_META[type];
               const connected = connectedByType[type] ?? [];
               const hasConnected = connected.length > 0;
+              const iconBg = INTEGRATION_BG[type];
 
               return (
-                <div key={type} className="bg-white rounded-2xl border border-[#E4E4EC] overflow-hidden shadow-sm">
+                <div key={type} className="overflow-hidden" style={glassCard}>
                   {/* Card header */}
-                  <div className="flex items-center gap-4 p-5 border-b border-[#F0F0F6]">
-                    <div className={`w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 overflow-hidden ${INTEGRATION_BG[type]}`}>
+                  <div className="flex items-center gap-4 p-5" style={{ borderBottom: "1px solid rgba(226,232,240,0.3)" }}>
+                    <div
+                      className={`w-11 h-11 rounded-[14px] flex items-center justify-center flex-shrink-0 overflow-hidden ${iconBg.className ?? ""}`}
+                      style={{
+                        backgroundColor: iconBg.bg,
+                        boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
+                      }}
+                    >
                       {INTEGRATION_LOGOS[type]}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2.5">
-                        <span className="font-semibold text-[#0A0A0A] text-[15px]">{meta.label}</span>
+                        <span className="font-semibold text-[#F1F5F9] text-[15px]">{meta.label}</span>
                         {hasConnected && (
-                          <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full">
+                          <span
+                            className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full"
+                            style={{
+                              color: "#10B981",
+                              background: "rgba(16,185,129,0.1)",
+                              border: "1px solid rgba(16,185,129,0.2)",
+                            }}
+                          >
                             <CheckCircle2 className="w-3 h-3" /> {connected.length} connected
                           </span>
                         )}
                       </div>
-                      <p className="text-[13px] text-[#7A7A88] mt-0.5">{meta.description}</p>
+                      <p className="text-[13px] text-[#64748B] mt-0.5">{meta.description}</p>
                     </div>
-                    <Button
-                      size="sm"
-                      variant={hasConnected ? "outline" : "default"}
-                      className="rounded-full text-[13px] h-8 px-4 flex-shrink-0"
-                      onClick={() => openCreate(type)}
-                    >
-                      {hasConnected ? "Add another" : "Connect"}
-                      <ChevronRight className="w-3.5 h-3.5 ml-1" />
-                    </Button>
+                    {hasConnected ? (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="rounded-[14px] text-[13px] h-8 px-4 flex-shrink-0 text-[#64748B] hover:text-[#F1F5F9]"
+                        style={{
+                          borderRadius: "14px",
+                          border: "1px solid rgba(226,232,240,0.6)",
+                        }}
+                        onClick={() => openCreate(type)}
+                      >
+                        Add another
+                        <ChevronRight className="w-3.5 h-3.5 ml-1" />
+                      </Button>
+                    ) : (
+                      <button
+                        className="text-[13px] h-8 px-4 flex-shrink-0 font-medium flex items-center gap-1 cursor-pointer transition-all hover:opacity-90"
+                        style={primaryGradientBtn}
+                        onClick={() => openCreate(type)}
+                      >
+                        Connect
+                        <ChevronRight className="w-3.5 h-3.5 ml-1" />
+                      </button>
+                    )}
                   </div>
 
                   {/* Connected instances */}
                   {connected.length > 0 && (
-                    <div className="divide-y divide-[#F0F0F6]">
-                      {connected.map((int) => (
-                        <div key={int.id} className="flex items-center gap-3 px-5 py-3.5 hover:bg-[#FAFAFE] transition-colors">
+                    <div style={{ borderTop: "none" }}>
+                      {connected.map((int, idx) => (
+                        <div
+                          key={int.id}
+                          className="flex items-center gap-3 px-5 py-3.5 transition-colors"
+                          style={{
+                            borderTop: idx > 0 ? "1px solid rgba(226,232,240,0.3)" : "none",
+                          }}
+                          onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.backgroundColor = "rgba(248,250,252,0.6)"; }}
+                          onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.backgroundColor = "transparent"; }}
+                        >
                           <div className="flex-1 min-w-0">
-                            <span className="text-[13px] font-semibold text-[#0A0A0A]">{int.name}</span>
+                            <span className="text-[13px] font-semibold text-[#F1F5F9]">{int.name}</span>
                             {int.config.webhookUrl && (
-                              <span className="block text-[11px] text-[#9CA3AF] truncate max-w-xs mt-0.5">{int.config.webhookUrl}</span>
+                              <span className="block text-[11px] text-[#94A3B8] truncate max-w-xs mt-0.5">{int.config.webhookUrl}</span>
                             )}
                             {int.config.measurementId && (
-                              <span className="block text-[11px] text-[#9CA3AF] mt-0.5">{int.config.measurementId}</span>
+                              <span className="block text-[11px] text-[#94A3B8] mt-0.5">{int.config.measurementId}</span>
                             )}
                           </div>
 
@@ -306,16 +368,17 @@ export default function Integrations() {
                           <Switch
                             checked={int.enabled}
                             onCheckedChange={(enabled) => updateMutation.mutate({ id: int.id, enabled })}
+                            className="rounded-full"
                           />
 
                           {/* Actions */}
-                          <Button size="icon" variant="ghost" className="h-7 w-7 rounded-lg" onClick={() => openEdit(int)} title="Edit">
-                            <Pencil className="w-3.5 h-3.5 text-[#9CA3AF]" />
+                          <Button size="icon" variant="ghost" className="h-7 w-7 rounded-[14px]" onClick={() => openEdit(int)} title="Edit">
+                            <Pencil className="w-3.5 h-3.5 text-[#94A3B8]" />
                           </Button>
                           <Button
                             size="sm"
                             variant="ghost"
-                            className="h-7 rounded-lg text-[12px] text-[#9CA3AF] px-2.5"
+                            className="h-7 rounded-[14px] text-[12px] text-[#94A3B8] px-2.5"
                             onClick={() => { setTestResult(null); testMutation.mutate(int.id); }}
                             disabled={testMutation.isPending}
                           >
@@ -325,7 +388,7 @@ export default function Integrations() {
                           <Button
                             size="icon"
                             variant="ghost"
-                            className="h-7 w-7 rounded-lg hover:bg-red-500/10 hover:text-red-400"
+                            className="h-7 w-7 rounded-[14px] hover:bg-[rgba(239,68,68,0.08)] hover:text-[#EF4444]"
                             onClick={() => deleteMutation.mutate(int.id)}
                             title="Delete"
                           >
@@ -342,22 +405,31 @@ export default function Integrations() {
 
           {/* Empty state */}
           {!isLoading && integrations.length === 0 && (
-            <div className="mt-8 bg-[#FAFAFA] border border-[#E5E7EB] rounded-2xl p-10 text-center">
-              <Plug className="w-8 h-8 text-[#E5E7EB] mx-auto mb-3" />
-              <h3 className="font-display font-bold text-[#EFEFF0] text-lg mb-1">No integrations yet</h3>
-              <p className="text-[14px] text-[#9CA3AF]">Connect a tool above to start receiving click events in real time.</p>
+            <div className="mt-8 p-10 text-center" style={glassCard}>
+              <Plug className="w-8 h-8 text-[#94A3B8] mx-auto mb-3" />
+              <h3 className="font-[family-name:var(--font-space-grotesk)] font-bold text-[#F1F5F9] text-lg mb-1">No integrations yet</h3>
+              <p className="text-[14px] text-[#64748B]">Connect a tool above to start receiving click events in real time.</p>
             </div>
           )}
         </div>
-      </main>
 
       {/* Configure dialog */}
       {configuring && (
         <Dialog open onOpenChange={() => setConfiguring(null)}>
-          <DialogContent className="sm:max-w-md">
+          <DialogContent
+            className="sm:max-w-md"
+            style={{
+              background: "rgba(255,255,255,0.92)",
+              backdropFilter: "blur(24px)",
+              WebkitBackdropFilter: "blur(24px)",
+              border: "1px solid rgba(255,255,255,0.9)",
+              boxShadow: "0 1px 2px rgba(0,0,0,0.04), 0 8px 32px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,1)",
+              borderRadius: "20px",
+            }}
+          >
             <DialogHeader>
-              <DialogTitle className="flex items-center gap-3">
-                <div className={`w-8 h-8 rounded-xl ${INTEGRATION_META[configuring.type].color} flex items-center justify-center text-white font-bold text-xs flex-shrink-0`}>
+              <DialogTitle className="flex items-center gap-3 text-[#F1F5F9]">
+                <div className={`w-8 h-8 rounded-[14px] ${INTEGRATION_META[configuring.type].color} flex items-center justify-center text-white font-bold text-xs flex-shrink-0`}>
                   {INTEGRATION_META[configuring.type].initial}
                 </div>
                 {configuring.existing ? `Edit ${INTEGRATION_META[configuring.type].label}` : `Connect ${INTEGRATION_META[configuring.type].label}`}
@@ -367,54 +439,71 @@ export default function Integrations() {
             <div className="space-y-4 pt-2">
               {/* Name field */}
               <div>
-                <Label className="text-[13px] font-semibold text-[#C3C3C1] mb-1.5 block">Name</Label>
+                <Label className="text-[13px] font-semibold text-[#F1F5F9] mb-1.5 block">Name</Label>
                 <Input
                   value={formName}
                   onChange={(e) => setFormName(e.target.value)}
                   placeholder={`e.g. ${INTEGRATION_META[configuring.type].label} – Marketing`}
-                  className="h-9 text-sm"
+                  className="h-9 text-sm rounded-[14px] focus:ring-[#4F46E5] focus:border-[#4F46E5]"
+                  style={{
+                    borderRadius: "14px",
+                    border: "1px solid rgba(226,232,240,0.6)",
+                  }}
                 />
               </div>
 
               {/* Type-specific fields */}
               {INTEGRATION_META[configuring.type].fields.map((field) => (
                 <div key={field.key}>
-                  <Label className="text-[13px] font-semibold text-[#C3C3C1] mb-1.5 block">{field.label}</Label>
+                  <Label className="text-[13px] font-semibold text-[#F1F5F9] mb-1.5 block">{field.label}</Label>
                   <Input
                     type={field.type ?? "text"}
                     value={formState[field.key] ?? ""}
                     onChange={(e) => setFormState((s) => ({ ...s, [field.key]: e.target.value }))}
                     placeholder={field.placeholder}
-                    className="h-9 text-sm font-mono"
+                    className="h-9 text-sm font-mono rounded-[14px] focus:ring-[#4F46E5] focus:border-[#4F46E5]"
+                    style={{
+                      borderRadius: "14px",
+                      border: "1px solid rgba(226,232,240,0.6)",
+                    }}
                   />
-                  {field.hint && <p className="text-[11px] text-[#9CA3AF] mt-1.5">{field.hint}</p>}
+                  {field.hint && <p className="text-[11px] text-[#94A3B8] mt-1.5">{field.hint}</p>}
                 </div>
               ))}
 
               {/* Docs link */}
-              <p className="text-[12px] text-[#9CA3AF]">
+              <p className="text-[12px] text-[#94A3B8]">
                 Need help?{" "}
-                <a href={INTEGRATION_META[configuring.type].docsUrl} target="_blank" rel="noopener noreferrer" className="text-[#728DA7] underline underline-offset-2">
+                <a href={INTEGRATION_META[configuring.type].docsUrl} target="_blank" rel="noopener noreferrer" className="text-[#6366F1] underline underline-offset-2">
                   View setup guide
                 </a>
               </p>
 
               <div className="flex gap-2 pt-2">
-                <Button variant="outline" className="flex-1 h-9 text-sm rounded-xl" onClick={() => setConfiguring(null)}>
+                <Button
+                  variant="outline"
+                  className="flex-1 h-9 text-sm text-[#64748B] hover:text-[#F1F5F9]"
+                  style={{
+                    borderRadius: "14px",
+                    border: "1px solid rgba(226,232,240,0.6)",
+                  }}
+                  onClick={() => setConfiguring(null)}
+                >
                   Cancel
                 </Button>
-                <Button
-                  className="flex-1 h-9 text-sm rounded-xl"
+                <button
+                  className="flex-1 h-9 text-sm font-medium cursor-pointer transition-all hover:opacity-90 disabled:opacity-50"
+                  style={primaryGradientBtn}
                   onClick={handleSave}
                   disabled={createMutation.isPending || updateMutation.isPending || !formName.trim()}
                 >
                   {createMutation.isPending || updateMutation.isPending ? "Saving…" : configuring.existing ? "Save changes" : "Connect"}
-                </Button>
+                </button>
               </div>
             </div>
           </DialogContent>
         </Dialog>
       )}
-    </div>
+    </ProtectedLayout>
   );
 }

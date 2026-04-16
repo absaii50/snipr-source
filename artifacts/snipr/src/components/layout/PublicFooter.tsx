@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { Link2 } from "lucide-react";
+import { SniprLogo } from "@/components/SniprLogo";
 
 export function PublicFooter() {
   return (
@@ -9,7 +9,7 @@ export function PublicFooter() {
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-8">
           <Link href="/" className="flex items-center gap-2.5 group">
             <div className="w-7 h-7 bg-[#728DA7] rounded-lg flex items-center justify-center group-hover:bg-[#5a7a94] transition-colors">
-              <Link2 className="w-3.5 h-3.5 text-white" />
+              <SniprLogo size={14} color="white" />
             </div>
             <span className="font-display font-bold text-[16px] text-[#EFEFF0] tracking-tight">Snipr</span>
           </Link>

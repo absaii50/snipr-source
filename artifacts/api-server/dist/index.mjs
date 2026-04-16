@@ -78054,6 +78054,77 @@ function getPasswordResetEmailHtml(name, resetUrl) {
     </p>
   `);
 }
+function getTeamInviteExistingUserHtml(inviterName, workspaceName, role, dashboardUrl) {
+  return layout(`
+    <div style="text-align:center;padding-bottom:16px;">
+      <div style="display:inline-block;width:56px;height:56px;background:#EBF5FF;border-radius:50%;line-height:56px;font-size:28px;">
+        &#128101;
+      </div>
+    </div>
+    <h1 style="color:${BRAND.dark};font-size:24px;font-weight:700;margin:0 0 8px;text-align:center;letter-spacing:-0.5px;">
+      You've been invited!
+    </h1>
+    <p style="color:${BRAND.text};font-size:15px;line-height:1.6;margin:0 0 16px;text-align:center;">
+      <strong>${inviterName}</strong> has invited you to join the workspace <strong>${workspaceName}</strong> as a <strong>${role}</strong>.
+    </p>
+    <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="margin-bottom:8px;">
+      <tr>
+        <td style="background:${BRAND.light};border-radius:12px;padding:16px;">
+          <p style="color:${BRAND.dark};font-weight:600;font-size:14px;margin:0 0 8px;">What this means:</p>
+          <p style="color:${BRAND.text};font-size:13px;line-height:1.8;margin:0;">
+            &#8226; You now have access to <strong>${workspaceName}</strong><br>
+            &#8226; You can view and manage links in this workspace<br>
+            &#8226; Your role: <strong>${role}</strong>
+          </p>
+        </td>
+      </tr>
+    </table>
+    ${button("Go to Dashboard", dashboardUrl)}
+    <hr style="border:none;border-top:1px solid #E4E4EC;margin:24px 0;">
+    <p style="color:${BRAND.muted};font-size:12px;line-height:1.5;margin:0;">
+      If you don't recognize this invitation, you can safely ignore this email.
+    </p>
+  `);
+}
+function getTeamInviteNewUserHtml(inviterName, workspaceName, role, joinUrl) {
+  return layout(`
+    <div style="text-align:center;padding-bottom:16px;">
+      <div style="display:inline-block;width:56px;height:56px;background:#EBF5FF;border-radius:50%;line-height:56px;font-size:28px;">
+        &#128101;
+      </div>
+    </div>
+    <h1 style="color:${BRAND.dark};font-size:24px;font-weight:700;margin:0 0 8px;text-align:center;letter-spacing:-0.5px;">
+      You've been invited to Snipr!
+    </h1>
+    <p style="color:${BRAND.text};font-size:15px;line-height:1.6;margin:0 0 16px;text-align:center;">
+      <strong>${inviterName}</strong> has invited you to join the workspace <strong>${workspaceName}</strong> as a <strong>${role}</strong>.
+    </p>
+    <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="margin-bottom:8px;">
+      <tr>
+        <td style="background:${BRAND.light};border-radius:12px;padding:16px;">
+          <p style="color:${BRAND.dark};font-weight:600;font-size:14px;margin:0 0 8px;">What is Snipr?</p>
+          <p style="color:${BRAND.text};font-size:13px;line-height:1.8;margin:0;">
+            &#8226; AI-powered URL shortener with custom domains<br>
+            &#8226; Real-time click analytics &amp; QR codes<br>
+            &#8226; Smart redirect rules &amp; A/B testing
+          </p>
+        </td>
+      </tr>
+    </table>
+    <p style="color:${BRAND.text};font-size:15px;line-height:1.6;margin:0 0 4px;text-align:center;">
+      Create your free account to accept the invitation and start collaborating.
+    </p>
+    ${button("Accept Invitation & Sign Up", joinUrl)}
+    <p style="color:${BRAND.muted};font-size:12px;line-height:1.5;margin:16px 0 0;text-align:center;">
+      Or copy and paste this link:<br>
+      <a href="${joinUrl}" style="color:${BRAND.primary};word-break:break-all;">${joinUrl}</a>
+    </p>
+    <hr style="border:none;border-top:1px solid #E4E4EC;margin:24px 0;">
+    <p style="color:${BRAND.muted};font-size:12px;line-height:1.5;margin:0;">
+      If you don't recognize this invitation, you can safely ignore this email.
+    </p>
+  `);
+}
 function getWelcomeEmailHtml(name, dashboardUrl) {
   return layout(`
     <div style="text-align:center;padding-bottom:16px;">
@@ -78184,6 +78255,27 @@ async function sendWelcomeEmail(user) {
     type: "welcome"
   });
 }
+async function sendTeamInviteExistingUser(opts) {
+  const dashboardUrl = `${FRONTEND_URL}/dashboard`;
+  const html = getTeamInviteExistingUserHtml(opts.inviterName, opts.workspaceName, opts.role, dashboardUrl);
+  await sendEmail({
+    to: opts.to,
+    subject: `${opts.inviterName} invited you to ${opts.workspaceName} \u2014 Snipr`,
+    html,
+    userId: opts.userId,
+    type: "team_invite"
+  });
+}
+async function sendTeamInviteNewUser(opts) {
+  const joinUrl = `${FRONTEND_URL}/join?token=${opts.inviteToken}`;
+  const html = getTeamInviteNewUserHtml(opts.inviterName, opts.workspaceName, opts.role, joinUrl);
+  await sendEmail({
+    to: opts.to,
+    subject: `${opts.inviterName} invited you to join Snipr`,
+    html,
+    type: "team_invite"
+  });
+}
 
 // src/routes/auth.ts
 var router2 = (0, import_express2.Router)();
@@ -78212,6 +78304,12 @@ router2.post("/auth/register", async (req, res) => {
     status: "active",
     joinedAt: /* @__PURE__ */ new Date()
   });
+  await db.update(workspaceMembersTable).set({ status: "active", userId: user.id, joinedAt: /* @__PURE__ */ new Date(), inviteToken: null }).where(
+    and(
+      eq(workspaceMembersTable.email, user.email),
+      eq(workspaceMembersTable.status, "invited")
+    )
+  );
   sendVerificationEmail({
     id: user.id,
     name: user.name,
@@ -78220,9 +78318,16 @@ router2.post("/auth/register", async (req, res) => {
   }).catch((err) => logger.error({ err }, "Failed to send verification email"));
   req.session.userId = user.id;
   req.session.workspaceId = workspace.id;
-  res.status(201).json({
-    user: { id: user.id, name: user.name, email: user.email, emailVerified: user.emailVerified, createdAt: user.createdAt },
-    workspace: { id: workspace.id, name: workspace.name, slug: workspace.slug }
+  req.session.save((err) => {
+    if (err) {
+      logger.error({ err }, "Failed to save session after register");
+      res.status(500).json({ error: "Session error" });
+      return;
+    }
+    res.status(201).json({
+      user: { id: user.id, name: user.name, email: user.email, emailVerified: user.emailVerified, createdAt: user.createdAt },
+      workspace: { id: workspace.id, name: workspace.name, slug: workspace.slug }
+    });
   });
 });
 router2.post("/auth/login", async (req, res) => {
@@ -78253,9 +78358,16 @@ router2.post("/auth/login", async (req, res) => {
   }
   req.session.userId = user.id;
   req.session.workspaceId = workspace.id;
-  res.json({
-    user: { id: user.id, name: user.name, email: user.email, emailVerified: user.emailVerified, createdAt: user.createdAt },
-    workspace: { id: workspace.id, name: workspace.name, slug: workspace.slug }
+  req.session.save((err) => {
+    if (err) {
+      logger.error({ err }, "Failed to save session after login");
+      res.status(500).json({ error: "Session error" });
+      return;
+    }
+    res.json({
+      user: { id: user.id, name: user.name, email: user.email, emailVerified: user.emailVerified, createdAt: user.createdAt },
+      workspace: { id: workspace.id, name: workspace.name, slug: workspace.slug }
+    });
   });
 });
 router2.post("/auth/logout", (req, res) => {
@@ -78571,6 +78683,14 @@ router2.delete("/auth/account", requireAuth, async (req, res) => {
     res.status(401).json({ error: "Password is incorrect" });
     return;
   }
+  const userWorkspaces = await db.select({ id: workspacesTable.id }).from(workspacesTable).where(eq(workspacesTable.userId, user.id));
+  if (userWorkspaces.length > 0) {
+    const wsIds = userWorkspaces.map((w) => w.id);
+    await db.delete(workspaceMembersTable).where(
+      inArray(workspaceMembersTable.workspaceId, wsIds)
+    );
+  }
+  await db.delete(workspaceMembersTable).where(eq(workspaceMembersTable.userId, user.id));
   await db.delete(workspacesTable).where(eq(workspacesTable.userId, user.id));
   await db.delete(usersTable).where(eq(usersTable.id, user.id));
   req.session.destroy(() => {
@@ -78755,21 +78875,71 @@ router3.post("/links", requireAuth, async (req, res) => {
   const hideReferrerVal = typeof body.hideReferrer === "boolean" ? body.hideReferrer : false;
   let iosDeepLink = null;
   if (body.iosDeepLink && typeof body.iosDeepLink === "string") {
+    try {
+      const u = new URL(body.iosDeepLink);
+      if (!["http:", "https:"].includes(u.protocol) && !body.iosDeepLink.includes("://")) {
+        res.status(400).json({ error: "Validation error", message: "iOS deep link must be a valid URL" });
+        return;
+      }
+    } catch {
+      if (!body.iosDeepLink.includes("://")) {
+        res.status(400).json({ error: "Validation error", message: "iOS deep link must be a valid URL with a scheme" });
+        return;
+      }
+    }
+    if (/^(javascript|data|vbscript|file):/i.test(body.iosDeepLink)) {
+      res.status(400).json({ error: "Validation error", message: "iOS deep link uses a disallowed scheme" });
+      return;
+    }
     iosDeepLink = body.iosDeepLink;
   }
   let androidDeepLink = null;
   if (body.androidDeepLink && typeof body.androidDeepLink === "string") {
+    try {
+      const u = new URL(body.androidDeepLink);
+      if (!["http:", "https:"].includes(u.protocol) && !body.androidDeepLink.includes("://")) {
+        res.status(400).json({ error: "Validation error", message: "Android deep link must be a valid URL" });
+        return;
+      }
+    } catch {
+      if (!body.androidDeepLink.includes("://")) {
+        res.status(400).json({ error: "Validation error", message: "Android deep link must be a valid URL with a scheme" });
+        return;
+      }
+    }
+    if (/^(javascript|data|vbscript|file):/i.test(body.androidDeepLink)) {
+      res.status(400).json({ error: "Validation error", message: "Android deep link uses a disallowed scheme" });
+      return;
+    }
     androidDeepLink = body.androidDeepLink;
   }
-  if (!body.domainId || typeof body.domainId !== "string") {
+  let resolvedDomainId = body.domainId && typeof body.domainId === "string" ? body.domainId : null;
+  if (!resolvedDomainId) {
+    try {
+      const [cfgRow] = await db.select().from(platformSettingsTable).where(eq(platformSettingsTable.key, "platform_config"));
+      if (cfgRow) {
+        const cfg = JSON.parse(cfgRow.value);
+        if (cfg.default_domain) {
+          const [defaultDom] = await db.select({ id: domainsTable.id }).from(domainsTable).where(and(eq(domainsTable.domain, cfg.default_domain), eq(domainsTable.verified, true)));
+          if (defaultDom) resolvedDomainId = defaultDom.id;
+        }
+      }
+    } catch {
+    }
+  }
+  if (!resolvedDomainId) {
+    const [firstPlatform] = await db.select({ id: domainsTable.id }).from(domainsTable).where(and(eq(domainsTable.isPlatformDomain, true), eq(domainsTable.verified, true))).orderBy(domainsTable.createdAt).limit(1);
+    if (firstPlatform) resolvedDomainId = firstPlatform.id;
+  }
+  if (!resolvedDomainId) {
     res.status(400).json({
       error: "Validation error",
-      message: "A verified custom domain is required. snipr.sh cannot be used as a URL shortener."
+      message: "A verified custom domain is required. No default domain is configured."
     });
     return;
   }
   const [domainRecord] = await db.select({ id: domainsTable.id }).from(domainsTable).where(and(
-    eq(domainsTable.id, body.domainId),
+    eq(domainsTable.id, resolvedDomainId),
     eq(domainsTable.verified, true),
     or(
       eq(domainsTable.workspaceId, workspaceId),
@@ -78834,10 +79004,14 @@ router3.get("/links/clicks", requireAuth, async (req, res) => {
     return;
   }
   const linkIds = links.map((l) => l.id);
-  const clicks = await db.select({ linkId: clickEventsTable.linkId, total: count() }).from(clickEventsTable).where(inArray(clickEventsTable.linkId, linkIds)).groupBy(clickEventsTable.linkId);
+  const clicks = await db.select({
+    linkId: clickEventsTable.linkId,
+    total: count(),
+    unique: countDistinct(clickEventsTable.ipHash)
+  }).from(clickEventsTable).where(inArray(clickEventsTable.linkId, linkIds)).groupBy(clickEventsTable.linkId);
   const result = {};
   for (const row of clicks) {
-    result[row.linkId] = Number(row.total);
+    result[row.linkId] = { total: Number(row.total), unique: Number(row.unique) };
   }
   res.json(result);
 });
@@ -78990,6 +79164,16 @@ router3.put("/links/:id", requireAuth, async (req, res) => {
   const updateData = {};
   const body = req.body;
   if (parsed.data.destinationUrl !== void 0 && parsed.data.destinationUrl !== null) {
+    try {
+      const urlObj = new URL(parsed.data.destinationUrl);
+      if (!["http:", "https:"].includes(urlObj.protocol)) {
+        res.status(400).json({ error: "Validation error", message: "Destination URL must be http or https" });
+        return;
+      }
+    } catch {
+      res.status(400).json({ error: "Validation error", message: "Invalid destination URL" });
+      return;
+    }
     updateData.destinationUrl = parsed.data.destinationUrl;
   }
   if (parsed.data.title !== void 0) {
@@ -79006,7 +79190,6 @@ router3.put("/links/:id", requireAuth, async (req, res) => {
     if (newSlug !== existing.slug) {
       const [slugConflict] = await db.select().from(linksTable).where(and(
         eq(linksTable.slug, newSlug),
-        eq(linksTable.workspaceId, workspaceId),
         eq(linksTable.domainId, existing.domainId)
       ));
       if (slugConflict) {
@@ -79029,7 +79212,21 @@ router3.put("/links/:id", requireAuth, async (req, res) => {
     updateData.clickLimit = typeof body.clickLimit === "number" ? body.clickLimit : null;
   }
   if ("fallbackUrl" in body) {
-    updateData.fallbackUrl = typeof body.fallbackUrl === "string" && body.fallbackUrl ? body.fallbackUrl : null;
+    if (body.fallbackUrl && typeof body.fallbackUrl === "string") {
+      try {
+        const fbUrl = new URL(body.fallbackUrl);
+        if (!["http:", "https:"].includes(fbUrl.protocol)) {
+          res.status(400).json({ error: "Validation error", message: "Fallback URL must be http or https" });
+          return;
+        }
+        updateData.fallbackUrl = body.fallbackUrl;
+      } catch {
+        res.status(400).json({ error: "Validation error", message: "Fallback URL is not a valid URL" });
+        return;
+      }
+    } else {
+      updateData.fallbackUrl = null;
+    }
   }
   if ("folderId" in body) {
     updateData.folderId = typeof body.folderId === "string" && body.folderId ? body.folderId : null;
@@ -79041,10 +79238,34 @@ router3.put("/links/:id", requireAuth, async (req, res) => {
     updateData.hideReferrer = typeof body.hideReferrer === "boolean" ? body.hideReferrer : false;
   }
   if ("iosDeepLink" in body) {
-    updateData.iosDeepLink = typeof body.iosDeepLink === "string" && body.iosDeepLink ? body.iosDeepLink : null;
+    if (body.iosDeepLink && typeof body.iosDeepLink === "string") {
+      if (/^(javascript|data|vbscript|file):/i.test(body.iosDeepLink)) {
+        res.status(400).json({ error: "Validation error", message: "iOS deep link uses a disallowed scheme" });
+        return;
+      }
+      if (!body.iosDeepLink.includes("://")) {
+        res.status(400).json({ error: "Validation error", message: "iOS deep link must be a valid URL with a scheme" });
+        return;
+      }
+      updateData.iosDeepLink = body.iosDeepLink;
+    } else {
+      updateData.iosDeepLink = null;
+    }
   }
   if ("androidDeepLink" in body) {
-    updateData.androidDeepLink = typeof body.androidDeepLink === "string" && body.androidDeepLink ? body.androidDeepLink : null;
+    if (body.androidDeepLink && typeof body.androidDeepLink === "string") {
+      if (/^(javascript|data|vbscript|file):/i.test(body.androidDeepLink)) {
+        res.status(400).json({ error: "Validation error", message: "Android deep link uses a disallowed scheme" });
+        return;
+      }
+      if (!body.androidDeepLink.includes("://")) {
+        res.status(400).json({ error: "Validation error", message: "Android deep link must be a valid URL with a scheme" });
+        return;
+      }
+      updateData.androidDeepLink = body.androidDeepLink;
+    } else {
+      updateData.androidDeepLink = null;
+    }
   }
   if ("domainId" in body) {
     if (body.domainId === null || body.domainId === "") {
@@ -79241,7 +79462,7 @@ router4.get("/analytics/workspace", requireAuth, async (req, res) => {
   ]);
   const [qrStats] = await db.select({
     qrClicks: sql`cast(sum(case when ${clickEventsTable.isQr} = true then 1 else 0 end) as int)`,
-    directClicks: sql`cast(sum(case when ${clickEventsTable.isQr} = false then 1 else 0 end) as int)`
+    directClicks: sql`cast(sum(case when ${clickEventsTable.isQr} IS NOT TRUE then 1 else 0 end) as int)`
   }).from(clickEventsTable).innerJoin(linksTable, eq(clickEventsTable.linkId, linksTable.id)).where(
     and(
       linkFilter,
@@ -79324,7 +79545,7 @@ router4.get("/analytics/links/:id", requireAuth, async (req, res) => {
     totalClicks: count(),
     uniqueClicks: countDistinct(clickEventsTable.ipHash),
     qrClicks: sql`cast(sum(case when ${clickEventsTable.isQr} = true then 1 else 0 end) as int)`,
-    directClicks: sql`cast(sum(case when ${clickEventsTable.isQr} = false then 1 else 0 end) as int)`
+    directClicks: sql`cast(sum(case when ${clickEventsTable.isQr} IS NOT TRUE then 1 else 0 end) as int)`
   }).from(clickEventsTable).where(
     and(
       eq(clickEventsTable.linkId, id),
@@ -79410,6 +79631,31 @@ router4.get("/analytics/links/:id/events", requireAuth, async (req, res) => {
     utmCampaign: clickEventsTable.utmCampaign
   }).from(clickEventsTable).where(eq(clickEventsTable.linkId, id)).orderBy(desc(clickEventsTable.timestamp)).limit(limit2).offset(offset);
   res.json(events);
+});
+router4.get("/analytics/events", requireAuth, async (req, res) => {
+  const workspaceId = req.session.workspaceId;
+  const limit2 = Math.min(Number(req.query.limit ?? 50), 200);
+  const offset = Number(req.query.offset ?? 0);
+  const events = await db.select({
+    id: clickEventsTable.id,
+    linkId: clickEventsTable.linkId,
+    slug: linksTable.slug,
+    domainId: linksTable.domainId,
+    destinationUrl: linksTable.destinationUrl,
+    timestamp: clickEventsTable.timestamp,
+    referrer: clickEventsTable.referrer,
+    browser: clickEventsTable.browser,
+    os: clickEventsTable.os,
+    device: clickEventsTable.device,
+    country: clickEventsTable.country,
+    city: clickEventsTable.city,
+    isQr: clickEventsTable.isQr,
+    utmSource: clickEventsTable.utmSource,
+    utmMedium: clickEventsTable.utmMedium,
+    utmCampaign: clickEventsTable.utmCampaign
+  }).from(clickEventsTable).innerJoin(linksTable, eq(clickEventsTable.linkId, linksTable.id)).where(eq(linksTable.workspaceId, workspaceId)).orderBy(desc(clickEventsTable.timestamp)).limit(limit2).offset(offset);
+  const [{ total }] = await db.select({ total: count() }).from(clickEventsTable).innerJoin(linksTable, eq(clickEventsTable.linkId, linksTable.id)).where(eq(linksTable.workspaceId, workspaceId));
+  res.json({ events, total: Number(total), limit: limit2, offset });
 });
 router4.get("/stats/today", requireAuth, async (req, res) => {
   const workspaceId = req.session.workspaceId;
@@ -79525,10 +79771,40 @@ function buildDiagnosis(resolvers, checkType) {
   }
   return { diagnosis: "DNS records found but not yet valid.", suggestions: [] };
 }
+async function httpProbeOk(domainName) {
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5e3);
+    const res = await fetch(`https://${domainName}/__snipr_healthcheck`, {
+      method: "HEAD",
+      redirect: "manual",
+      signal: controller.signal,
+      headers: { "User-Agent": "SniprDNSCheck/1.0" }
+    });
+    clearTimeout(timeout);
+    const poweredBy = res.headers.get("x-powered-by") || "";
+    if (poweredBy.toLowerCase().includes("express")) return true;
+    return false;
+  } catch {
+    try {
+      const controller2 = new AbortController();
+      const timeout2 = setTimeout(() => controller2.abort(), 5e3);
+      const res2 = await fetch(`http://${domainName}/__snipr_healthcheck`, {
+        method: "HEAD",
+        redirect: "manual",
+        signal: controller2.signal,
+        headers: { "User-Agent": "SniprDNSCheck/1.0" }
+      });
+      clearTimeout(timeout2);
+      const poweredBy2 = res2.headers.get("x-powered-by") || "";
+      return poweredBy2.toLowerCase().includes("express");
+    } catch {
+      return false;
+    }
+  }
+}
 async function checkDomainDns(domainName, token) {
-  const parts = domainName.split(".");
-  const isRootDomain = parts.length <= 2;
-  const checkType = isRootDomain ? "a-record" : "cname";
+  const checkType = "a-record";
   const txtName = `_snipr-verify.${domainName}`;
   const [resolverResults, rawTxtResults] = await Promise.all([
     // Primary record check (CNAME or A) across all resolvers
@@ -79571,13 +79847,31 @@ async function checkDomainDns(domainName, token) {
     return r;
   });
   const cnameOk = checkType === "cname" && resolverResults.some((r) => r.ok);
-  const aRecordOk = checkType === "a-record" && resolverResults.some((r) => r.ok);
+  let aRecordOk = checkType === "a-record" && resolverResults.some((r) => r.ok);
   const cnameTarget = checkType === "cname" ? resolverResults.find((r) => r.found)?.found ?? null : null;
   const aRecordIp = checkType === "a-record" ? resolverResults.find((r) => r.found)?.found ?? null : null;
+  let proxyDetected = false;
+  if (!aRecordOk && !cnameOk && !txtOk && aRecordIp) {
+    const probeResult = await httpProbeOk(domainName);
+    if (probeResult) {
+      aRecordOk = true;
+      proxyDetected = true;
+      resolverResults.forEach((r) => {
+        if (r.found && !r.ok) {
+          r.ok = true;
+          r.error = null;
+        }
+      });
+    }
+  }
   const ready = cnameOk || aRecordOk || txtOk;
   const okCount = resolverResults.filter((r) => r.ok).length;
   const propagation = Math.round(okCount / RESOLVERS.length * 100);
-  const { diagnosis, suggestions } = buildDiagnosis(resolverResults, checkType);
+  let { diagnosis, suggestions } = buildDiagnosis(resolverResults, checkType);
+  if (proxyDetected) {
+    diagnosis = "Domain is behind a CDN/proxy (e.g. Cloudflare) \u2014 verified via HTTP probe.";
+    suggestions = [];
+  }
   return {
     cnameOk,
     cnameTarget,
@@ -79607,6 +79901,29 @@ router5.get("/domains", requireAuth, async (req, res) => {
     eq(domainsTable.isPlatformDomain, true)
   )).orderBy(domainsTable.createdAt);
   res.json(domains);
+});
+router5.get("/domains/default", requireAuth, async (_req, res) => {
+  try {
+    const [cfgRow] = await db.select().from(platformSettingsTable).where(eq(platformSettingsTable.key, "platform_config"));
+    if (cfgRow) {
+      const cfg = JSON.parse(cfgRow.value);
+      if (cfg.default_domain) {
+        const [dom] = await db.select({ id: domainsTable.id, domain: domainsTable.domain }).from(domainsTable).where(and(eq(domainsTable.domain, cfg.default_domain), eq(domainsTable.verified, true)));
+        if (dom) {
+          res.json(dom);
+          return;
+        }
+      }
+    }
+    const [firstPlatform] = await db.select({ id: domainsTable.id, domain: domainsTable.domain }).from(domainsTable).where(and(eq(domainsTable.isPlatformDomain, true), eq(domainsTable.verified, true))).orderBy(domainsTable.createdAt).limit(1);
+    if (firstPlatform) {
+      res.json(firstPlatform);
+      return;
+    }
+    res.json(null);
+  } catch {
+    res.json(null);
+  }
 });
 router5.post("/domains", requireAuth, async (req, res) => {
   const workspaceId = req.session.workspaceId;
@@ -79666,9 +79983,9 @@ router5.get("/domains/:id/setup-info", requireAuth, async (req, res) => {
   const records = [];
   const warnings = [];
   const suggestedSubdomains = [];
-  if (isRootDomain) {
-    records.push({ type: "A", name: "@", value: SERVER_IP2, priority: "Required" });
-    if (purpose === "has_website") {
+  records.push({ type: "A", name: isRootDomain ? "@" : cnameHost, value: SERVER_IP2, priority: "Required" });
+  if (purpose === "has_website") {
+    if (isRootDomain) {
       warnings.push("Changing your A record will redirect ALL traffic from your root domain to Snipr. Your existing website will stop working on this domain.");
       warnings.push("We strongly recommend using a subdomain instead.");
       suggestedSubdomains.push(
@@ -79677,10 +79994,7 @@ router5.get("/domains/:id/setup-info", requireAuth, async (req, res) => {
         `to.${domain2.domain}`,
         `s.${domain2.domain}`
       );
-    }
-  } else {
-    records.push({ type: "CNAME", name: cnameHost, value: CNAME_TARGET, priority: "Required" });
-    if (purpose === "has_website") {
+    } else {
       warnings.push("This subdomain will be used for short links. Your main website at " + rootDomain + " will not be affected.");
     }
   }
@@ -79732,7 +80046,7 @@ router5.patch("/domains/:id/verify", requireAuth, async (req, res) => {
   if (!dnsResult.ready) {
     res.status(422).json({
       error: "dns_not_configured",
-      message: "DNS records not found yet. Add the CNAME or A record and try again.",
+      message: "DNS records not found yet. Add the A record pointing to our server IP and try again.",
       token
     });
     return;
@@ -79776,6 +80090,26 @@ router6.post("/pixels", requireAuth, async (req, res) => {
   if (type === "custom" && !customScript) {
     res.status(422).json({ error: "Validation error", message: "customScript is required for custom pixels" });
     return;
+  }
+  if (type === "custom" && customScript) {
+    const dangerousPatterns = [
+      /document\.cookie/i,
+      /window\.location\s*=/i,
+      /eval\s*\(/i,
+      /Function\s*\(/i,
+      /fetch\s*\(\s*['"`](?!https:\/\/(www\.)?(google|facebook|linkedin|tiktok|analytics))/i,
+      /<\/script\s*>[\s\S]*<script/i
+    ];
+    for (const pattern of dangerousPatterns) {
+      if (pattern.test(customScript)) {
+        res.status(422).json({ error: "Validation error", message: "Custom script contains potentially dangerous code. Only tracking scripts are allowed." });
+        return;
+      }
+    }
+    if (customScript.length > 5e3) {
+      res.status(422).json({ error: "Validation error", message: "Custom script must be under 5000 characters" });
+      return;
+    }
   }
   const [created] = await db.insert(pixelsTable).values({
     workspaceId,
@@ -79944,6 +80278,16 @@ router9.put("/links/:id/rules", requireAuth, async (req, res) => {
       res.status(422).json({ error: "Validation error", message: "Each rule must have a destinationUrl" });
       return;
     }
+    try {
+      const urlObj = new URL(rule.destinationUrl);
+      if (!["http:", "https:"].includes(urlObj.protocol)) {
+        res.status(422).json({ error: "Validation error", message: "Rule destination URL must be http or https" });
+        return;
+      }
+    } catch {
+      res.status(422).json({ error: "Validation error", message: `Invalid rule destination URL: ${rule.destinationUrl}` });
+      return;
+    }
   }
   await db.delete(linkRulesTable).where(eq(linkRulesTable.linkId, id));
   if (rules.length === 0) {
@@ -80003,26 +80347,17 @@ function parseDateRange2(from, to) {
   const fromDate = from ? /* @__PURE__ */ new Date(from + "T00:00:00Z") : new Date(now.getTime() - 30 * 24 * 60 * 60 * 1e3);
   return { fromDate, toDate };
 }
-router10.post("/conversions", async (req, res) => {
+router10.post("/conversions", requireAuth, async (req, res) => {
   const body = req.body;
-  if (!body.workspaceId && !body.slug) {
-    res.status(400).json({ error: "workspaceId or slug required" });
-    return;
-  }
-  let workspaceId = body.workspaceId;
+  const workspaceId = req.session.workspaceId;
   let linkId = body.linkId;
   if (body.slug) {
-    const [link] = await db.select().from(linksTable).where(eq(linksTable.slug, body.slug));
+    const [link] = await db.select().from(linksTable).where(and(eq(linksTable.slug, body.slug), eq(linksTable.workspaceId, workspaceId)));
     if (!link) {
       res.status(404).json({ error: "Link not found" });
       return;
     }
     linkId = link.id;
-    workspaceId = link.workspaceId;
-  }
-  if (!workspaceId) {
-    res.status(400).json({ error: "workspaceId required" });
-    return;
   }
   const [conv] = await db.insert(conversionsTable).values({
     workspaceId,
@@ -80136,6 +80471,7 @@ router11.get("/team", requireAuth, async (req, res) => {
 });
 router11.post("/team/invite", requireAuth, async (req, res) => {
   const workspaceId = req.session.workspaceId;
+  const inviterUserId = req.session.userId;
   const body = req.body;
   const email3 = body.email?.toLowerCase().trim();
   const role = body.role ?? "member";
@@ -80157,6 +80493,10 @@ router11.post("/team/invite", requireAuth, async (req, res) => {
     res.status(409).json({ error: "Member already invited or in workspace" });
     return;
   }
+  const [inviter] = await db.select({ name: usersTable.name }).from(usersTable).where(eq(usersTable.id, inviterUserId));
+  const [workspace] = await db.select({ name: workspacesTable.name }).from(workspacesTable).where(eq(workspacesTable.id, workspaceId));
+  const inviterName = inviter?.name ?? "Someone";
+  const workspaceName = workspace?.name ?? "a workspace";
   const user = await db.select().from(usersTable).where(eq(usersTable.email, email3));
   const inviteToken = nanoid3(32);
   const [member] = await db.insert(workspaceMembersTable).values({
@@ -80168,10 +80508,73 @@ router11.post("/team/invite", requireAuth, async (req, res) => {
     inviteToken,
     joinedAt: user[0] ? /* @__PURE__ */ new Date() : null
   }).returning();
+  if (user[0]) {
+    sendTeamInviteExistingUser({
+      to: email3,
+      userId: user[0].id,
+      inviterName,
+      workspaceName,
+      role
+    }).catch((err) => logger.error({ err }, "Failed to send team invite email to existing user"));
+  } else {
+    sendTeamInviteNewUser({
+      to: email3,
+      inviterName,
+      workspaceName,
+      role,
+      inviteToken
+    }).catch((err) => logger.error({ err }, "Failed to send team invite email to new user"));
+  }
   res.status(201).json(member);
+});
+router11.post("/team/accept-invite", requireAuth, async (req, res) => {
+  const { token } = req.body;
+  const userId = req.session.userId;
+  if (!token) {
+    res.status(400).json({ error: "Invite token is required" });
+    return;
+  }
+  const [invite] = await db.select().from(workspaceMembersTable).where(eq(workspaceMembersTable.inviteToken, token));
+  if (!invite) {
+    res.status(404).json({ error: "Invalid or expired invitation" });
+    return;
+  }
+  if (invite.status === "active") {
+    res.json({ message: "Invitation already accepted", workspaceId: invite.workspaceId });
+    return;
+  }
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.id, userId));
+  if (!user || user.email !== invite.email) {
+    res.status(403).json({ error: "This invitation was sent to a different email address" });
+    return;
+  }
+  await db.update(workspaceMembersTable).set({ status: "active", userId, joinedAt: /* @__PURE__ */ new Date(), inviteToken: null }).where(eq(workspaceMembersTable.id, invite.id));
+  res.json({ message: "Invitation accepted", workspaceId: invite.workspaceId });
+});
+router11.get("/team/invite/:token", async (req, res) => {
+  const { token } = req.params;
+  const [invite] = await db.select({
+    id: workspaceMembersTable.id,
+    email: workspaceMembersTable.email,
+    role: workspaceMembersTable.role,
+    status: workspaceMembersTable.status,
+    workspaceId: workspaceMembersTable.workspaceId
+  }).from(workspaceMembersTable).where(eq(workspaceMembersTable.inviteToken, token));
+  if (!invite) {
+    res.status(404).json({ error: "Invalid or expired invitation" });
+    return;
+  }
+  const [workspace] = await db.select({ name: workspacesTable.name }).from(workspacesTable).where(eq(workspacesTable.id, invite.workspaceId));
+  res.json({
+    email: invite.email,
+    role: invite.role,
+    status: invite.status,
+    workspaceName: workspace?.name ?? "Unknown workspace"
+  });
 });
 router11.put("/team/members/:id", requireAuth, async (req, res) => {
   const workspaceId = req.session.workspaceId;
+  const userId = req.session.userId;
   const { id } = req.params;
   const body = req.body;
   const role = body.role;
@@ -80179,6 +80582,20 @@ router11.put("/team/members/:id", requireAuth, async (req, res) => {
     res.status(400).json({ error: "Invalid role" });
     return;
   }
+  const [requester] = await db.select({ role: workspaceMembersTable.role }).from(workspaceMembersTable).where(
+    and(
+      eq(workspaceMembersTable.workspaceId, workspaceId),
+      eq(workspaceMembersTable.userId, userId)
+    )
+  );
+  if (!requester || requester.role !== "owner" && requester.role !== "admin") {
+    res.status(403).json({ error: "Only owners and admins can change member roles" });
+    return;
+  }
+  if ((role === "owner" || role === "admin") && requester.role !== "owner") {
+    res.status(403).json({ error: "Only the workspace owner can assign owner or admin roles" });
+    return;
+  }
   const [member] = await db.select().from(workspaceMembersTable).where(
     and(
       eq(workspaceMembersTable.id, id),
@@ -80189,12 +80606,27 @@ router11.put("/team/members/:id", requireAuth, async (req, res) => {
     res.status(404).json({ error: "Member not found" });
     return;
   }
+  if (member.role === "owner" && member.userId !== userId) {
+    res.status(403).json({ error: "Cannot change the workspace owner's role" });
+    return;
+  }
   const [updated] = await db.update(workspaceMembersTable).set({ role }).where(eq(workspaceMembersTable.id, id)).returning();
   res.json(updated);
 });
 router11.delete("/team/members/:id", requireAuth, async (req, res) => {
   const workspaceId = req.session.workspaceId;
+  const userId = req.session.userId;
   const { id } = req.params;
+  const [requester] = await db.select({ role: workspaceMembersTable.role }).from(workspaceMembersTable).where(
+    and(
+      eq(workspaceMembersTable.workspaceId, workspaceId),
+      eq(workspaceMembersTable.userId, userId)
+    )
+  );
+  if (!requester || requester.role !== "owner" && requester.role !== "admin") {
+    res.status(403).json({ error: "Only owners and admins can remove members" });
+    return;
+  }
   const [member] = await db.select().from(workspaceMembersTable).where(
     and(
       eq(workspaceMembersTable.id, id),
@@ -80203,6 +80635,10 @@ router11.delete("/team/members/:id", requireAuth, async (req, res) => {
   );
   if (!member) {
     res.status(404).json({ error: "Member not found" });
+    return;
+  }
+  if (member.role === "owner") {
+    res.status(403).json({ error: "Cannot remove the workspace owner" });
     return;
   }
   await db.delete(workspaceMembersTable).where(eq(workspaceMembersTable.id, id));
@@ -87205,6 +87641,14 @@ OpenAI.Skills = Skills;
 OpenAI.Videos = Videos;
 
 // src/routes/ai.ts
+var aiRateLimit = rate_limit_default({
+  windowMs: 60 * 1e3,
+  max: 10,
+  keyGenerator: (req) => req.session?.userId ?? req.ip ?? "unknown",
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many AI requests. Please wait a moment and try again." }
+});
 var deepseek = null;
 function getDeepseek() {
   if (!deepseek) {
@@ -87300,7 +87744,7 @@ async function gatherAnalyticsContext(workspaceId, days = 7) {
     }))
   };
 }
-router12.post("/ai/insights/weekly", requireAuth, async (req, res) => {
+router12.post("/ai/insights/weekly", requireAuth, aiRateLimit, async (req, res) => {
   const workspaceId = req.session.workspaceId;
   try {
     const ctx = await gatherAnalyticsContext(workspaceId, 7);
@@ -87341,7 +87785,7 @@ Write a weekly summary covering:
     }).returning();
     res.json(insight);
   } catch (err) {
-    res.status(502).json({ error: "Failed to generate weekly insights.", detail: err.message ?? "Unknown error" });
+    res.status(502).json({ error: "Failed to generate weekly insights." });
   }
 });
 router12.get("/ai/insights", requireAuth, async (req, res) => {
@@ -87358,7 +87802,7 @@ router12.get("/ai/insights", requireAuth, async (req, res) => {
   const insights = await db.select().from(aiInsightsTable).where(eq(aiInsightsTable.workspaceId, workspaceId)).orderBy(desc(aiInsightsTable.createdAt)).limit(limit2);
   res.json(insights);
 });
-router12.post("/ai/ask", requireAuth, async (req, res) => {
+router12.post("/ai/ask", requireAuth, aiRateLimit, async (req, res) => {
   const workspaceId = req.session.workspaceId;
   const body = req.body;
   const question = body.question?.trim();
@@ -87401,10 +87845,10 @@ Question: ${question}`;
     }).returning();
     res.json({ question, answer, id: insight.id });
   } catch (err) {
-    res.status(502).json({ error: "Failed to generate answer.", detail: err.message ?? "Unknown error" });
+    res.status(502).json({ error: "Failed to generate answer." });
   }
 });
-router12.post("/ai/ask/stream", requireAuth, async (req, res) => {
+router12.post("/ai/ask/stream", requireAuth, aiRateLimit, async (req, res) => {
   const workspaceId = req.session.workspaceId;
   const body = req.body;
   const question = body.question?.trim();
@@ -87474,7 +87918,7 @@ Question: ${question}`;
 `);
   res.end();
 });
-router12.post("/ai/smart-suggestions", requireAuth, async (req, res) => {
+router12.post("/ai/smart-suggestions", requireAuth, aiRateLimit, async (req, res) => {
   const workspaceId = req.session.workspaceId;
   const ctx = await gatherAnalyticsContext(workspaceId, 30);
   const systemPrompt = `You are an analytics assistant for Snipr, a URL shortener SaaS.
@@ -87523,7 +87967,7 @@ Generate 5 smart, actionable insights for this user. Return only a JSON array.`;
   }
   res.json({ suggestions });
 });
-router12.post("/ai/audit", requireAuth, async (req, res) => {
+router12.post("/ai/audit", requireAuth, aiRateLimit, async (req, res) => {
   const workspaceId = req.session.workspaceId;
   const allLinks = await db.select().from(linksTable).where(eq(linksTable.workspaceId, workspaceId));
   const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1e3);
@@ -87598,7 +88042,7 @@ Produce the audit report as a JSON array.`;
   }
   res.json({ totalLinks: allLinks.length, findings });
 });
-router12.post("/ai/slug-suggest", requireAuth, async (req, res) => {
+router12.post("/ai/slug-suggest", requireAuth, aiRateLimit, async (req, res) => {
   const body = req.body;
   const url2 = body.url?.trim();
   const title = body.title?.trim();
@@ -87933,6 +88377,9 @@ var integrations_default = router13;
 var import_express14 = __toESM(require_express2(), 1);
 import crypto8 from "crypto";
 var router14 = (0, import_express14.Router)();
+function escapeLike(str2) {
+  return str2.replace(/[%_\\]/g, (ch) => `\\${ch}`);
+}
 var ADMIN_USERNAME = process.env.ADMIN_USERNAME;
 var ADMIN_PASSWORD_HASH = process.env.ADMIN_PASSWORD_HASH;
 if (!ADMIN_USERNAME || !ADMIN_PASSWORD_HASH) {
@@ -87983,16 +88430,32 @@ router14.post("/admin/login", async (req, res) => {
       res.status(401).json({ error: "Invalid credentials" });
       return;
     }
-    req.session.isAdmin = true;
-    res.json({ ok: true });
+    req.session.regenerate((regenErr) => {
+      if (regenErr) {
+        console.error("Admin session regenerate error:", regenErr);
+        res.status(500).json({ error: "Session error" });
+        return;
+      }
+      req.session.isAdmin = true;
+      req.session.save((err) => {
+        if (err) {
+          console.error("Admin session save error:", err);
+          res.status(500).json({ error: "Session error" });
+          return;
+        }
+        res.json({ ok: true });
+      });
+    });
   } catch (error40) {
     console.error("Admin login bcrypt error:", error40);
     res.status(500).json({ error: "Authentication failed" });
   }
 });
 router14.post("/admin/logout", (req, res) => {
-  req.session.isAdmin = false;
-  res.json({ ok: true });
+  req.session.destroy((err) => {
+    if (err) console.error("Admin logout session destroy error:", err);
+    res.json({ ok: true });
+  });
 });
 router14.get("/admin/me", (req, res) => {
   res.json({ isAdmin: !!req.session.isAdmin });
@@ -88031,6 +88494,61 @@ router14.get("/admin/stats", requireAdmin, async (req, res) => {
     clicksThisWeek: clicks7d.count
   });
 });
+router14.get("/admin/plan-distribution", requireAdmin, async (_req, res) => {
+  const rows = await db.select({ plan: usersTable.plan, count: count() }).from(usersTable).groupBy(usersTable.plan);
+  const distribution = {};
+  let total = 0;
+  for (const r of rows) {
+    distribution[r.plan] = r.count;
+    total += r.count;
+  }
+  res.json({ distribution, total });
+});
+router14.get("/admin/revenue", requireAdmin, async (_req, res) => {
+  const rows = await db.select({
+    status: usersTable.stripeSubscriptionStatus,
+    plan: usersTable.plan,
+    count: count()
+  }).from(usersTable).where(sql`${usersTable.stripeSubscriptionId} IS NOT NULL`).groupBy(usersTable.stripeSubscriptionStatus, usersTable.plan);
+  let activeSubscriptions = 0;
+  let totalWithStripe = 0;
+  const byStatus = {};
+  const byPlan = {};
+  for (const r of rows) {
+    totalWithStripe += r.count;
+    byStatus[r.status ?? "unknown"] = (byStatus[r.status ?? "unknown"] || 0) + r.count;
+    byPlan[r.plan] = (byPlan[r.plan] || 0) + r.count;
+    if (r.status === "active" || r.status === "trialing") {
+      activeSubscriptions += r.count;
+    }
+  }
+  res.json({ activeSubscriptions, totalWithStripe, byStatus, byPlan });
+});
+router14.get("/admin/reports/summary", requireAdmin, async (req, res) => {
+  const days = Math.min(parseInt(req.query.days) || 1, 90);
+  const since = new Date(Date.now() - days * 24 * 60 * 60 * 1e3);
+  const [clickRows] = await db.select({ total: count() }).from(clickEventsTable).where(sql`${clickEventsTable.timestamp} >= ${since}`);
+  const [uniqueRows] = await db.select({ total: sql`COUNT(DISTINCT ip_hash)` }).from(clickEventsTable).where(sql`${clickEventsTable.timestamp} >= ${since}`);
+  const topCountries = await db.select({ country: clickEventsTable.country, count: count() }).from(clickEventsTable).where(sql`${clickEventsTable.timestamp} >= ${since}`).groupBy(clickEventsTable.country).orderBy(desc(count())).limit(5);
+  const topReferrers = await db.select({ referrer: clickEventsTable.referrer, count: count() }).from(clickEventsTable).where(sql`${clickEventsTable.timestamp} >= ${since} AND ${clickEventsTable.referrer} IS NOT NULL AND ${clickEventsTable.referrer} != ''`).groupBy(clickEventsTable.referrer).orderBy(desc(count())).limit(5);
+  const topSlugs = await db.select({ slug: linksTable.slug, domain: domainsTable.domain, count: count() }).from(clickEventsTable).innerJoin(linksTable, sql`${clickEventsTable.linkId} = ${linksTable.id}`).leftJoin(domainsTable, sql`${domainsTable.id} = ${linksTable.domainId}`).where(sql`${clickEventsTable.timestamp} >= ${since}`).groupBy(linksTable.slug, domainsTable.domain).orderBy(desc(count())).limit(10);
+  const hourly = await db.select({
+    hour: sql`EXTRACT(HOUR FROM ${clickEventsTable.timestamp})::int`,
+    count: count()
+  }).from(clickEventsTable).where(sql`${clickEventsTable.timestamp} >= NOW() - INTERVAL '24 hours'`).groupBy(sql`EXTRACT(HOUR FROM ${clickEventsTable.timestamp})`).orderBy(sql`EXTRACT(HOUR FROM ${clickEventsTable.timestamp})`);
+  const hourlyMap = new Array(24).fill(0);
+  for (const h of hourly) hourlyMap[h.hour] = h.count;
+  res.json({
+    totalClicks: clickRows.total,
+    uniqueVisitors: uniqueRows.total,
+    topCountry: topCountries[0] || null,
+    topReferrer: topReferrers[0] || null,
+    topCountries,
+    topReferrers,
+    topSlugs,
+    hourlyBreakdown: hourlyMap
+  });
+});
 router14.get("/admin/users", requireAdmin, async (req, res) => {
   const search = req.query.search ?? "";
   const users = await db.select({
@@ -88040,7 +88558,7 @@ router14.get("/admin/users", requireAdmin, async (req, res) => {
     suspendedAt: usersTable.suspendedAt,
     createdAt: usersTable.createdAt
   }).from(usersTable).where(
-    search ? sql`lower(${usersTable.name}) like ${"%" + search.toLowerCase() + "%"} or lower(${usersTable.email}) like ${"%" + search.toLowerCase() + "%"}` : void 0
+    search ? sql`lower(${usersTable.name}) like ${"%" + escapeLike(search.toLowerCase()) + "%"} or lower(${usersTable.email}) like ${"%" + escapeLike(search.toLowerCase()) + "%"}` : void 0
   ).orderBy(desc(usersTable.createdAt)).limit(100);
   const workspaces = await db.select({ userId: workspacesTable.userId, name: workspacesTable.name, slug: workspacesTable.slug }).from(workspacesTable);
   const linkCounts = await db.select({ workspaceId: linksTable.workspaceId, count: count() }).from(linksTable).groupBy(linksTable.workspaceId);
@@ -88065,6 +88583,27 @@ router14.patch("/admin/users/:id/plan", requireAdmin, async (req, res) => {
   await db.update(usersTable).set({ plan }).where(eq(usersTable.id, req.params.id));
   await logAuditAction("change_plan", "user", req.params.id, { plan }, req.ip);
   res.json({ ok: true, plan });
+});
+router14.patch("/admin/users/:id/edit", requireAdmin, async (req, res) => {
+  const userId = req.params.id;
+  const { name, email: email3, password } = req.body;
+  const updates = {};
+  if (name && name.trim()) updates.name = name.trim();
+  if (email3 && email3.trim()) updates.email = email3.trim().toLowerCase();
+  if (password && password.length >= 4) {
+    updates.passwordHash = await bcryptjs_default.hash(password, 10);
+  }
+  if (Object.keys(updates).length === 0) {
+    res.status(400).json({ error: "No valid fields to update" });
+    return;
+  }
+  await db.update(usersTable).set(updates).where(eq(usersTable.id, userId));
+  const details = {};
+  if (updates.name) details.name = updates.name;
+  if (updates.email) details.email = updates.email;
+  if (updates.passwordHash) details.passwordReset = "true";
+  await logAuditAction("edit_user", "user", userId, details, req.ip);
+  res.json({ ok: true, updated: Object.keys(updates).filter((k) => k !== "passwordHash") });
 });
 router14.patch("/admin/users/:id/suspend", requireAdmin, async (req, res) => {
   const userId = req.params.id;
@@ -88094,8 +88633,10 @@ router14.get("/admin/links", requireAdmin, async (req, res) => {
     title: linksTable.title,
     enabled: linksTable.enabled,
     createdAt: linksTable.createdAt,
-    workspaceId: linksTable.workspaceId
-  }).from(linksTable).where(
+    workspaceId: linksTable.workspaceId,
+    domainId: linksTable.domainId,
+    domain: domainsTable.domain
+  }).from(linksTable).leftJoin(domainsTable, sql`${domainsTable.id} = ${linksTable.domainId}`).where(
     search ? sql`lower(${linksTable.slug}) like ${"%" + search.toLowerCase() + "%"} or lower(${linksTable.destinationUrl}) like ${"%" + search.toLowerCase() + "%"}` : void 0
   ).orderBy(desc(linksTable.createdAt)).limit(100);
   const wsIds = [...new Set(links.map((l) => l.workspaceId))];
@@ -88330,7 +88871,7 @@ router14.get("/admin/email-logs", requireAdmin, async (req, res) => {
     conditions.push(eq(emailLogsTable.type, typeFilter));
   }
   if (search) {
-    conditions.push(ilike(emailLogsTable.to, `%${search}%`));
+    conditions.push(ilike(emailLogsTable.to, `%${escapeLike(search)}%`));
   }
   if (conditions.length > 0) {
     query = query.where(and(...conditions));
@@ -88459,10 +89000,11 @@ router14.get("/admin/recent-signups", requireAdmin, async (req, res) => {
 });
 router14.get("/admin/top-links", requireAdmin, async (req, res) => {
   const rows = await db.execute(sql`
-    SELECT l.slug, l.destination_url, count(c.id) as clicks
+    SELECT l.slug, l.destination_url, d.domain, count(c.id) as clicks
     FROM links l
     LEFT JOIN click_events c ON c.link_id = l.id
-    GROUP BY l.id, l.slug, l.destination_url
+    LEFT JOIN domains d ON d.id = l.domain_id
+    GROUP BY l.id, l.slug, l.destination_url, d.domain
     ORDER BY clicks DESC
     LIMIT 5
   `);
@@ -88611,7 +89153,7 @@ router14.get("/admin/users/performance", requireAdmin, async (req, res) => {
     LEFT JOIN click_events ce ON ce.link_id = l.id
       ${days > 0 ? sql`AND ce.timestamp >= NOW() - (${days}::int || ' days')::interval` : sql``}
     WHERE 1=1
-      ${search ? sql`AND (lower(u.name) LIKE ${"%" + search + "%"} OR lower(u.email) LIKE ${"%" + search + "%"})` : sql``}
+      ${search ? sql`AND (lower(u.name) LIKE ${"%" + escapeLike(search) + "%"} OR lower(u.email) LIKE ${"%" + escapeLike(search) + "%"})` : sql``}
       ${plan ? sql`AND u.plan = ${plan}` : sql``}
     GROUP BY u.id, u.name, u.email, u.plan, u.suspended_at, u.created_at, u.email_verified, w.name, w.slug
     ORDER BY ${sql.raw(orderBy)}
@@ -88636,6 +89178,7 @@ router14.get("/admin/users/:id/analytics", requireAdmin, async (req, res) => {
       SELECT
         l.id, l.slug, l.destination_url AS destination_url, l.title,
         l.enabled, l.created_at, l.expires_at, l.click_limit,
+        d.domain AS domain,
         COUNT(ce.id)::int                                 AS total_clicks,
         COUNT(DISTINCT ce.ip_hash)::int                   AS unique_clicks,
         MAX(ce.timestamp)                                 AS last_click_at,
@@ -88650,8 +89193,9 @@ router14.get("/admin/users/:id/analytics", requireAdmin, async (req, res) => {
          GROUP BY referrer ORDER BY COUNT(*) DESC LIMIT 1) AS top_referrer
       FROM links l
       LEFT JOIN click_events ce ON ce.link_id = l.id
+      LEFT JOIN domains d ON d.id = l.domain_id
       WHERE l.workspace_id = (SELECT id FROM workspaces WHERE user_id = ${userId} LIMIT 1)
-      GROUP BY l.id
+      GROUP BY l.id, d.domain
       ORDER BY total_clicks DESC
       LIMIT 500
     `)
@@ -88696,6 +89240,7 @@ router14.get("/admin/links/performance", requireAdmin, async (req, res) => {
     SELECT
       l.id, l.slug, l.destination_url, l.title,
       l.enabled, l.created_at, l.expires_at, l.click_limit,
+      d.domain AS domain,
       u.name  AS owner_name,
       u.email AS owner_email,
       u.plan  AS owner_plan,
@@ -88713,11 +89258,12 @@ router14.get("/admin/links/performance", requireAdmin, async (req, res) => {
     FROM links l
     LEFT JOIN workspaces w ON w.id = l.workspace_id
     LEFT JOIN users u ON u.id = w.user_id
+    LEFT JOIN domains d ON d.id = l.domain_id
     LEFT JOIN click_events ce ON ce.link_id = l.id
     WHERE 1=1
-      ${search ? sql`AND (lower(l.slug) LIKE ${"%" + search + "%"} OR lower(l.destination_url) LIKE ${"%" + search + "%"} OR lower(u.email) LIKE ${"%" + search + "%"})` : sql``}
+      ${search ? sql`AND (lower(l.slug) LIKE ${"%" + escapeLike(search) + "%"} OR lower(l.destination_url) LIKE ${"%" + escapeLike(search) + "%"} OR lower(u.email) LIKE ${"%" + escapeLike(search) + "%"})` : sql``}
       ${status === "active" ? sql`AND l.enabled = true` : status === "disabled" ? sql`AND l.enabled = false` : sql``}
-    GROUP BY l.id, u.name, u.email, u.plan, w.name
+    GROUP BY l.id, d.domain, u.name, u.email, u.plan, w.name
     HAVING COUNT(ce.id) >= ${minClicks}
     ORDER BY ${sql.raw(orderBy)}
     LIMIT 500
@@ -88778,6 +89324,15 @@ router14.get("/admin/users/top", requireAdmin, async (req, res) => {
     LIMIT ${limit2}
   `);
   res.json(rows.rows);
+});
+router14.get("/admin/notifications", requireAdmin, async (_req, res) => {
+  const last24h = new Date(Date.now() - 24 * 60 * 60 * 1e3);
+  const [newSignups, failedEmails, recentAudit] = await Promise.all([
+    db.select({ id: usersTable.id, name: usersTable.name, email: usersTable.email, createdAt: usersTable.createdAt }).from(usersTable).where(sql`${usersTable.createdAt} >= ${last24h}`).orderBy(desc(usersTable.createdAt)).limit(10),
+    db.select({ id: emailLogsTable.id, recipient: emailLogsTable.recipient, subject: emailLogsTable.subject, createdAt: emailLogsTable.createdAt }).from(emailLogsTable).where(sql`${emailLogsTable.status} = 'failed' AND ${emailLogsTable.createdAt} >= ${last24h}`).orderBy(desc(emailLogsTable.createdAt)).limit(10),
+    db.select({ id: adminAuditLogTable.id, action: adminAuditLogTable.action, targetType: adminAuditLogTable.targetType, createdAt: adminAuditLogTable.createdAt }).from(adminAuditLogTable).where(sql`${adminAuditLogTable.createdAt} >= ${last24h}`).orderBy(desc(adminAuditLogTable.createdAt)).limit(10)
+  ]);
+  res.json({ newSignups, failedEmails, recentAudit });
 });
 router14.get("/admin/audit-log", requireAdmin, async (req, res) => {
   const action = req.query.action ?? "";
@@ -88878,7 +89433,14 @@ router14.post("/admin/users/:id/impersonate", requireAdmin, async (req, res) => 
   session2.userId = user.id;
   session2.workspaceId = ws?.id ?? null;
   await logAuditAction("impersonate_user", "user", userId, { userName: user.name }, req.ip);
-  res.json({ ok: true, user: { id: user.id, name: user.name, email: user.email } });
+  req.session.save((err) => {
+    if (err) {
+      console.error("Impersonate session save error:", err);
+      res.status(500).json({ error: "Session error" });
+      return;
+    }
+    res.json({ ok: true, user: { id: user.id, name: user.name, email: user.email } });
+  });
 });
 router14.post("/admin/stop-impersonate", requireAdmin, async (req, res) => {
   const session2 = req.session;
@@ -88889,7 +89451,10 @@ router14.post("/admin/stop-impersonate", requireAdmin, async (req, res) => {
     await logAuditAction("stop_impersonate", "user", imp.userId, { userName: imp.userName }, req.ip);
   }
   delete session2.impersonating;
-  res.json({ ok: true });
+  req.session.save((err) => {
+    if (err) console.error("Stop-impersonate session save error:", err);
+    res.json({ ok: true });
+  });
 });
 router14.get("/admin/impersonation-status", requireAdmin, (req, res) => {
   const imp = req.session.impersonating;
@@ -89290,6 +89855,43 @@ router14.get("/admin/users/:id/workspace-detail", requireAdmin, async (req, res)
     }
   });
 });
+router14.get("/admin/users/:id/activity-timeline", requireAdmin, async (req, res) => {
+  const userId = req.params.id;
+  const [ws] = await db.select({ id: workspacesTable.id }).from(workspacesTable).where(eq(workspacesTable.userId, userId)).limit(1);
+  if (!ws) {
+    res.json({ events: [] });
+    return;
+  }
+  const userLinks = await db.select({ id: linksTable.id, slug: linksTable.slug, createdAt: linksTable.createdAt }).from(linksTable).where(eq(linksTable.workspaceId, ws.id));
+  const events = [];
+  for (const link of userLinks) {
+    events.push({ type: "link_created", description: `Created link /${link.slug}`, timestamp: link.createdAt?.toISOString() || "", meta: { slug: link.slug } });
+  }
+  if (userLinks.length > 0) {
+    const linkIds = userLinks.map((l) => l.id);
+    const clicks = await db.select({
+      slug: clickEventsTable.slug,
+      country: clickEventsTable.country,
+      timestamp: clickEventsTable.timestamp
+    }).from(clickEventsTable).where(inArray(clickEventsTable.linkId, linkIds)).orderBy(desc(clickEventsTable.timestamp)).limit(50);
+    for (const c of clicks) {
+      events.push({ type: "click", description: `Click on /${c.slug} from ${c.country || "Unknown"}`, timestamp: c.timestamp?.toISOString() || "", meta: { slug: c.slug, country: c.country } });
+    }
+  }
+  const [user] = await db.select({ email: usersTable.email }).from(usersTable).where(eq(usersTable.id, userId)).limit(1);
+  if (user) {
+    const emails = await db.select({ subject: emailLogsTable.subject, status: emailLogsTable.status, createdAt: emailLogsTable.createdAt }).from(emailLogsTable).where(eq(emailLogsTable.recipient, user.email)).orderBy(desc(emailLogsTable.createdAt)).limit(20);
+    for (const e of emails) {
+      events.push({ type: "email", description: `${e.status === "sent" ? "Sent" : "Failed"}: ${e.subject}`, timestamp: e.createdAt?.toISOString() || "", meta: { status: e.status } });
+    }
+  }
+  const auditActions = await db.select({ action: adminAuditLogTable.action, details: adminAuditLogTable.details, createdAt: adminAuditLogTable.createdAt }).from(adminAuditLogTable).where(eq(adminAuditLogTable.targetId, userId)).orderBy(desc(adminAuditLogTable.createdAt)).limit(20);
+  for (const a of auditActions) {
+    events.push({ type: "admin_action", description: `Admin: ${a.action}`, timestamp: a.createdAt?.toISOString() || "", meta: { action: a.action } });
+  }
+  events.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+  res.json({ events: events.slice(0, 100) });
+});
 router14.post("/admin/notifications/preview", requireAdmin, async (req, res) => {
   const { planFilter, template, subject, body } = req.body;
   const conditions = [];
@@ -89357,6 +89959,28 @@ router14.post("/admin/notifications/send", requireAdmin, async (req, res) => {
   res.json({ ok: true, sent, failed, total: users.length });
 });
 var PLATFORM_SETTINGS_KEY = "platform_config";
+router14.post("/admin/backup", requireAdmin, async (req, res) => {
+  try {
+    const { exec } = __require("child_process");
+    const dbUrl = process.env.DATABASE_URL;
+    if (!dbUrl) {
+      res.status(500).json({ error: "DATABASE_URL not configured" });
+      return;
+    }
+    const filename = `snipr-backup-${(/* @__PURE__ */ new Date()).toISOString().slice(0, 10)}.sql`;
+    res.setHeader("Content-Type", "application/sql");
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+    const child = exec(`pg_dump "${dbUrl}" --no-owner --no-acl`, { maxBuffer: 100 * 1024 * 1024 });
+    child.stdout.pipe(res);
+    child.stderr.on("data", (d) => console.error("pg_dump stderr:", d));
+    child.on("error", (err) => {
+      if (!res.headersSent) res.status(500).json({ error: err.message });
+    });
+    await logAuditAction("database_backup", null, null, null, req.ip);
+  } catch (err) {
+    if (!res.headersSent) res.status(500).json({ error: err.message });
+  }
+});
 router14.get("/admin/platform-settings", requireAdmin, async (_req, res) => {
   const [row] = await db.select().from(platformSettingsTable).where(eq(platformSettingsTable.key, PLATFORM_SETTINGS_KEY));
   if (!row) {
@@ -89394,64 +90018,142 @@ var import_express15 = __toESM(require_express2(), 1);
 
 // src/lib/realtime-bus.ts
 var clients = /* @__PURE__ */ new Set();
+var MAX_CONNECTIONS_PER_WORKSPACE = 20;
 function subscribe(workspaceId, res) {
+  if (connectedCount(workspaceId) >= MAX_CONNECTIONS_PER_WORKSPACE) {
+    return null;
+  }
   const client = { workspaceId, res };
   clients.add(client);
   return () => clients.delete(client);
 }
+var CF_FLUSH_PAD = " ".repeat(8192);
 function broadcast(workspaceId, event) {
-  const data = JSON.stringify(event);
-  for (const client of clients) {
+  const data = `: ${CF_FLUSH_PAD}
+data: ${JSON.stringify(event)}
+
+`;
+  const snapshot = Array.from(clients);
+  for (const client of snapshot) {
     if (client.workspaceId === workspaceId) {
       try {
-        client.res.write(`data: ${data}
-
-`);
+        if (client.res.writableEnded || client.res.destroyed) {
+          clients.delete(client);
+          continue;
+        }
+        client.res.write(data);
+        if (typeof client.res.flush === "function") {
+          client.res.flush();
+        }
       } catch {
         clients.delete(client);
       }
     }
   }
 }
+function connectedCount(workspaceId) {
+  let n = 0;
+  for (const client of clients) {
+    if (client.workspaceId === workspaceId) n++;
+  }
+  return n;
+}
+function pruneDeadClients() {
+  const snapshot = Array.from(clients);
+  for (const client of snapshot) {
+    if (client.res.writableEnded || client.res.destroyed) {
+      clients.delete(client);
+    }
+  }
+}
 
 // src/routes/realtime.ts
 var router15 = (0, import_express15.Router)();
+var CF_FLUSH_PAD2 = " ".repeat(8192);
+function sseWrite(res, data) {
+  try {
+    if (res.writableEnded || res.destroyed) return;
+    res.write(data);
+    if (typeof res.flush === "function") res.flush();
+  } catch {
+  }
+}
+setInterval(pruneDeadClients, 3e4);
 router15.get("/realtime/stream", async (req, res) => {
-  if (!req.session?.userId) {
+  const workspaceId = req.session?.workspaceId;
+  const userId = req.session?.userId;
+  if (!userId || !workspaceId) {
     res.status(401).json({ error: "Unauthorized" });
     return;
   }
-  const [workspace] = await db.select().from(workspacesTable).where(eq(workspacesTable.userId, req.session.userId));
-  if (!workspace) {
-    res.status(404).json({ error: "Workspace not found" });
-    return;
-  }
-  res.setHeader("Content-Type", "text/event-stream");
-  res.setHeader("Cache-Control", "no-cache, no-transform");
+  res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
+  res.setHeader("Cache-Control", "no-cache, no-store, no-transform, must-revalidate");
   res.setHeader("Connection", "keep-alive");
   res.setHeader("X-Accel-Buffering", "no");
   const origin = req.headers.origin;
   if (origin) res.setHeader("Access-Control-Allow-Origin", origin);
   res.setHeader("Access-Control-Allow-Credentials", "true");
   res.flushHeaders();
-  res.write(`data: ${JSON.stringify({ type: "connected", workspaceId: workspace.id })}
+  if (typeof res.socket?.setNoDelay === "function") {
+    res.socket.setNoDelay(true);
+  }
+  sseWrite(res, `: ${CF_FLUSH_PAD2}
+`);
+  sseWrite(res, `: ${CF_FLUSH_PAD2}
+data: ${JSON.stringify({ type: "connected", workspaceId })}
 
 `);
-  const unsubscribe = subscribe(workspace.id, res);
+  const unsubscribe = subscribe(workspaceId, res);
+  if (!unsubscribe) {
+    sseWrite(res, `data: ${JSON.stringify({ type: "error", message: "Too many live connections" })}
+
+`);
+    res.end();
+    return;
+  }
   const heartbeat = setInterval(() => {
-    try {
-      res.write(`data: ${JSON.stringify({ type: "ping" })}
+    if (res.writableEnded || res.destroyed) {
+      clearInterval(heartbeat);
+      unsubscribe();
+      return;
+    }
+    sseWrite(res, `: ${CF_FLUSH_PAD2}
+data: ${JSON.stringify({ type: "ping" })}
 
 `);
-    } catch {
-      clearInterval(heartbeat);
-    }
-  }, 25e3);
+  }, 5e3);
   req.on("close", () => {
     clearInterval(heartbeat);
     unsubscribe();
-    res.end();
+    if (!res.writableEnded) res.end();
   });
+});
+router15.get("/realtime/poll", async (req, res) => {
+  const workspaceId = req.session?.workspaceId;
+  if (!req.session?.userId || !workspaceId) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+  res.json({ connected: true, viewers: connectedCount(workspaceId) });
+});
+var INGEST_SECRET = process.env.REALTIME_INGEST_SECRET;
+router15.post("/realtime/ingest", (req, res) => {
+  if (!INGEST_SECRET) {
+    res.status(503).json({ error: "Ingest secret not configured" });
+    return;
+  }
+  const auth = req.headers["x-ingest-secret"];
+  if (!auth || auth !== INGEST_SECRET) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+  const { workspaceId, event } = req.body ?? {};
+  if (!workspaceId || !event) {
+    res.status(400).json({ error: "Missing workspaceId or event" });
+    return;
+  }
+  broadcast(workspaceId, event);
+  res.json({ ok: true });
 });
 var realtime_default = router15;
 
@@ -104770,7 +105472,7 @@ router16.get("/billing/session-status", requireAuth, async (req, res) => {
     const stripe = getStripeClient();
     const session2 = await stripe.checkout.sessions.retrieve(sessionId);
     const sessionCustomer = typeof session2.customer === "string" ? session2.customer : session2.customer?.id;
-    if (user.stripeCustomerId && sessionCustomer && sessionCustomer !== user.stripeCustomerId) {
+    if (!user.stripeCustomerId || !sessionCustomer || sessionCustomer !== user.stripeCustomerId) {
       res.status(403).json({ error: "Forbidden." });
       return;
     }
@@ -104962,6 +105664,8 @@ function hashIp(ip) {
   return crypto11.createHash("sha256").update(ip + "snipr-salt").digest("hex").slice(0, 16);
 }
 function getRealIp(req) {
+  const cfIp = req.headers["cf-connecting-ip"];
+  if (cfIp) return (Array.isArray(cfIp) ? cfIp[0] : cfIp).trim();
   const forwarded = req.headers["x-forwarded-for"];
   if (forwarded) {
     const first = Array.isArray(forwarded) ? forwarded[0] : forwarded.split(",")[0];
@@ -104998,46 +105702,36 @@ function parseReferrer(referrer) {
 }
 var BATCH_MAX = 100;
 var FLUSH_INTERVAL_MS = 500;
-var MAX_RETRY_ATTEMPTS = 3;
 var clickQueue = [];
-var consecutiveFailures = 0;
+var flushPromise = null;
 async function flushQueue() {
-  if (clickQueue.length === 0) return;
-  const batch = clickQueue.splice(0, BATCH_MAX);
-  try {
-    await db.insert(clickEventsTable).values(batch);
-    if (consecutiveFailures > 0) {
-      consecutiveFailures = 0;
-      logger.info("Click queue flush recovered after failures");
-    }
-  } catch (error40) {
-    logger.error(error40, {
-      message: "Failed to flush click queue",
-      batchSize: batch.length,
-      queueSize: clickQueue.length
-    });
-    if (consecutiveFailures < MAX_RETRY_ATTEMPTS) {
-      clickQueue.unshift(...batch);
-      consecutiveFailures++;
-      if (clickQueue.length > 5e3) {
-        logger.warn({
-          message: "Click queue overflow warning",
-          queueSize: clickQueue.length,
-          consecutiveFailures
-        });
+  if (clickQueue.length === 0 || flushPromise) return;
+  const doFlush = async () => {
+    try {
+      while (clickQueue.length > 0) {
+        const batch = clickQueue.splice(0, BATCH_MAX);
+        try {
+          await db.insert(clickEventsTable).values(batch);
+        } catch (error40) {
+          logger.error(error40, {
+            message: "Failed to flush click queue \u2014 batch dropped to prevent duplicates",
+            batchSize: batch.length
+          });
+        }
       }
-    } else {
-      logger.error({
-        message: "Click batch permanently lost after max retries",
-        batchSize: batch.length,
-        consecutiveFailures
-      });
-      consecutiveFailures = 0;
+    } finally {
+      flushPromise = null;
     }
-  }
+  };
+  flushPromise = doFlush();
+  return flushPromise;
 }
-setInterval(flushQueue, FLUSH_INTERVAL_MS);
+var flushInterval = setInterval(flushQueue, FLUSH_INTERVAL_MS);
 async function shutdown() {
+  clearInterval(flushInterval);
+  if (flushPromise) {
+    await flushPromise;
+  }
   await flushQueue();
   process.exit(0);
 }
@@ -105046,10 +105740,13 @@ process.once("SIGINT", shutdown);
 async function trackClick(req, link, isQr = false) {
   try {
     const ip = getRealIp(req);
-    const ipHash = ip ? hashIp(ip) : null;
+    const ipHash = ip ? hashIp(ip) : hashIp("unknown-" + Date.now());
     const ua = req.headers["user-agent"];
     const { browser, os, device } = parseUserAgent(ua);
-    const { country, city } = getGeo(ip);
+    const cfCountry = req.headers["cf-ipcountry"];
+    const geo = getGeo(ip);
+    const country = cfCountry && cfCountry !== "XX" && cfCountry !== "T1" ? cfCountry.toUpperCase() : geo.country;
+    const city = geo.city;
     const referrer = parseReferrer(req.headers.referer ?? req.headers.referrer);
     const utmSource = req.query.utm_source ?? null;
     const utmMedium = req.query.utm_medium ?? null;
@@ -105107,7 +105804,8 @@ async function trackClick(req, link, isQr = false) {
       timestamp: (/* @__PURE__ */ new Date()).toISOString(),
       isQr
     });
-  } catch {
+  } catch (error40) {
+    logger.error(error40, { message: "trackClick failed", linkId: link.id, slug: link.slug });
   }
 }
 
@@ -105167,27 +105865,698 @@ function buildPixelPage(pixels, destinationUrl) {
 <meta charset="utf-8">
 <meta http-equiv="refresh" content="0;url=${dest}">
 ${scripts}
-<script>window.location.href=${JSON.stringify(destinationUrl)};</script>
+<script>window.location.href=${JSON.stringify(destinationUrl).replace(/</g, "\\u003c")};</script>
 </head>
 <body></body>
 </html>`;
 }
 
+// src/lib/bot-detector.ts
+var SEARCH_ENGINE_BOTS = [
+  // Google (20+ variants)
+  "googlebot",
+  "google-inspectiontool",
+  "googleother",
+  "google-extended",
+  "google-safety",
+  "googleproducer",
+  "google-site-verification",
+  "google-structured-data-testing-tool",
+  "google-xrawler",
+  "googledocs",
+  "googleimageproxy",
+  "mediapartners-google",
+  "mediapartners",
+  "adsbot-google",
+  "adsbot",
+  "apis-google",
+  "feedfetcher-google",
+  "google-read-aloud",
+  "duplex",
+  "googleweblight",
+  "storebot-google",
+  // Bing / Microsoft (10+ variants)
+  "bingbot",
+  "bingpreview",
+  "msnbot",
+  "msnbot-media",
+  "adidxbot",
+  "microsoftpreview",
+  "binglocalsearch",
+  "microsoftdocs",
+  // Yahoo
+  "slurp",
+  "yahoo",
+  "yahoodirbot",
+  // Yandex (8+ variants)
+  "yandexbot",
+  "yandexaccessibilitybot",
+  "yandexblogs",
+  "yandexcalendar",
+  "yandexdirect",
+  "yandexfavicons",
+  "yandexfordomain",
+  "yandeximages",
+  "yandexmarket",
+  "yandexmedia",
+  "yandexmetrika",
+  "yandexnews",
+  "yandexpagechecker",
+  "yandexscreenshotbot",
+  "yandexturbo",
+  "yandexvertis",
+  "yandexvideo",
+  "yandexwebmaster",
+  // Baidu
+  "baiduspider",
+  "baiduspider-image",
+  "baiduspider-video",
+  "baiduspider-news",
+  // DuckDuckGo
+  "duckduckbot",
+  "duckduckgo-favicons-bot",
+  "duckassistbot",
+  // Apple
+  "applebot",
+  // Other search engines
+  "sogou",
+  "sosospider",
+  "exabot",
+  "qwantify",
+  "ia_archiver",
+  "seznam",
+  "seznambot",
+  "ccbot",
+  "naver",
+  "yeti",
+  "coccoc",
+  "mojeekbot",
+  "petalbot",
+  "barkrowler",
+  "ecosia"
+];
+var SOCIAL_MEDIA_BOTS = [
+  // Facebook / Meta
+  "facebookexternalhit",
+  "facebookcatalog",
+  "facebot",
+  "meta-externalagent",
+  // Twitter / X
+  "twitterbot",
+  "tweetmemebot",
+  // LinkedIn
+  "linkedinbot",
+  "linkedin",
+  // WhatsApp
+  "whatsapp",
+  // Telegram
+  "telegrambot",
+  "telegram",
+  // Discord
+  "discordbot",
+  // Slack
+  "slackbot",
+  "slack-imgproxy",
+  "slackbot-linkexpanding",
+  // Pinterest
+  "pinterest",
+  "pinterestbot",
+  // Snapchat
+  "snapchat",
+  // Viber
+  "viber",
+  // Line
+  "line",
+  // Skype
+  "skypeuripreview",
+  // Reddit
+  "redditbot",
+  // Tumblr
+  "tumblr",
+  // Instagram (in-app browser uses fb externalhit too)
+  "instagram",
+  // WeChat
+  "micromessenger",
+  // KakaoTalk
+  "kakaotalk-scrap",
+  "kakaostory-og-reader",
+  // Mastodon
+  "mastodon",
+  // Other messaging
+  "zalobot",
+  "threema"
+];
+var AI_BOTS = [
+  // OpenAI
+  "gptbot",
+  "chatgpt-user",
+  "oai-searchbot",
+  // Anthropic
+  "claudebot",
+  "claude-web",
+  "anthropic-ai",
+  // Perplexity
+  "perplexitybot",
+  // Cohere
+  "cohere-ai",
+  // Google AI
+  "google-extended",
+  // Meta AI
+  "meta-externalagent",
+  "facebookbot",
+  // ByteDance / TikTok
+  "bytespider",
+  "bytedance",
+  "tiktokbot",
+  // Amazon / Alexa
+  "amazonbot",
+  "alexabot",
+  // Apple AI
+  "apple-cloudkit",
+  "applebot-extended",
+  // Common Crawl (used to train AI)
+  "ccbot",
+  // Diffbot
+  "diffbot",
+  // Neeva
+  "neevabot",
+  // YouBot (you.com)
+  "youbot",
+  // Brave
+  "bravebot",
+  // AI2 (Allen Institute)
+  "ai2bot",
+  // Webz.io
+  "omgili",
+  "omgilibot",
+  // Timpibot
+  "timpibot",
+  // Velenpublicwebcrawler
+  "velenpublicwebcrawler",
+  // Kangaroo Bot
+  "kangaroobot",
+  // GPT crawlers
+  "gpt"
+];
+var SEO_BOTS = [
+  // Ahrefs
+  "ahrefsbot",
+  "ahrefssiteaudit",
+  // SEMrush
+  "semrushbot",
+  "semrushbot-ba",
+  "semrushbot-bm",
+  "semrushbot-ct",
+  "semrushbot-sa",
+  "semrushbot-si",
+  "semrushbot-swa",
+  "splitpagesignalbot",
+  // Moz
+  "dotbot",
+  "rogerbot",
+  "mj12bot",
+  // Majestic
+  "majestic12",
+  "mj12bot",
+  // Screaming Frog
+  "screaming frog seo spider",
+  // Sistrix
+  "sistrix",
+  // SpyFu
+  "spyfu",
+  // Serpstat
+  "serpstatbot",
+  // Raven
+  "raventools",
+  // DeepCrawl / Lumar
+  "deepcrawl",
+  // ContentKing
+  "contentkingapp",
+  // Sitebulb
+  "sitebulb",
+  // OnCrawl
+  "oncrawl",
+  // BrightEdge
+  "brightedge",
+  // Conductor
+  "conductor",
+  // Botify
+  "botify",
+  // seostar
+  "seostar",
+  // DataForSEO
+  "dataforseo",
+  // Webmeup
+  "blexbot",
+  "blex",
+  // ZoominfoBot
+  "zoominfobot",
+  // Other marketing
+  "hubspot",
+  "marketo",
+  "pardot",
+  "salesforce"
+];
+var MONITORING_BOTS = [
+  // Uptime monitors
+  "uptimerobot",
+  "pingdom",
+  "statuscake",
+  "hetrixtools",
+  "site24x7",
+  "freshping",
+  "updown.io",
+  "montastic",
+  "nodeping",
+  "checkhost",
+  "uptrends",
+  "uptimia",
+  // APM & Infra
+  "datadog",
+  "newrelic",
+  "dynatrace",
+  "appdynamics",
+  "elastic",
+  "prometheus",
+  "grafana",
+  "zabbix",
+  "nagios",
+  "prtg",
+  "solarwinds",
+  "thousandeyes",
+  // Synthetic monitoring
+  "catchpoint",
+  "rigor",
+  "keynote",
+  // Health checks
+  "kube-probe",
+  "elb-healthchecker",
+  "googlehc",
+  "aws-health",
+  "azure-traffic-manager",
+  // Dead link checkers
+  "w3c_validator",
+  "w3c-checklink",
+  "linkchecker",
+  "deadlinkchecker",
+  "brokenlinkcheck",
+  "linkwalker",
+  "checkbot",
+  "screaming frog"
+];
+var SECURITY_BOTS = [
+  "nessus",
+  "qualys",
+  "nmap",
+  "nikto",
+  "openvas",
+  "burpsuite",
+  "owasp",
+  "sqlmap",
+  "dirbuster",
+  "gobuster",
+  "wpscan",
+  "nuclei",
+  "masscan",
+  "shodan",
+  "censys",
+  "internetmeasurement",
+  "zgrab",
+  "zmapproject",
+  "securitytrails",
+  "intrigue",
+  "sn1per"
+];
+var FEED_BOTS = [
+  "feedly",
+  "feedparser",
+  "feedspot",
+  "newsblur",
+  "inoreader",
+  "theoldreader",
+  "netvibes",
+  "feedbin",
+  "feedwrangler",
+  "miniflux",
+  "tiny tiny rss",
+  "liferea",
+  "netnewswire",
+  "rssowl",
+  "feedreader",
+  "feedvalidator",
+  "universalfeedparser",
+  "blogtrottr",
+  "superfeedr"
+];
+var ARCHIVE_BOTS = [
+  // Internet Archive
+  "archive.org_bot",
+  "wayback",
+  "ia_archiver",
+  // Common Crawl
+  "ccbot",
+  // Academic
+  "researchscan",
+  "university",
+  "academic",
+  // Turnitin
+  "turnitinbot",
+  // Library
+  "libwww",
+  "httrack",
+  "offline explorer"
+];
+var CLI_TOOLS = [
+  "curl",
+  "wget",
+  "httpie",
+  "aria2",
+  "lynx",
+  "links",
+  "elinks",
+  "w3m",
+  "fetch",
+  "undici",
+  "got",
+  "superagent"
+];
+var HEADLESS_BOTS = [
+  "headlesschrome",
+  "headless",
+  "phantomjs",
+  "phantom",
+  "puppeteer",
+  "playwright",
+  "selenium",
+  "webdriver",
+  "cypress",
+  "nightwatch",
+  "zombie",
+  "slimerjs",
+  "htmlunit",
+  "mechanize",
+  "scrapy",
+  "nutch",
+  "heritrix",
+  "colly",
+  "goutte"
+];
+var HTTP_LIBRARIES = [
+  "python-requests",
+  "python-urllib",
+  "python-httpx",
+  "aiohttp",
+  "httplib2",
+  "pycurl",
+  "axios",
+  "node-fetch",
+  "undici",
+  "superagent",
+  "request",
+  "got/",
+  "needle",
+  "bent",
+  "phin",
+  "go-http-client",
+  "go-resty",
+  "java/",
+  "apache-httpclient",
+  "okhttp",
+  "jersey",
+  "ruby",
+  "faraday",
+  "rest-client",
+  "typhoeus",
+  "perl",
+  "lwp",
+  "libwww-perl",
+  "php",
+  "guzzlehttp",
+  "guzzle",
+  "dart",
+  "http.client",
+  "rust",
+  "reqwest",
+  "hyper",
+  "swift",
+  "alamofire",
+  "nsurlsession",
+  "kotlin"
+];
+var SCRAPERS = [
+  "scrapy",
+  "colly",
+  "goutte",
+  "httrack",
+  "sitesucker",
+  "webcopier",
+  "teleport",
+  "website-mirrorer",
+  "getright",
+  "grabber",
+  "download demon",
+  "flashget",
+  "leechftp",
+  "webzip",
+  "extract",
+  "harvest",
+  "collector",
+  "webscraper",
+  "dataminer",
+  "import.io",
+  "scrapyrt",
+  "beautifulsoup",
+  "newspaper",
+  "readability",
+  "diffbot",
+  "embedly",
+  "iframely",
+  "microlink",
+  "unfurl",
+  "open-graph-scraper"
+];
+var EMAIL_BOTS = [
+  "outlook",
+  "thunderbird",
+  "apple-mail",
+  "googleimageproxy",
+  "yahoo-mailproxy",
+  "mailchimp",
+  "sendgrid",
+  "mailgun",
+  "postmark",
+  "sparkpost",
+  "amazonses",
+  "mandrill",
+  "litmus",
+  "email on acid",
+  "returnpath",
+  "250ok"
+];
+var PREVIEW_BOTS = [
+  "preview",
+  "embed",
+  "oembed",
+  "opengraph",
+  "og-image",
+  "metatags",
+  "link-preview",
+  "unfurl",
+  "card-fetch",
+  "vkshare",
+  "okhttp",
+  "outbrain",
+  "taboola",
+  "flipboard",
+  "pocket",
+  "instapaper",
+  "readability",
+  "summify"
+];
+var MISC_BOTS = [
+  // Generic bot identifiers
+  "bot",
+  "crawl",
+  "spider",
+  "scraper",
+  "checker",
+  "scanner",
+  "monitor",
+  "analyzer",
+  "inspector",
+  "validator",
+  // Specific bots
+  "360spider",
+  "acunetix",
+  "addthis",
+  "adscanner",
+  "baiduspider",
+  "barkrowler",
+  "blekkobot",
+  "bsalsa",
+  "catchbot",
+  "changedetection",
+  "cis455crawler",
+  "cliqzbot",
+  "cloudsystemnetworks",
+  "cocolyzebot",
+  "comodo",
+  "crawler4j",
+  "crystalsemanticsbot",
+  "daum",
+  "discobot",
+  "domaincrawler",
+  "duckduckbot",
+  "ezooms",
+  "fastbot",
+  "findlinks",
+  "gazebobot",
+  "gigabot",
+  "grapeshot",
+  "hatena",
+  "heritrix",
+  "icc-crawler",
+  "ichiro",
+  "infoseek",
+  "ips-agent",
+  "iskanie",
+  "jamesjbot",
+  "jetslide",
+  "jooblebot",
+  "kaz.kz_bot",
+  "larbin",
+  "ltx71",
+  "mail.ru_bot",
+  "megaindex",
+  "moatbot",
+  "moreover",
+  "multiviewbot",
+  "netcraft",
+  "netpeakspider",
+  "obot",
+  "openindexspider",
+  "orangebot",
+  "pagepeeker",
+  "paperlibot",
+  "plukkie",
+  "pompos",
+  "postrank",
+  "quora link preview",
+  "qwantify",
+  "rankactivelinkbot",
+  "reaper",
+  "redditbot",
+  "riddler",
+  "rivva",
+  "sbl-bot",
+  "seokicks",
+  "seoscanners",
+  "siteexplorer",
+  "skypeuripreview",
+  "snap url preview",
+  "sogou",
+  "spbot",
+  "startmebot",
+  "steeler",
+  "stq_bot",
+  "surveybot",
+  "tineye",
+  "toplistbot",
+  "traackr",
+  "tweetedtimes",
+  "twengabot",
+  "twitterbot",
+  "urlappendbot",
+  "vagabondo",
+  "vebidoobot",
+  "voilabot",
+  "wbsearchbot",
+  "web-archive",
+  "webalta",
+  "webceo",
+  "webmon",
+  "wesee",
+  "wikido",
+  "woorank",
+  "woriobot",
+  "wotbox",
+  "xovibot",
+  "y!j-asr",
+  "yacybot",
+  "yisouspider",
+  "zumbot"
+];
+var ALL_BOTS = [
+  ...SEARCH_ENGINE_BOTS,
+  ...SOCIAL_MEDIA_BOTS,
+  ...AI_BOTS,
+  ...SEO_BOTS,
+  ...MONITORING_BOTS,
+  ...SECURITY_BOTS,
+  ...FEED_BOTS,
+  ...ARCHIVE_BOTS,
+  ...CLI_TOOLS,
+  ...HEADLESS_BOTS,
+  ...HTTP_LIBRARIES,
+  ...SCRAPERS,
+  ...EMAIL_BOTS,
+  ...PREVIEW_BOTS,
+  ...MISC_BOTS
+];
+var uniqueBots = [...new Set(ALL_BOTS.map((b) => b.toLowerCase()))].sort((a, b) => b.length - a.length);
+function escapeRegex2(str2) {
+  return str2.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+var BOT_UA_PATTERN = new RegExp(
+  uniqueBots.map(escapeRegex2).join("|"),
+  "i"
+);
+var PREFETCH_HEADERS = ["purpose", "x-purpose", "x-moz", "sec-purpose"];
+var PREFETCH_VALUES = /prefetch|prerender|preview/i;
+var REAL_BROWSER_PATTERN = /^Mozilla\/5\.0\s.+(?:AppleWebKit|Chrome|Firefox|Safari|Edg|OPR|Opera|Trident|Gecko)/i;
+function isBot(req) {
+  if (req.method === "HEAD") return true;
+  if (req.method !== "GET") return true;
+  const ua = req.headers["user-agent"] ?? "";
+  if (!ua || ua.length < 10) return true;
+  for (const header of PREFETCH_HEADERS) {
+    const value = req.headers[header];
+    if (value && PREFETCH_VALUES.test(value)) return true;
+  }
+  if (REAL_BROWSER_PATTERN.test(ua)) return false;
+  if (BOT_UA_PATTERN.test(ua)) return true;
+  return false;
+}
+
 // src/routes/redirect.ts
 var router18 = (0, import_express18.Router)();
+var _domainCache = /* @__PURE__ */ new Map();
+var DOMAIN_CACHE_TTL = 5 * 60 * 1e3;
+async function lookupDomainCached(host, subdomain, parentDomain) {
+  const now = Date.now();
+  const cached2 = _domainCache.get(host);
+  if (cached2 !== void 0 && now - (cached2?.ts ?? 0) < DOMAIN_CACHE_TTL) {
+    return cached2 ? { id: cached2.id, workspaceId: cached2.workspaceId } : null;
+  }
+  let [rec] = await db.select({ id: domainsTable.id, workspaceId: domainsTable.workspaceId }).from(domainsTable).where(and(eq(domainsTable.domain, host), eq(domainsTable.verified, true)));
+  if (!rec && subdomain) {
+    [rec] = await db.select({ id: domainsTable.id, workspaceId: domainsTable.workspaceId }).from(domainsTable).where(and(eq(domainsTable.domain, parentDomain), eq(domainsTable.verified, true), eq(domainsTable.supportsSubdomains, true)));
+  }
+  const result = rec ? { id: rec.id, workspaceId: rec.workspaceId, ts: now } : null;
+  _domainCache.set(host, result);
+  return rec ? { id: rec.id, workspaceId: rec.workspaceId } : null;
+}
 function escapeHtml3(str2) {
   return str2.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/'/g, "&#39;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 function escapeJsString(str2) {
   return str2.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/'/g, "\\'").replace(/\n/g, "\\n").replace(/\r/g, "\\r").replace(/<\//g, "<\\/");
 }
-function isSafeUrl(url2) {
-  try {
-    const parsed = new URL(url2);
-    return ["http:", "https:"].includes(parsed.protocol) || url2.includes("://");
-  } catch {
-    return url2.startsWith("http://") || url2.startsWith("https://") || /^[a-z][a-z0-9+.-]*:\/\//i.test(url2);
-  }
+function isSafeDeepLink(url2) {
+  if (!url2 || typeof url2 !== "string") return false;
+  const dangerous = /^(javascript|data|vbscript|file):/i;
+  if (dangerous.test(url2)) return false;
+  return url2.includes("://");
 }
 function extractSubdomainAndDomain(host) {
   const parts = host.split(".");
@@ -105207,8 +106576,9 @@ function weightedRandom(rules) {
   }
   return rules[rules.length - 1] ?? null;
 }
-function servePasswordPage(req, res, slug, error40) {
+function servePasswordPage(req, res, slug, error40, isCustomDomain) {
   const errorHtml = error40 ? `<p style="color:#dc2626;font-size:14px;margin:0 0 12px">${error40}</p>` : "";
+  const formAction = isCustomDomain ? `/${escapeHtml3(slug)}` : `/r/${escapeHtml3(slug)}`;
   res.status(200).send(`<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -105217,7 +106587,7 @@ function servePasswordPage(req, res, slug, error40) {
 <title>Protected Link</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{min-height:100vh;display:flex;align-items:center;justify-content:center;background:#f8fafc;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}
+body{min-height:100vh;display:flex;align-items:center;justify-center;background:#f8fafc;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}
 .card{background:#fff;border:1px solid #e2e8f0;border-radius:16px;padding:40px;width:100%;max-width:400px;box-shadow:0 4px 24px rgba(0,0,0,.06)}
 h2{font-size:22px;font-weight:700;color:#0f172a;margin-bottom:8px}
 p.sub{font-size:14px;color:#64748b;margin-bottom:24px}
@@ -105235,7 +106605,7 @@ button:hover{background:#4f46e5}
   <h2>Password Required</h2>
   <p class="sub">This link is password protected. Enter the password to continue.</p>
   ${errorHtml}
-  <form method="POST" action="/r/${slug}">
+  <form method="POST" action="${formAction}">
     <label for="password">Password</label>
     <input type="password" id="password" name="password" autofocus required placeholder="Enter password">
     <button type="submit">Unlock Link \u2192</button>
@@ -105246,8 +106616,8 @@ button:hover{background:#4f46e5}
 }
 function serveDeepLinkPage(res, destination, iosDeepLink, androidDeepLink) {
   const safeDest = escapeJsString(destination);
-  const iosBlock = iosDeepLink && isSafeUrl(iosDeepLink) ? `if(/iPhone|iPad|iPod/i.test(ua)){window.location.href="${escapeJsString(iosDeepLink)}";setTimeout(function(){window.location.href="${safeDest}"},1500);return;}` : "";
-  const androidBlock = androidDeepLink && isSafeUrl(androidDeepLink) ? `if(/Android/i.test(ua)){window.location.href="${escapeJsString(androidDeepLink)}";setTimeout(function(){window.location.href="${safeDest}"},1500);return;}` : "";
+  const iosBlock = iosDeepLink && isSafeDeepLink(iosDeepLink) ? `if(/iPhone|iPad|iPod/i.test(ua)){window.location.href="${escapeJsString(iosDeepLink)}";setTimeout(function(){window.location.href="${safeDest}"},1500);return;}` : "";
+  const androidBlock = androidDeepLink && isSafeDeepLink(androidDeepLink) ? `if(/Android/i.test(ua)){window.location.href="${escapeJsString(androidDeepLink)}";setTimeout(function(){window.location.href="${safeDest}"},1500);return;}` : "";
   res.status(200).send(`<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -105277,6 +106647,7 @@ window.location.href="${safeDest}";
 }
 function serveCloakedPage(res, destination) {
   const safeDest = escapeHtml3(destination);
+  const safeDestJs = escapeJsString(destination);
   res.status(200).send(`<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -105287,10 +106658,27 @@ function serveCloakedPage(res, destination) {
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{width:100%;height:100%;overflow:hidden}
 iframe{display:block;width:100%;height:100%;border:none}
+#loader{position:fixed;top:0;left:0;width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:#f8fafc;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;z-index:10}
+.spin{width:28px;height:28px;border:3px solid #e2e8f0;border-top-color:#6366f1;border-radius:50%;animation:r .7s linear infinite;margin-bottom:12px}
+@keyframes r{to{transform:rotate(360deg)}}
+.msg{color:#94a3b8;font-size:13px;text-align:center}
 </style>
 </head>
 <body>
-<iframe src="${safeDest}" sandbox="allow-forms allow-pointer-lock allow-popups allow-same-origin allow-scripts" allow="fullscreen; payment" referrerpolicy="no-referrer"></iframe>
+<div id="loader"><div><div class="spin"></div><div class="msg">Loading\u2026</div></div></div>
+<iframe id="cf" src="${safeDest}" allow="fullscreen; payment" referrerpolicy="no-referrer" style="visibility:hidden"></iframe>
+<script>
+(function(){
+  var f=document.getElementById("cf"),l=document.getElementById("loader");
+  var t=setTimeout(function(){window.location.replace("${safeDestJs}");},8000);
+  f.onload=function(){
+    clearTimeout(t);
+    try{var d=f.contentDocument||f.contentWindow.document;if(d&&d.body){f.style.visibility="visible";l.style.display="none";}}
+    catch(e){f.style.visibility="visible";l.style.display="none";}
+  };
+  f.onerror=function(){clearTimeout(t);window.location.replace("${safeDestJs}");};
+})();
+</script>
 </body>
 </html>`);
 }
@@ -105310,7 +106698,7 @@ function serveGonePage(res, message, fallbackUrl) {
 <div class="card">
 <div class="emoji">\u{1F6AB}</div>
 <h2>Link Unavailable</h2>
-<p>${message}</p>
+<p>${escapeHtml3(message)}</p>
 </div>
 </body>
 </html>`);
@@ -105321,7 +106709,7 @@ function getCustomDomainLandingPage(domain2) {
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>${domain2} \u2014 Branded Short Domain</title>
+<title>${escapeHtml3(domain2)} \u2014 Branded Short Domain</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>\u{1F517}</text></svg>">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -105356,7 +106744,7 @@ h1::after{content:'';display:block;width:40px;height:3px;background:#e5e7eb;bord
   </div>
   <div class="badge">ACTIVE</div>
   <h1>Branded Short Domain</h1>
-  <p class="desc"><span class="domain">${domain2}</span> is configured for link redirection.</p>
+  <p class="desc"><span class="domain">${escapeHtml3(domain2)}</span> is configured for link redirection.</p>
   <p class="back-link">If you arrived here by mistake, you can <a href="javascript:history.back()">go back</a>.</p>
   <div class="divider"></div>
   <p class="cta-text">Create your own branded short links</p>
@@ -105373,7 +106761,7 @@ function getCustomDomain404Page(domain2) {
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Link Not Found \u2014 ${domain2}</title>
+<title>Link Not Found \u2014 ${escapeHtml3(domain2)}</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#f8f9fb;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Inter',sans-serif}
@@ -105396,7 +106784,7 @@ p{font-size:14px;color:#6b7280;line-height:1.6}
     <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
   </div>
   <h1>Link Not Found</h1>
-  <p>This short link does not exist or has been removed from <strong>${domain2}</strong>.</p>
+  <p>This short link does not exist or has been removed from <strong>${escapeHtml3(domain2)}</strong>.</p>
   <p class="back"><a href="javascript:history.back()">Go back</a></p>
 </div>
 <p class="powered">Powered by <a href="https://snipr.sh">Snipr</a></p>
@@ -105404,7 +106792,7 @@ p{font-size:14px;color:#6b7280;line-height:1.6}
 </html>`;
 }
 router18.use(async (req, res, next) => {
-  if (req.method !== "GET" && req.method !== "HEAD") return next();
+  if (req.method !== "GET" && req.method !== "HEAD" && req.method !== "POST") return next();
   const rawHost = req.headers["x-forwarded-host"] || (req.headers.host ?? "");
   const host = rawHost.split(":")[0].toLowerCase().trim();
   if (!host || !host.includes(".") || host.includes("localhost") || host.includes("127.0.0.1") || host.includes(".replit.") || host.includes("replit.dev") || host.includes("replit.app") || host.includes("snipr.sh")) {
@@ -105413,14 +106801,7 @@ router18.use(async (req, res, next) => {
   const slug = req.path.slice(1).split("/")[0];
   if (slug && (slug.includes(".") || slug === "favicon" || slug === "robots")) return next();
   const { subdomain, domain: parentDomain } = extractSubdomainAndDomain(host);
-  let [domainRecord] = await db.select({ id: domainsTable.id, workspaceId: domainsTable.workspaceId }).from(domainsTable).where(and(eq(domainsTable.domain, host), eq(domainsTable.verified, true)));
-  if (!domainRecord && subdomain) {
-    [domainRecord] = await db.select({ id: domainsTable.id, workspaceId: domainsTable.workspaceId }).from(domainsTable).where(and(
-      eq(domainsTable.domain, parentDomain),
-      eq(domainsTable.verified, true),
-      eq(domainsTable.supportsSubdomains, true)
-    ));
-  }
+  const domainRecord = await lookupDomainCached(host, subdomain, parentDomain);
   if (!domainRecord) return next();
   if (!slug) {
     res.status(200).send(getCustomDomainLandingPage(host));
@@ -105434,9 +106815,57 @@ router18.use(async (req, res, next) => {
     res.status(404).send(getCustomDomain404Page(host));
     return;
   }
-  setImmediate(() => {
-    trackClick(req, link, false);
-  });
+  if (link.expiresAt && /* @__PURE__ */ new Date() > new Date(link.expiresAt)) {
+    if (link.fallbackUrl) {
+      res.redirect(302, link.fallbackUrl);
+    } else {
+      serveGonePage(res, "This link has expired.", null);
+    }
+    return;
+  }
+  if (req.method === "POST" && link.passwordHash) {
+    const { password } = req.body ?? {};
+    if (!password) {
+      servePasswordPage(req, res, slug, "Please enter a password.", true);
+      return;
+    }
+    const valid = await bcryptjs_default.compare(password, link.passwordHash);
+    if (!valid) {
+      servePasswordPage(req, res, slug, "Incorrect password. Please try again.", true);
+      return;
+    }
+    if (!req.session.unlockedLinks) {
+      req.session.unlockedLinks = {};
+    }
+    req.session.unlockedLinks[link.id] = Date.now();
+    req.session.save(() => {
+      res.redirect(302, `/${slug}`);
+    });
+    return;
+  }
+  if (link.passwordHash) {
+    const unlockedLinks = req.session.unlockedLinks;
+    const unlockedTime = unlockedLinks?.[link.id];
+    const UNLOCK_DURATION_MS = 30 * 60 * 1e3;
+    const isExpired = !unlockedTime || Date.now() - unlockedTime > UNLOCK_DURATION_MS;
+    if (isExpired) {
+      servePasswordPage(req, res, slug, void 0, true);
+      return;
+    }
+  }
+  if (link.clickLimit !== null && link.clickLimit !== void 0) {
+    const [{ value }] = await db.select({ value: count() }).from(clickEventsTable).where(eq(clickEventsTable.linkId, link.id));
+    if (Number(value) >= link.clickLimit) {
+      serveGonePage(res, "This link has reached its click limit.", link.fallbackUrl);
+      return;
+    }
+  }
+  const bot = isBot(req);
+  if (!bot) {
+    setImmediate(() => {
+      trackClick(req, link, req.query.qr === "1");
+    });
+  }
   if (link.iosDeepLink || link.androidDeepLink) {
     serveDeepLinkPage(res, link.destinationUrl, link.iosDeepLink, link.androidDeepLink);
     return;
@@ -105451,7 +106880,11 @@ router18.use(async (req, res, next) => {
 <html><head><meta charset="utf-8"><meta name="referrer" content="no-referrer"><meta http-equiv="refresh" content="0;url=${escapeHtml3(link.destinationUrl)}"><title>Redirecting...</title></head><body></body></html>`);
     return;
   }
-  res.redirect(301, link.destinationUrl);
+  if (bot) {
+    res.redirect(301, link.destinationUrl);
+    return;
+  }
+  res.status(200).send(`<!DOCTYPE html><html><head><meta charset="utf-8"><meta http-equiv="refresh" content="0;url=${escapeHtml3(link.destinationUrl)}"><script>window.location.replace("${escapeJsString(link.destinationUrl)}")</script><title>Redirecting\u2026</title></head><body></body></html>`);
 });
 router18.get("/r/:slug", async (req, res) => {
   const rawSlug = req.params.slug;
@@ -105563,9 +106996,12 @@ router18.get("/r/:slug", async (req, res) => {
     }
   }
   const isQr = req.query.qr === "1";
-  setImmediate(() => {
-    trackClick(req, link, isQr);
-  });
+  const bot = isBot(req);
+  if (!bot) {
+    setImmediate(() => {
+      trackClick(req, link, isQr);
+    });
+  }
   const pixels = await db.select().from(pixelsTable).where(eq(pixelsTable.workspaceId, link.workspaceId));
   if (pixels.length > 0) {
     res.send(buildPixelPage(pixels, destination));
@@ -105585,7 +107021,11 @@ router18.get("/r/:slug", async (req, res) => {
 <html><head><meta charset="utf-8"><meta name="referrer" content="no-referrer"><meta http-equiv="refresh" content="0;url=${escapeHtml3(destination)}"><title>Redirecting...</title></head><body></body></html>`);
     return;
   }
-  res.redirect(301, destination);
+  if (bot) {
+    res.redirect(301, destination);
+    return;
+  }
+  res.status(200).send(`<!DOCTYPE html><html><head><meta charset="utf-8"><meta http-equiv="refresh" content="0;url=${escapeHtml3(destination)}"><script>window.location.replace("${escapeJsString(destination)}")</script><title>Redirecting\u2026</title></head><body></body></html>`);
 });
 router18.post("/r/:slug", async (req, res) => {
   const rawSlug = req.params.slug;
@@ -105609,7 +107049,9 @@ router18.post("/r/:slug", async (req, res) => {
     req.session.unlockedLinks = {};
   }
   req.session.unlockedLinks[link.id] = Date.now();
-  res.redirect(302, `/r/${slug}`);
+  req.session.save(() => {
+    res.redirect(302, `/r/${slug}`);
+  });
 });
 var redirect_default = router18;
 
@@ -105781,7 +107223,12 @@ app.use(
     }
   })
 );
-app.use((0, import_compression.default)());
+app.use((0, import_compression.default)({
+  filter: (req, res) => {
+    if (req.path.includes("/realtime/stream")) return false;
+    return import_compression.default.filter(req, res);
+  }
+}));
 app.post(
   "/api/stripe/webhook",
   import_express19.default.raw({ type: "application/json" }),
@@ -105862,10 +107309,10 @@ var redirectLimiter = rate_limit_default({
 });
 var apiLimiter = rate_limit_default({
   windowMs: 60 * 1e3,
-  max: () => getRateLimitOverride("API General") ?? 200,
+  max: () => getRateLimitOverride("API General") ?? 600,
   standardHeaders: true,
   legacyHeaders: false,
-  skip: (req) => isIpWhitelisted(req.ip || ""),
+  skip: (req) => isIpWhitelisted(req.ip || "") || req.path.startsWith("/api/realtime/"),
   handler: rateLimitHandler
 });
 var passwordResetLimiter = rate_limit_default({

@@ -4,7 +4,7 @@ import {
   Tooltip, CartesianGrid,
 } from "recharts";
 
-const I = "#4F46E5";
+const I = "#818CF8";
 
 interface ChartTipProps {
   active?: boolean;
@@ -47,28 +47,28 @@ export default function DashboardAreaChart({ data, period }: Props) {
             <stop offset="100%" stopColor="#818CF8" stopOpacity={0}    />
           </linearGradient>
         </defs>
-        <CartesianGrid vertical={false} stroke="#E8EBF4" strokeDasharray="4 4" />
+        <CartesianGrid vertical={false} stroke="rgba(255,255,255,0.06)" strokeDasharray="4 4" />
         <XAxis
           dataKey="day"
           axisLine={false}
           tickLine={false}
-          tick={{ fill: "#A8B4C6", fontSize: 10, fontWeight: 500 }}
+          tick={{ fill: "#475569", fontSize: 10, fontWeight: 500 }}
           dy={6}
           interval={period === "all" ? 1 : period === "30d" ? 4 : 0}
         />
-        <YAxis axisLine={false} tickLine={false} tick={{ fill: "#A8B4C6", fontSize: 10 }} allowDecimals={false} />
-        <Tooltip content={<ChartTip />} cursor={{ stroke: "#E2E8F0", strokeWidth: 1 }} />
+        <YAxis axisLine={false} tickLine={false} tick={{ fill: "#475569", fontSize: 10 }} allowDecimals={false} />
+        <Tooltip content={<ChartTip />} cursor={{ stroke: "rgba(255,255,255,0.08)", strokeWidth: 1 }} />
         <Area
           type="monotone" dataKey="uniqueClicks" name="Unique"
           stroke="#818CF8" strokeWidth={1.5}
           fill="url(#dashUniqueGrad)" dot={false}
-          activeDot={{ r: 3, fill: "#818CF8", strokeWidth: 2, stroke: "#fff" }}
+          activeDot={{ r: 3, fill: "#818CF8", strokeWidth: 2, stroke: "#0B0F1A" }}
         />
         <Area
           type="monotone" dataKey="clicks" name="Clicks"
           stroke={I} strokeWidth={2}
           fill="url(#dashAreaGrad)" dot={false}
-          activeDot={{ r: 4, fill: I, strokeWidth: 2, stroke: "#fff" }}
+          activeDot={{ r: 4, fill: I, strokeWidth: 2, stroke: "#0B0F1A" }}
         />
       </AreaChart>
     </ResponsiveContainer>

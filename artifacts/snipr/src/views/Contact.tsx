@@ -64,7 +64,7 @@ export default function Contact() {
       <PublicNavbar />
 
       {/* ── Page header ── */}
-      <div className="bg-[#FAFAFA] border-b border-[#E8E8E8]">
+      <div className="bg-[#FAFAFA] border-b border-[#E2E8F0]">
         <div className="container max-w-6xl mx-auto px-6 py-20">
           <p className="text-[10px] font-bold tracking-[0.28em] uppercase text-[#888] mb-4">Get in Touch</p>
           <h1 className="font-display font-black text-[42px] md:text-[56px] text-[#0A0A0A] tracking-[-0.035em] leading-[1.04] mb-5">
@@ -175,7 +175,7 @@ export default function Contact() {
                   <a
                     key={opt.title}
                     href={opt.href}
-                    className="block bg-[#FAFAFA] hover:bg-[#F5F5F5] border border-[#EBEBEB] rounded-2xl p-5 transition-colors group"
+                    className="block bg-[#FAFAFA] hover:bg-[#F5F5F5] border border-[#E2E8F0] rounded-2xl p-5 transition-colors group"
                   >
                     <div className="flex items-start gap-4">
                       <div className="w-9 h-9 rounded-xl bg-white border border-[#E0E0E0] flex items-center justify-center flex-shrink-0 group-hover:border-[#728DA7]/30 transition-colors">
@@ -192,7 +192,7 @@ export default function Contact() {
               </div>
 
               {/* Office & hours */}
-              <div className="bg-[#FAFAFA] border border-[#EBEBEB] rounded-2xl p-6 space-y-5">
+              <div className="bg-[#FAFAFA] border border-[#E2E8F0] rounded-2xl p-6 space-y-5">
                 <div className="flex items-start gap-3">
                   <MapPin className="w-4 h-4 text-[#888] mt-0.5 flex-shrink-0" />
                   <div>
@@ -217,7 +217,7 @@ export default function Contact() {
               </div>
 
               {/* Social */}
-              <div className="bg-[#FAFAFA] border border-[#EBEBEB] rounded-2xl p-6">
+              <div className="bg-[#FAFAFA] border border-[#E2E8F0] rounded-2xl p-6">
                 <p className="text-[12px] font-semibold text-[#888] mb-4">Also find us on</p>
                 <div className="flex gap-3">
                   <a href="#" className="flex items-center gap-2 text-[13px] text-[#555] hover:text-[#0A0A0A] transition-colors">

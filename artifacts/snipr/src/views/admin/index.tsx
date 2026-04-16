@@ -16,6 +16,7 @@ import SettingsTab from "./tabs/Settings";
 import GuideTab from "./tabs/Guide";
 import EmailTab from "./tabs/Email";
 import { apiFetch } from "./utils";
+import { ToastProvider } from "./Toast";
 
 const VALID_TABS: AdminTab[] = [
   "overview", "users", "links", "domains",
@@ -68,12 +69,14 @@ export default function Admin() {
   }
 
   return (
-    <AdminShell
-      tab={tab}
-      setTab={(t) => router.push(`/admin/${t}`)}
-      onLogout={() => { setIsAdmin(false); router.push("/admin"); }}
-    >
-      <TabContent tab={tab} />
-    </AdminShell>
+    <ToastProvider>
+      <AdminShell
+        tab={tab}
+        setTab={(t) => router.push(`/admin/${t}`)}
+        onLogout={() => { setIsAdmin(false); router.push("/admin"); }}
+      >
+        <TabContent tab={tab} />
+      </AdminShell>
+    </ToastProvider>
   );
 }

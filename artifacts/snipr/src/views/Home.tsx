@@ -11,6 +11,7 @@ import {
   DollarSign, Clock, MousePointerClick, Eye,
   Share2, MessageSquare, BookOpen, Radio,
 } from "lucide-react";
+import { SniprLogo } from "@/components/SniprLogo";
 
 // ─── Static mock data ─────────────────────────────────────────────────────────
 
@@ -172,7 +173,7 @@ function FaqRow({ q, a }: { q: string; a: string }) {
 function LightFaqRow({ q, a }: { q: string; a: string }) {
   const [open, setOpen] = useState(false);
   return (
-    <div className="bg-white border border-[#E8E8E8] rounded-xl overflow-hidden">
+    <div className="bg-white border border-[#E2E8F0] rounded-xl overflow-hidden">
       <button
         onClick={() => setOpen(!open)}
         className="w-full flex items-center justify-between px-5 py-4 text-left gap-4"
@@ -317,7 +318,7 @@ export default function Home() {
                     key={id}
                     src={`https://i.pravatar.cc/64?img=${id}`}
                     alt="Snipr user"
-                    className="w-8 h-8 rounded-full border-[2.5px] border-[#EBEBEB] object-cover"
+                    className="w-8 h-8 rounded-full border-[2.5px] border-[#E2E8F0] object-cover"
                   />
                 ))}
               </div>
@@ -692,7 +693,7 @@ export default function Home() {
         </section>
 
         {/* ══ 3. PLATFORM ══════════════════════════════════════════════════════ */}
-        <section id="features" className="bg-white py-24 overflow-hidden border-t border-[#EBEBEB]"
+        <section id="features" className="bg-white py-24 overflow-hidden border-t border-[#E2E8F0]"
           style={{ background: "radial-gradient(ellipse 80% 50% at 50% -10%, #EEF4F9 0%, white 60%)" }}>
           <div className="container mx-auto px-6 max-w-6xl">
 
@@ -783,7 +784,7 @@ export default function Home() {
                       {/* Tags */}
                       <div className="flex gap-1 flex-shrink-0">
                         {f.tags.map(t => (
-                          <span key={t} className="text-[9.5px] font-semibold text-[#B0B0B0] border border-[#EBEBEB] rounded-full px-2 py-0.5 whitespace-nowrap">{t}</span>
+                          <span key={t} className="text-[9.5px] font-semibold text-[#B0B0B0] border border-[#E2E8F0] rounded-full px-2 py-0.5 whitespace-nowrap">{t}</span>
                         ))}
                       </div>
                     </div>
@@ -792,7 +793,7 @@ export default function Home() {
 
                 {/* CTA */}
                 <div className="flex items-center gap-3 mt-10 pt-6 border-t border-[#F0F0F0]">
-                  <a href="/register" className="bg-[#0A0A0A] hover:bg-[#2A2A2A] text-white text-[13px] font-bold px-7 py-2.5 rounded-xl transition-colors inline-flex items-center gap-2">
+                  <a href="/signup" className="bg-[#0A0A0A] hover:bg-[#2A2A2A] text-white text-[13px] font-bold px-7 py-2.5 rounded-xl transition-colors inline-flex items-center gap-2">
                     Get Started
                     <span className="opacity-50 font-normal">· free</span>
                   </a>
@@ -811,7 +812,7 @@ export default function Home() {
                     <span className="text-[10px] font-semibold text-[#2E7D5E]">Live analytics · updated now</span>
                   </div>
                 </div>
-                <div className="platform-mockup bg-[#F7F7F5] rounded-2xl p-3 border border-[#E8E8E8]"
+                <div className="platform-mockup bg-[#F7F7F5] rounded-2xl p-3 border border-[#E2E8F0]"
                   style={{ boxShadow: "0 2px 4px rgba(0,0,0,0.04), 0 8px 24px rgba(0,0,0,0.06)" }}>
                   <svg viewBox="0 0 480 420" className="w-full rounded-xl" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ maxHeight: "380px" }}>
                     {/* App shell */}
@@ -948,7 +949,7 @@ export default function Home() {
               </div>
 
               {/* Right — analytics card */}
-              <div className="bg-white rounded-2xl border border-[#E8E8E8] shadow-[0_2px_4px_rgba(0,0,0,0.04),0_12px_40px_rgba(0,0,0,0.07)] overflow-hidden">
+              <div className="bg-white rounded-2xl border border-[#E2E8F0] shadow-[0_2px_4px_rgba(0,0,0,0.04),0_12px_40px_rgba(0,0,0,0.07)] overflow-hidden">
                 <div className="px-5 py-4 border-b border-[#F0F0F0] flex items-center justify-between">
                   <span className="text-[13px] font-bold text-[#0A0A0A]">Link Analytics · snipr.sh/launch</span>
                   <span className="text-[11px] bg-[#EBF5FF] text-[#728DA7] border border-[#C8E4F6] px-2.5 py-1 rounded-full font-semibold">Active</span>
@@ -960,7 +961,7 @@ export default function Home() {
                       { l: "Unique", v: "3,104", accent: false },
                       { l: "CTR", v: "5.2%", accent: false },
                     ].map((s) => (
-                      <div key={s.l} className="bg-[#F7F7F7] rounded-xl p-3 text-center border border-[#EBEBEB]">
+                      <div key={s.l} className="bg-[#F7F7F7] rounded-xl p-3 text-center border border-[#E2E8F0]">
                         <div className={`text-[18px] font-black leading-none mb-1 ${s.accent ? "text-[#728DA7]" : "text-[#0A0A0A]"}`}>{s.v}</div>
                         <div className="text-[11px] text-[#999]">{s.l}</div>
                       </div>
@@ -999,20 +1000,20 @@ export default function Home() {
         </section>
 
         {/* ══ 5. DEEP-DIVE: SMART ROUTING ══════════════════════════════════════ */}
-        <section className="py-24 bg-white border-t border-[#EBEBEB] overflow-hidden">
+        <section className="py-24 bg-white border-t border-[#E2E8F0] overflow-hidden">
           <div className="container mx-auto px-6 max-w-6xl">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
 
               {/* Left — routing card */}
               <div className="order-2 lg:order-1">
-                <div className="bg-white rounded-2xl border border-[#E8E8E8] shadow-[0_2px_4px_rgba(0,0,0,0.04),0_12px_40px_rgba(0,0,0,0.07)] overflow-hidden">
+                <div className="bg-white rounded-2xl border border-[#E2E8F0] shadow-[0_2px_4px_rgba(0,0,0,0.04),0_12px_40px_rgba(0,0,0,0.07)] overflow-hidden">
                   <div className="px-5 py-4 border-b border-[#F0F0F0] flex items-center justify-between">
                     <span className="text-[13px] font-bold text-[#0A0A0A]">Routing Rules · snipr.sh/campaign</span>
                     <span className="text-[11px] font-semibold text-[#728DA7] bg-[#EBF5FF] border border-[#C8E4F6] px-2.5 py-1 rounded-full">4 rules active</span>
                   </div>
                   <div className="p-5 space-y-2.5">
                     {routingRules.map((rule, i) => (
-                      <div key={i} className="flex items-center gap-3 bg-[#F7F7F7] border border-[#EBEBEB] rounded-xl p-3.5 hover:border-[#D0DCE8] transition-colors">
+                      <div key={i} className="flex items-center gap-3 bg-[#F7F7F7] border border-[#E2E8F0] rounded-xl p-3.5 hover:border-[#D0DCE8] transition-colors">
                         <div className="w-8 h-8 rounded-lg bg-[#EBF5FF] border border-[#C8E4F6] flex items-center justify-center flex-shrink-0">
                           <rule.icon className="w-4 h-4 text-[#728DA7]" />
                         </div>
@@ -1100,7 +1101,7 @@ export default function Home() {
               </div>
 
               {/* Right — chat card */}
-              <div className="bg-white rounded-2xl border border-[#E8E8E8] shadow-[0_2px_4px_rgba(0,0,0,0.04),0_12px_40px_rgba(0,0,0,0.07)] overflow-hidden">
+              <div className="bg-white rounded-2xl border border-[#E2E8F0] shadow-[0_2px_4px_rgba(0,0,0,0.04),0_12px_40px_rgba(0,0,0,0.07)] overflow-hidden">
                 <div className="px-5 py-4 border-b border-[#F0F0F0] flex items-center gap-2">
                   <div className="w-6 h-6 rounded-lg bg-[#EBF5FF] border border-[#C8E4F6] flex items-center justify-center">
                     <Sparkles className="w-3.5 h-3.5 text-[#728DA7]" />
@@ -1125,13 +1126,13 @@ export default function Home() {
                     </div>
                   </div>
                   {/* AI response */}
-                  <div className="bg-[#F7F7F7] border border-[#EBEBEB] rounded-xl rounded-bl-sm px-4 py-3 max-w-[88%]">
+                  <div className="bg-[#F7F7F7] border border-[#E2E8F0] rounded-xl rounded-bl-sm px-4 py-3 max-w-[88%]">
                     <p className="text-[12px] text-[#444] leading-relaxed">
                       <strong className="text-[#0A0A0A]">snipr.sh/product-hunt</strong> had the highest CTR at <strong className="text-[#0A0A0A]">8.4%</strong> — well above your 3.1% average. It was shared in a Reddit post that drove 1,200 clicks in 24 hours.
                     </p>
                   </div>
                   {/* Input bar */}
-                  <div className="flex items-center gap-2 bg-[#F7F7F7] border border-[#E8E8E8] rounded-xl px-4 py-3">
+                  <div className="flex items-center gap-2 bg-[#F7F7F7] border border-[#E2E8F0] rounded-xl px-4 py-3">
                     <span className="text-[12px] text-[#BBBBBB] flex-1">Ask about your link data...</span>
                     <div className="w-6 h-6 bg-[#728DA7] rounded-lg flex items-center justify-center">
                       <ArrowRight className="w-3 h-3 text-white" />
@@ -1144,7 +1145,7 @@ export default function Home() {
         </section>
 
         {/* ══ 7. HOW IT WORKS ══════════════════════════════════════════════════ */}
-        <section className="py-24 bg-white border-t border-[#EBEBEB] overflow-hidden">
+        <section className="py-24 bg-white border-t border-[#E2E8F0] overflow-hidden">
           <div className="container mx-auto px-6 max-w-5xl">
             <div className="text-center mb-20">
               <p className="text-[10px] font-bold tracking-[0.28em] uppercase text-[#888] mb-5">How it works</p>
@@ -1177,7 +1178,7 @@ export default function Home() {
         </section>
 
         {/* ══ 8. USE CASES ══════════════════════════════════════════════════════ */}
-        <section className="py-24 border-t border-[#EBEBEB] overflow-hidden"
+        <section className="py-24 border-t border-[#E2E8F0] overflow-hidden"
           style={{ background: "radial-gradient(ellipse 90% 60% at 50% -5%, #EEF3F7 0%, #F7F7F5 55%, #F7F7F5 100%)" }}>
           <div className="container mx-auto px-6 max-w-6xl">
 
@@ -1236,7 +1237,7 @@ export default function Home() {
               <div className="flex flex-col gap-4">
 
                 {/* Content Creators */}
-                <div className="bg-white rounded-3xl p-7 flex flex-col border border-[#EBEBEB] hover:border-[#D8D0F5] hover:shadow-[0_8px_32px_rgba(109,74,196,0.07)] transition-all duration-300 group flex-1">
+                <div className="bg-white rounded-3xl p-7 flex flex-col border border-[#E2E8F0] hover:border-[#D8D0F5] hover:shadow-[0_8px_32px_rgba(109,74,196,0.07)] transition-all duration-300 group flex-1">
                   <div className="flex items-center gap-3 mb-5">
                     <div className="w-9 h-9 rounded-xl bg-[#F1EEFB] flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
                       <Eye className="w-4 h-4 text-[#6D4AC4]" strokeWidth={2.2} />
@@ -1262,7 +1263,7 @@ export default function Home() {
                 </div>
 
                 {/* SaaS & Startup Teams */}
-                <div className="bg-white rounded-3xl p-7 flex flex-col border border-[#EBEBEB] hover:border-[#C8E4F6] hover:shadow-[0_8px_32px_rgba(74,124,155,0.07)] transition-all duration-300 group flex-1">
+                <div className="bg-white rounded-3xl p-7 flex flex-col border border-[#E2E8F0] hover:border-[#C8E4F6] hover:shadow-[0_8px_32px_rgba(74,124,155,0.07)] transition-all duration-300 group flex-1">
                   <div className="flex items-center gap-3 mb-5">
                     <div className="w-9 h-9 rounded-xl bg-[#EBF5FF] flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
                       <Users className="w-4 h-4 text-[#4A7C9B]" strokeWidth={2.2} />
@@ -1292,7 +1293,7 @@ export default function Home() {
 
             {/* ── Optional CTA ── */}
             <div className="flex justify-center mt-10">
-              <a href="/register" className="inline-flex items-center gap-2 text-[13px] font-semibold text-[#555] hover:text-[#0A0A0A] border border-[#DCDCDC] hover:border-[#AAAAAA] bg-white rounded-full px-6 py-2.5 transition-all shadow-sm hover:shadow-md">
+              <a href="/signup" className="inline-flex items-center gap-2 text-[13px] font-semibold text-[#555] hover:text-[#0A0A0A] border border-[#DCDCDC] hover:border-[#AAAAAA] bg-white rounded-full px-6 py-2.5 transition-all shadow-sm hover:shadow-md">
                 Start free — no credit card needed
                 <ArrowRight className="w-3.5 h-3.5" />
               </a>
@@ -1302,17 +1303,17 @@ export default function Home() {
         </section>
 
         {/* ══ 9. COMPARISON TABLE ═══════════════════════════════════════════════ */}
-        <section className="py-24 bg-white border-t border-[#EBEBEB] overflow-hidden">
+        <section className="py-24 bg-white border-t border-[#E2E8F0] overflow-hidden">
           <div className="container mx-auto px-6 max-w-4xl">
             <div className="text-center mb-16">
               <p className="text-[10px] font-bold tracking-[0.28em] uppercase text-[#888] mb-5">Compare</p>
               <h2 className="font-display text-[28px] md:text-[40px] font-black text-[#0A0A0A] tracking-[-0.035em] leading-[1.04]">Why teams choose Snipr</h2>
               <p className="mt-4 text-[15px] text-[#666] leading-[1.75]">We pack in features that other tools charge extra for — or don't offer at all.</p>
             </div>
-            <div className="overflow-hidden rounded-2xl border border-[#E8E8E8] shadow-[0_2px_4px_rgba(0,0,0,0.04),0_12px_40px_rgba(0,0,0,0.06)]">
+            <div className="overflow-hidden rounded-2xl border border-[#E2E8F0] shadow-[0_2px_4px_rgba(0,0,0,0.04),0_12px_40px_rgba(0,0,0,0.06)]">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-[#EBEBEB] bg-[#F7F7F7]">
+                  <tr className="border-b border-[#E2E8F0] bg-[#F7F7F7]">
                     <th className="text-left px-6 py-4 text-[#888] font-semibold text-[12px] w-1/2">Feature</th>
                     <th className="text-center px-4 py-4 font-extrabold w-1/6 bg-[#F0F7FF] border-x border-[#C8E4F6]">
                       <div className="flex flex-col items-center gap-1">
@@ -1411,7 +1412,7 @@ export default function Home() {
                     ),
                   },
                 ] as const).map((intg) => (
-                  <div key={intg.name} className="flex items-start gap-4 p-5 rounded-xl bg-white border border-[#E8E8E8] hover:border-[#D0DCE8] hover:shadow-[0_4px_16px_rgba(0,0,0,0.06)] transition-all cursor-default group">
+                  <div key={intg.name} className="flex items-start gap-4 p-5 rounded-xl bg-white border border-[#E2E8F0] hover:border-[#D0DCE8] hover:shadow-[0_4px_16px_rgba(0,0,0,0.06)] transition-all cursor-default group">
                     <div
                       className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 shadow-[0_2px_6px_rgba(0,0,0,0.12)] group-hover:scale-110 transition-transform"
                       style={{ background: intg.bg }}
@@ -1430,7 +1431,7 @@ export default function Home() {
         </section>
 
         {/* ══ 11. TESTIMONIALS ══════════════════════════════════════════════════ */}
-        <section className="py-24 bg-[#FAFAFA] border-t border-[#EBEBEB] overflow-hidden">
+        <section className="py-24 bg-[#FAFAFA] border-t border-[#E2E8F0] overflow-hidden">
           <div className="container mx-auto px-6 max-w-6xl">
 
             {/* ── Header ── */}
@@ -1607,7 +1608,7 @@ export default function Home() {
                   <p className="text-[13.5px] text-[#777] leading-[1.65] mb-8 max-w-xs">
                     More than a link shortener. Sign Up Today and Start Shortening!
                   </p>
-                  <a href="/register"
+                  <a href="/signup"
                     className="inline-flex items-center gap-2 bg-white hover:bg-[#F0F0F0] text-[#111] text-[13px] font-bold px-6 py-2.5 rounded-xl transition-colors">
                     Get Started · <em className="not-italic font-normal text-[#888]">Its free</em>
                   </a>
@@ -1714,7 +1715,7 @@ export default function Home() {
             <div className="col-span-2">
               <div className="flex items-center gap-2.5 mb-4">
                 <div className="w-8 h-8 bg-[#728DA7] rounded-lg flex items-center justify-center flex-shrink-0">
-                  <Link2 className="w-4 h-4 text-white" />
+                  <SniprLogo size={16} color="white" />
                 </div>
                 <span className="font-display font-bold text-[18px] text-[#EFEFF0] tracking-tight">Snipr</span>
               </div>

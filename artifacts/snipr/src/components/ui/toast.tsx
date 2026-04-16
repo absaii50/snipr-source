@@ -24,7 +24,7 @@ ToastViewport.displayName = ToastPrimitives.Viewport.displayName
 const toastVariants = cva(
   [
     "group pointer-events-auto relative flex w-full items-start gap-3.5 overflow-hidden",
-    "rounded-2xl border bg-white px-4 py-3.5 pr-10 shadow-[0_8px_32px_rgba(0,0,0,0.10)]",
+    "rounded-2xl border bg-[#111827] border-[rgba(255,255,255,0.08)] px-4 py-3.5 pr-10 shadow-[0_8px_32px_rgba(0,0,0,0.4)] text-[#E2E8F0]",
     "transition-all",
     "data-[swipe=cancel]:translate-x-0",
     "data-[swipe=end]:translate-x-[var(--radix-toast-swipe-end-x)]",
@@ -36,11 +36,11 @@ const toastVariants = cva(
   {
     variants: {
       variant: {
-        default:  "border-l-4 border-l-blue-400   border-gray-100",
-        success:  "border-l-4 border-l-emerald-400 border-gray-100",
-        destructive: "border-l-4 border-l-red-400  border-gray-100",
-        warning:  "border-l-4 border-l-amber-400   border-gray-100",
-        info:     "border-l-4 border-l-violet-400  border-gray-100",
+        default:  "border-l-4 border-l-blue-400   border-[rgba(255,255,255,0.06)]",
+        success:  "border-l-4 border-l-emerald-400 border-[rgba(255,255,255,0.06)]",
+        destructive: "border-l-4 border-l-red-400  border-[rgba(255,255,255,0.06)]",
+        warning:  "border-l-4 border-l-amber-400   border-[rgba(255,255,255,0.06)]",
+        info:     "border-l-4 border-l-violet-400  border-[rgba(255,255,255,0.06)]",
       },
     },
     defaultVariants: {
@@ -86,7 +86,7 @@ const ToastClose = React.forwardRef<
   <ToastPrimitives.Close
     ref={ref}
     className={cn(
-      "absolute right-2.5 top-2.5 rounded-lg p-1 text-gray-400 opacity-70 transition-all hover:opacity-100 hover:bg-gray-100 hover:text-gray-600 focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-gray-400",
+      "absolute right-2.5 top-2.5 rounded-lg p-1 text-[#64748B] opacity-70 transition-all hover:opacity-100 hover:bg-[rgba(255,255,255,0.08)] hover:text-[#E2E8F0] focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-[#475569]",
       className
     )}
     toast-close=""
@@ -103,7 +103,7 @@ const ToastTitle = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <ToastPrimitives.Title
     ref={ref}
-    className={cn("text-[14px] font-bold text-gray-900 leading-snug", className)}
+    className={cn("text-[14px] font-bold text-[#F1F5F9] leading-snug", className)}
     {...props}
   />
 ))
@@ -115,7 +115,7 @@ const ToastDescription = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <ToastPrimitives.Description
     ref={ref}
-    className={cn("text-[12px] text-gray-500 leading-relaxed mt-0.5", className)}
+    className={cn("text-[12px] text-[#94A3B8] leading-relaxed mt-0.5", className)}
     {...props}
   />
 ))

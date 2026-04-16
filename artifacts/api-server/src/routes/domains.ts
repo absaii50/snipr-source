@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq, and, or } from "drizzle-orm";
-import { db, domainsTable } from "@workspace/db";
+import { db, domainsTable, platformSettingsTable } from "@workspace/db";
 import { requireAuth } from "../lib/auth";
 import { getDomainVerifyToken, checkDomainDns, CNAME_TARGET } from "../lib/dns-utils";
 
@@ -20,6 +20,33 @@ router.get("/domains", requireAuth, async (req, res): Promise<void> => {
     ))
     .orderBy(domainsTable.createdAt);
   res.json(domains);
+});
+
+/* ── Default Domain ──────────────────────────────────────────────── */
+router.get("/domains/default", requireAuth, async (_req, res): Promise<void> => {
+  try {
+    // 1. Check platform config for default_domain
+    const [cfgRow] = await db.select().from(platformSettingsTable).where(eq(platformSettingsTable.key, "platform_config"));
+    if (cfgRow) {
+      const cfg = JSON.parse(cfgRow.value);
+      if (cfg.default_domain) {
+        const [dom] = await db
+          .select({ id: domainsTable.id, domain: domainsTable.domain })
+          .from(domainsTable)
+          .where(and(eq(domainsTable.domain, cfg.default_domain), eq(domainsTable.verified, true)));
+        if (dom) { res.json(dom); return; }
+      }
+    }
+    // 2. Fallback: first verified platform domain
+    const [firstPlatform] = await db
+      .select({ id: domainsTable.id, domain: domainsTable.domain })
+      .from(domainsTable)
+      .where(and(eq(domainsTable.isPlatformDomain, true), eq(domainsTable.verified, true)))
+      .orderBy(domainsTable.createdAt)
+      .limit(1);
+    if (firstPlatform) { res.json(firstPlatform); return; }
+    res.json(null);
+  } catch { res.json(null); }
 });
 
 router.post("/domains", requireAuth, async (req, res): Promise<void> => {

@@ -116,7 +116,7 @@ function Skeleton() {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
       {[...Array(6)].map((_, i) => (
-        <div key={i} className="bg-white rounded-2xl border border-[#E4E4EC] overflow-hidden">
+        <div key={i} className="bg-white rounded-2xl border border-[#E2E8F0] overflow-hidden">
           <div className="h-1.5 bg-[#E4E4EC] animate-pulse" />
           <div className="p-5 space-y-3">
             <div className="flex items-center gap-3">
@@ -165,7 +165,7 @@ export default function AIInsightsTab() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       {/* Header card */}
       <div className="bg-gradient-to-br from-[#F0EBF9] via-[#EEF3F7] to-[#E8EEF4] border border-[#D4C8EF] rounded-2xl p-6">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -219,7 +219,7 @@ export default function AIInsightsTab() {
       {/* Loading skeletons */}
       {loading && (
         <div className="space-y-4">
-          <div className="h-16 bg-white border border-[#E4E4EC] rounded-2xl animate-pulse" />
+          <div className="h-16 bg-white border border-[#E2E8F0] rounded-2xl animate-pulse" />
           <Skeleton />
         </div>
       )}
@@ -228,7 +228,7 @@ export default function AIInsightsTab() {
       {!loading && result && (
         <div className="space-y-5">
           {/* Executive overview */}
-          <div className="bg-white rounded-2xl border border-[#E4E4EC] p-5">
+          <div className="bg-white rounded-2xl border border-[#E2E8F0] p-5">
             <div className="flex items-center gap-2 mb-3">
               <Brain className="w-4 h-4 text-[#7C5CC4]" />
               <h3 className="text-sm font-semibold text-[#0A0A0A]">Executive Summary</h3>
@@ -251,7 +251,7 @@ export default function AIInsightsTab() {
 
       {/* Empty state — not yet generated */}
       {!loading && !result && !error && (
-        <div className="bg-white rounded-2xl border border-[#E4E4EC] py-16 flex flex-col items-center text-center px-6">
+        <div className="bg-white rounded-2xl border border-[#E2E8F0] py-16 flex flex-col items-center text-center px-6">
           <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#F0EBF9] to-[#EEF3F7] flex items-center justify-center mb-4">
             <Sparkles className="w-7 h-7 text-[#7C5CC4]" />
           </div>

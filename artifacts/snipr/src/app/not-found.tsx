@@ -1,12 +1,12 @@
 import Link from "next/link";
-import { Link2 } from "lucide-react";
+import { SniprLogo } from "@/components/SniprLogo";
 
 export default function NotFound() {
   return (
     <main className="min-h-screen bg-[#080708] flex flex-col items-center justify-center px-6">
       <div className="flex items-center gap-2.5 mb-10">
         <div className="w-8 h-8 bg-[#728DA7] rounded-lg flex items-center justify-center">
-          <Link2 className="w-4 h-4 text-white" />
+          <SniprLogo size={16} color="white" />
         </div>
         <span className="font-display font-bold text-[18px] text-[#EFEFF0]">Snipr</span>
       </div>

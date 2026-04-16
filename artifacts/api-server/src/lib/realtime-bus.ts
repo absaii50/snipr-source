@@ -7,18 +7,38 @@ interface SseClient {
 
 const clients = new Set<SseClient>();
 
-export function subscribe(workspaceId: string, res: Response): () => void {
+// Max SSE connections per workspace to prevent resource exhaustion
+const MAX_CONNECTIONS_PER_WORKSPACE = 20;
+
+export function subscribe(workspaceId: string, res: Response): (() => void) | null {
+  // Enforce per-workspace connection limit
+  if (connectedCount(workspaceId) >= MAX_CONNECTIONS_PER_WORKSPACE) {
+    return null; // Caller should reject the connection
+  }
   const client: SseClient = { workspaceId, res };
   clients.add(client);
   return () => clients.delete(client);
 }
 
+// ~8KB padding to force Cloudflare HTTP/2 buffer flush on every event
+const CF_FLUSH_PAD = " ".repeat(8192);
+
 export function broadcast(workspaceId: string, event: Record<string, unknown>): void {
-  const data = JSON.stringify(event);
-  for (const client of clients) {
+  const data = `: ${CF_FLUSH_PAD}\ndata: ${JSON.stringify(event)}\n\n`;
+  // Snapshot to array first — safe to delete from Set while iterating snapshot
+  const snapshot = Array.from(clients);
+  for (const client of snapshot) {
     if (client.workspaceId === workspaceId) {
       try {
-        client.res.write(`data: ${data}\n\n`);
+        if (client.res.writableEnded || client.res.destroyed) {
+          clients.delete(client);
+          continue;
+        }
+        client.res.write(data);
+        // Force-flush so click events reach the browser immediately
+        if (typeof (client.res as any).flush === "function") {
+          (client.res as any).flush();
+        }
       } catch {
         clients.delete(client);
       }
@@ -32,4 +52,14 @@ export function connectedCount(workspaceId: string): number {
     if (client.workspaceId === workspaceId) n++;
   }
   return n;
+}
+
+/** Clean up all dead connections — called periodically */
+export function pruneDeadClients(): void {
+  const snapshot = Array.from(clients);
+  for (const client of snapshot) {
+    if (client.res.writableEnded || client.res.destroyed) {
+      clients.delete(client);
+    }
+  }
 }

@@ -1,7 +1,7 @@
 import { Resend } from "resend";
 import { db, emailLogsTable } from "@workspace/db";
 import { logger } from "./logger";
-import { getVerificationEmailHtml, getWelcomeEmailHtml, getPasswordResetEmailHtml } from "./email-templates";
+import { getVerificationEmailHtml, getWelcomeEmailHtml, getPasswordResetEmailHtml, getTeamInviteExistingUserHtml, getTeamInviteNewUserHtml } from "./email-templates";
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
 const FRONTEND_URL = process.env.FRONTEND_URL || "https://snipr.sh";
@@ -136,5 +136,42 @@ export async function sendWelcomeEmail(user: {
     html,
     userId: user.id,
     type: "welcome",
+  });
+}
+
+export async function sendTeamInviteExistingUser(opts: {
+  to: string;
+  userId: string;
+  inviterName: string;
+  workspaceName: string;
+  role: string;
+}): Promise<void> {
+  const dashboardUrl = `${FRONTEND_URL}/dashboard`;
+  const html = getTeamInviteExistingUserHtml(opts.inviterName, opts.workspaceName, opts.role, dashboardUrl);
+
+  await sendEmail({
+    to: opts.to,
+    subject: `${opts.inviterName} invited you to ${opts.workspaceName} — Snipr`,
+    html,
+    userId: opts.userId,
+    type: "team_invite",
+  });
+}
+
+export async function sendTeamInviteNewUser(opts: {
+  to: string;
+  inviterName: string;
+  workspaceName: string;
+  role: string;
+  inviteToken: string;
+}): Promise<void> {
+  const joinUrl = `${FRONTEND_URL}/join?token=${opts.inviteToken}`;
+  const html = getTeamInviteNewUserHtml(opts.inviterName, opts.workspaceName, opts.role, joinUrl);
+
+  await sendEmail({
+    to: opts.to,
+    subject: `${opts.inviterName} invited you to join Snipr`,
+    html,
+    type: "team_invite",
   });
 }

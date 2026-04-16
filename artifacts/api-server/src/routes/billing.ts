@@ -222,11 +222,8 @@ router.get("/billing/session-status", requireAuth, async (req: Request, res: Res
     const sessionCustomer = typeof session.customer === "string"
       ? session.customer
       : session.customer?.id;
-    if (
-      user.stripeCustomerId &&
-      sessionCustomer &&
-      sessionCustomer !== user.stripeCustomerId
-    ) {
+    // SECURITY: Always verify session belongs to this user's Stripe customer
+    if (!user.stripeCustomerId || !sessionCustomer || sessionCustomer !== user.stripeCustomerId) {
       res.status(403).json({ error: "Forbidden." });
       return;
     }

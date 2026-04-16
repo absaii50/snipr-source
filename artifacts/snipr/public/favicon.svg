@@ -1,3 +1,8 @@
 <svg width="180" height="180" viewBox="0 0 180 180" fill="none" xmlns="http://www.w3.org/2000/svg">
-<rect width="180" height="180" rx="36" fill="#FF3C00"/>
+  <rect width="180" height="180" rx="40" fill="#0A0A0A"/>
+  <g stroke="#728DA7" stroke-width="11" stroke-linecap="round" fill="none">
+    <path d="M68 68l-18 18a20 20 0 0 0 28.3 28.3l18-18"/>
+    <path d="M112 112l18-18a20 20 0 0 0-28.3-28.3l-18 18"/>
+  </g>
+  <line x1="82" y1="98" x2="98" y2="82" stroke="#728DA7" stroke-width="11" stroke-linecap="round" stroke-dasharray="4 12"/>
 </svg>

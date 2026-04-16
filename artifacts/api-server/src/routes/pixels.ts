@@ -41,6 +41,29 @@ router.post("/pixels", requireAuth, async (req, res): Promise<void> => {
     return;
   }
 
+  // SECURITY: Validate custom scripts don't contain dangerous patterns
+  if (type === "custom" && customScript) {
+    const dangerousPatterns = [
+      /document\.cookie/i,
+      /window\.location\s*=/i,
+      /eval\s*\(/i,
+      /Function\s*\(/i,
+      /fetch\s*\(\s*['"`](?!https:\/\/(www\.)?(google|facebook|linkedin|tiktok|analytics))/i,
+      /<\/script\s*>[\s\S]*<script/i,
+    ];
+    for (const pattern of dangerousPatterns) {
+      if (pattern.test(customScript)) {
+        res.status(422).json({ error: "Validation error", message: "Custom script contains potentially dangerous code. Only tracking scripts are allowed." });
+        return;
+      }
+    }
+    // Max length check
+    if (customScript.length > 5000) {
+      res.status(422).json({ error: "Validation error", message: "Custom script must be under 5000 characters" });
+      return;
+    }
+  }
+
   const [created] = await db
     .insert(pixelsTable)
     .values({

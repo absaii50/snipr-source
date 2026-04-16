@@ -14,44 +14,47 @@ export default function LinkAnalyticsChart({ data }: Props) {
       <AreaChart data={data} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
         <defs>
           <linearGradient id="linkClicksGrad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="5%"  stopColor="#728DA7" stopOpacity={0.3} />
-            <stop offset="95%" stopColor="#728DA7" stopOpacity={0}   />
+            <stop offset="5%"  stopColor="#818CF8" stopOpacity={0.15} />
+            <stop offset="95%" stopColor="#818CF8" stopOpacity={0}   />
           </linearGradient>
         </defs>
-        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-border)" />
+        <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="rgba(255,255,255,0.06)" />
         <XAxis
           dataKey="formattedTime"
           axisLine={false}
           tickLine={false}
-          tick={{ fill: "var(--color-muted-foreground)", fontSize: 12 }}
+          tick={{ fill: "#475569", fontSize: 12 }}
           dy={10}
         />
         <YAxis
           axisLine={false}
           tickLine={false}
-          tick={{ fill: "var(--color-muted-foreground)", fontSize: 12 }}
+          tick={{ fill: "#475569", fontSize: 12 }}
           dx={-10}
         />
         <Tooltip
           contentStyle={{
             borderRadius: "12px",
-            border: "1px solid var(--color-border)",
-            boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
+            border: "1px solid rgba(255,255,255,0.08)",
+            boxShadow: "0 4px 20px rgba(0,0,0,0.4)",
+            background: "#0F172A",
           }}
-          cursor={{ stroke: "var(--color-muted)", strokeWidth: 2, strokeDasharray: "4 4" }}
+          labelStyle={{ color: "#F1F5F9", fontWeight: 600, fontSize: 12 }}
+          itemStyle={{ fontSize: 12, color: "#94A3B8" }}
+          cursor={{ stroke: "rgba(255,255,255,0.08)", strokeWidth: 2, strokeDasharray: "4 4" }}
         />
-        <Legend iconType="circle" wrapperStyle={{ paddingTop: "20px" }} />
+        <Legend iconType="circle" wrapperStyle={{ paddingTop: "20px", color: "#94A3B8" }} />
         <Area
           type="monotone" name="Total Clicks" dataKey="clicks"
-          stroke="#728DA7" strokeWidth={3}
+          stroke="#818CF8" strokeWidth={2}
           fillOpacity={1} fill="url(#linkClicksGrad)"
-          activeDot={{ r: 6, strokeWidth: 0 }}
+          activeDot={{ r: 5, fill: "#818CF8", strokeWidth: 2, stroke: "#0B0F1A" }}
         />
         <Area
           type="monotone" name="Unique Clicks" dataKey="uniqueClicks"
-          stroke="#C3C3C1" strokeWidth={3}
+          stroke="#64748B" strokeWidth={2}
           fill="none"
-          activeDot={{ r: 6, fill: "#C3C3C1", strokeWidth: 0 }}
+          activeDot={{ r: 5, fill: "#64748B", strokeWidth: 2, stroke: "#0B0F1A" }}
         />
       </AreaChart>
     </ResponsiveContainer>

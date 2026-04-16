@@ -6,6 +6,8 @@ import {
   MousePointerClick, Users, Download, HeartPulse, Loader2,
 } from "lucide-react";
 import { apiFetch, apiFetchBlob, downloadBlob, fmtDate, fmtNum } from "../utils";
+import { useToast } from "../Toast";
+import { ConfirmModal } from "../Toast";
 
 interface PerformanceLink {
   id: string;
@@ -16,6 +18,7 @@ interface PerformanceLink {
   created_at: string;
   expires_at: string | null;
   click_limit: number | null;
+  domain: string | null;
   owner_name: string;
   owner_email: string;
   owner_plan: string;
@@ -57,6 +60,8 @@ export default function LinksTab() {
   const [healthResults, setHealthResults] = useState<{ slug: string; url: string; status: number; ok: boolean; error?: string }[] | null>(null);
   const [linkHealth, setLinkHealth] = useState<Record<string, { ok: boolean; status: number | null; checkedAt: string; error?: string }>>({});
   const [checkingLinkId, setCheckingLinkId] = useState<string | null>(null);
+  const { toast } = useToast();
+  const [confirmModal, setConfirmModal] = useState<{ open: boolean; title: string; description: string; onConfirm: () => void } | null>(null);
 
   const doLoad = useCallback(async (q: string, f: FilterStatus, s: SortKey) => {
     setLoading(true);
@@ -74,7 +79,7 @@ export default function LinksTab() {
   useEffect(() => {
     apiFetch("/admin/links/health-status").then((data) => {
       if (data && typeof data === "object") setLinkHealth(data);
-    }).catch(() => {});
+    }).catch((e) => toast(e.message || "Something went wrong", "error"));
   }, []);
 
   useEffect(() => {
@@ -90,25 +95,31 @@ export default function LinksTab() {
     try {
       const { enabled } = await apiFetch(`/admin/links/${id}/toggle`, { method: "PATCH" });
       setLinks((l) => l.map((x) => x.id === id ? { ...x, enabled } : x));
-    } catch { alert("Failed to toggle link."); }
+    } catch { toast("Failed to toggle link.", "error"); }
     finally { setActionId(null); }
   }
 
-  async function del(id: string, slug: string) {
-    if (!confirm(`Delete link "snipr.sh/${slug}"? This cannot be undone.`)) return;
-    setActionId(id);
-    try {
-      await apiFetch(`/admin/links/${id}`, { method: "DELETE" });
-      setLinks((l) => l.filter((x) => x.id !== id));
-    } catch { alert("Failed to delete link."); }
-    finally { setActionId(null); }
+  function del(id: string, slug: string, domain?: string | null) {
+    setConfirmModal({
+      open: true,
+      title: "Delete Link",
+      description: `Delete link "${domain || "snipr.sh"}/${slug}"? This cannot be undone.`,
+      onConfirm: async () => {
+        setActionId(id);
+        try {
+          await apiFetch(`/admin/links/${id}`, { method: "DELETE" });
+          setLinks((l) => l.filter((x) => x.id !== id));
+        } catch { toast("Failed to delete link.", "error"); }
+        finally { setActionId(null); }
+      },
+    });
   }
 
   async function exportLinks() {
     try {
       const blob = await apiFetchBlob("/admin/export/links");
       downloadBlob(blob, "snipr-links.csv");
-    } catch { alert("Export failed."); }
+    } catch { toast("Export failed.", "error"); }
   }
 
   async function runHealthCheck() {
@@ -122,7 +133,7 @@ export default function LinksTab() {
         if (r.id) healthMap[r.id] = { ok: r.ok, status: r.status ?? null, checkedAt: r.checkedAt || new Date().toISOString(), error: r.error };
       }
       setLinkHealth(prev => ({ ...prev, ...healthMap }));
-    } catch { alert("Health check failed."); }
+    } catch { toast("Health check failed.", "error"); }
     finally { setHealthChecking(false); }
   }
 
@@ -137,7 +148,7 @@ export default function LinksTab() {
         const r = results[0];
         setLinkHealth(prev => ({ ...prev, [linkId]: { ok: r.ok, status: r.status ?? null, checkedAt: r.checkedAt || new Date().toISOString(), error: r.error } }));
       }
-    } catch { alert("Health check failed."); }
+    } catch { toast("Health check failed.", "error"); }
     finally { setCheckingLinkId(null); }
   }
 
@@ -147,16 +158,16 @@ export default function LinksTab() {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
         <div className="relative w-full sm:w-72">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8888A0]" />
           <input value={search} onChange={(e) => setSearch(e.target.value)}
             placeholder="Search slug, URL or owner…"
-            className="w-full pl-9 pr-3.5 py-2 rounded-xl border border-[#E4E4EC] bg-white text-sm text-[#0A0A0A] outline-none focus:border-[#728DA7] focus:ring-2 focus:ring-[#728DA7]/15 transition-all" />
+            className="w-full pl-9 pr-3.5 py-2 rounded-xl border border-[#E2E8F0] bg-white text-sm text-[#0A0A0A] outline-none focus:border-[#728DA7] focus:ring-2 focus:ring-[#728DA7]/15 transition-all" />
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <div className="flex items-center gap-1 bg-white border border-[#E4E4EC] rounded-xl p-1">
+          <div className="flex items-center gap-1 bg-white border border-[#E2E8F0] rounded-xl p-1">
             {(["all", "active", "disabled"] as FilterStatus[]).map((f) => (
               <button key={f} onClick={() => setFilter(f)}
                 className={`px-3 py-1.5 rounded-lg text-xs font-medium capitalize transition-all ${filter === f ? "bg-[#E8EEF4] text-[#4A7A94]" : "text-[#8888A0] hover:text-[#3A3A3E]"}`}>
@@ -166,13 +177,13 @@ export default function LinksTab() {
           </div>
           <div className="relative">
             <button onClick={() => setSortOpen((v) => !v)}
-              className="flex items-center gap-1.5 px-3 py-2 bg-white border border-[#E4E4EC] rounded-xl text-xs text-[#3A3A3E] hover:bg-[#F4F4F6] transition-all">
+              className="flex items-center gap-1.5 px-3 py-2 bg-white border border-[#E2E8F0] rounded-xl text-xs text-[#3A3A3E] hover:bg-[#F4F4F6] transition-all">
               <ArrowUpDown className="w-3 h-3 text-[#8888A0]" />
               {sortLabel[sort]}
               <ChevronDown className="w-3 h-3 text-[#8888A0]" />
             </button>
             {sortOpen && (
-              <div className="absolute right-0 top-full mt-1 w-40 bg-white border border-[#E4E4EC] rounded-xl shadow-xl z-20 overflow-hidden">
+              <div className="absolute right-0 top-full mt-1 w-40 bg-white border border-[#E2E8F0] rounded-xl shadow-xl z-20 overflow-hidden">
                 {(Object.entries(sortLabel) as [SortKey, string][]).map(([k, v]) => (
                   <button key={k} onClick={() => { setSort(k); setSortOpen(false); }}
                     className={`w-full text-left px-3 py-2.5 text-xs transition-colors ${sort === k ? "bg-[#EEF3F7] text-[#4A7A94] font-medium" : "text-[#3A3A3E] hover:bg-[#F8F8FC]"}`}>
@@ -183,22 +194,22 @@ export default function LinksTab() {
             )}
           </div>
           <button onClick={runHealthCheck} disabled={healthChecking} title="Health check"
-            className="p-2 rounded-xl border border-[#E4E4EC] bg-white hover:bg-[#F4F4F6] transition-all disabled:opacity-40">
+            className="p-2 rounded-xl border border-[#E2E8F0] bg-white hover:bg-[#F4F4F6] transition-all disabled:opacity-40">
             {healthChecking ? <Loader2 className="w-3.5 h-3.5 text-[#8888A0] animate-spin" /> : <HeartPulse className="w-3.5 h-3.5 text-[#8888A0]" />}
           </button>
           <button onClick={exportLinks} title="Export CSV"
-            className="p-2 rounded-xl border border-[#E4E4EC] bg-white hover:bg-[#F4F4F6] transition-all">
+            className="p-2 rounded-xl border border-[#E2E8F0] bg-white hover:bg-[#F4F4F6] transition-all">
             <Download className="w-3.5 h-3.5 text-[#8888A0]" />
           </button>
           <button onClick={() => doLoad(search, filter, sort)}
-            className="p-2 rounded-xl border border-[#E4E4EC] bg-white hover:bg-[#F4F4F6] transition-all">
+            className="p-2 rounded-xl border border-[#E2E8F0] bg-white hover:bg-[#F4F4F6] transition-all">
             <RefreshCw className="w-3.5 h-3.5 text-[#8888A0]" />
           </button>
         </div>
       </div>
 
       {healthResults && (
-        <div className="bg-white rounded-2xl border border-[#E4E4EC] p-4 space-y-3">
+        <div className="bg-white rounded-2xl border border-[#E2E8F0] p-4 space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <HeartPulse className="w-4 h-4 text-[#728DA7]" />
@@ -231,11 +242,11 @@ export default function LinksTab() {
 
       <div className="text-xs text-[#8888A0]">{links.length} link{links.length !== 1 ? "s" : ""}</div>
 
-      <div className="bg-white rounded-2xl border border-[#E4E4EC] overflow-hidden">
+      <div className="bg-white rounded-2xl border border-[#E2E8F0] overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm min-w-[1000px]">
             <thead>
-              <tr className="bg-[#F8F8FC] border-b border-[#E4E4EC]">
+              <tr className="bg-[#F8F8FC] border-b border-[#E2E8F0]">
                 {["Short Link", "Destination", "Owner", "Clicks", "Unique", "7d", "Last Click", "Country / Device", "Status", ""].map((h) => (
                   <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-[#8888A0] uppercase tracking-wide whitespace-nowrap">{h}</th>
                 ))}
@@ -253,7 +264,7 @@ export default function LinksTab() {
               {!loading && links.map((l) => (
                 <tr key={l.id} className="hover:bg-[#F8F8FC] transition-colors group">
                   <td className="px-4 py-3.5">
-                    <div className="font-mono text-[#0A0A0A] font-medium text-xs">snipr.sh/{l.slug}</div>
+                    <div className="font-mono text-[#0A0A0A] font-medium text-xs">{l.domain || "snipr.sh"}/{l.slug}</div>
                     {l.title && <div className="text-xs text-[#8888A0] mt-0.5 truncate max-w-[130px]">{l.title}</div>}
                   </td>
                   <td className="px-4 py-3.5 max-w-[160px]">
@@ -333,7 +344,7 @@ export default function LinksTab() {
                           }`}>
                           {l.enabled ? <ToggleRight className="w-3.5 h-3.5" /> : <ToggleLeft className="w-3.5 h-3.5" />}
                         </button>
-                        <button onClick={() => del(l.id, l.slug)} disabled={actionId === l.id}
+                        <button onClick={() => del(l.id, l.slug, l.domain)} disabled={actionId === l.id}
                           title="Delete"
                           className="p-1.5 rounded-lg hover:bg-red-50 text-[#8888A0] hover:text-red-500 transition-all disabled:opacity-40">
                           <Trash2 className="w-3.5 h-3.5" />
@@ -347,6 +358,17 @@ export default function LinksTab() {
           </table>
         </div>
       </div>
+      {confirmModal && (
+        <ConfirmModal
+          open={confirmModal.open}
+          title={confirmModal.title}
+          description={confirmModal.description}
+          onClose={() => setConfirmModal(null)}
+          onConfirm={() => { confirmModal.onConfirm(); setConfirmModal(null); }}
+          confirmText="Delete"
+          variant="danger"
+        />
+      )}
     </div>
   );
 }

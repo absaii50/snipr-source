@@ -6,6 +6,8 @@ import {
   Wifi, WifiOff, Plus, X,
 } from "lucide-react";
 import { apiFetch, fmtDate } from "../utils";
+import { useToast } from "../Toast";
+import { ConfirmModal } from "../Toast";
 import DomainSetupWizard from "@/components/DomainSetupWizard";
 
 interface AdminDomain {
@@ -78,10 +80,10 @@ function DnsInstructions({ domain, token }: { domain: string; token: string }) {
       </div>
 
       {tab === "cname" ? (
-        <div className="bg-[#F8F8FC] rounded-xl border border-[#E4E4EC] overflow-hidden">
+        <div className="bg-[#F8F8FC] rounded-xl border border-[#E2E8F0] overflow-hidden">
           <table className="w-full text-xs">
             <thead>
-              <tr className="bg-[#F0F0F6] border-b border-[#E4E4EC]">
+              <tr className="bg-[#F0F0F6] border-b border-[#E2E8F0]">
                 {["Type", "Name / Host", "Value / Points To"].map((h) => (
                   <th key={h} className="text-left px-4 py-2 text-[#8888A0] font-semibold uppercase tracking-wide text-[10px]">{h}</th>
                 ))}
@@ -102,10 +104,10 @@ function DnsInstructions({ domain, token }: { domain: string; token: string }) {
           </table>
         </div>
       ) : (
-        <div className="bg-[#F8F8FC] rounded-xl border border-[#E4E4EC] overflow-hidden">
+        <div className="bg-[#F8F8FC] rounded-xl border border-[#E2E8F0] overflow-hidden">
           <table className="w-full text-xs">
             <thead>
-              <tr className="bg-[#F0F0F6] border-b border-[#E4E4EC]">
+              <tr className="bg-[#F0F0F6] border-b border-[#E2E8F0]">
                 {["Type", "Name / Host", "Value"].map((h) => (
                   <th key={h} className="text-left px-4 py-2 text-[#8888A0] font-semibold uppercase tracking-wide text-[10px]">{h}</th>
                 ))}
@@ -180,8 +182,10 @@ function DomainRow({ d, onDelete, onRefresh, onShowWizard }: {
     }
   }
 
-  async function unverify() {
-    if (!confirm(`Revoke verification for "${d.domain}"?`)) return;
+  const [unverifyConfirm, setUnverifyConfirm] = useState(false);
+
+  async function doUnverify() {
+    setUnverifyConfirm(false);
     setBusy("unverify");
     try {
       await apiFetch(`/admin/domains/${d.id}/unverify`, { method: "PATCH" });
@@ -264,7 +268,7 @@ function DomainRow({ d, onDelete, onRefresh, onShowWizard }: {
                 <button
                   onClick={checkDns}
                   disabled={busy !== null}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#F4F4F6] border border-[#E4E4EC] text-xs font-medium text-[#3A3A3E] hover:bg-[#E8EEF4] disabled:opacity-50 transition-all"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#F4F4F6] border border-[#E2E8F0] text-xs font-medium text-[#3A3A3E] hover:bg-[#E8EEF4] disabled:opacity-50 transition-all"
                 >
                   {busy === "dns" ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Wifi className="w-3.5 h-3.5 text-[#728DA7]" />}
                   Check DNS
@@ -291,7 +295,7 @@ function DomainRow({ d, onDelete, onRefresh, onShowWizard }: {
                   </>
                 ) : (
                   <button
-                    onClick={unverify}
+                    onClick={() => setUnverifyConfirm(true)}
                     disabled={busy !== null}
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs font-medium hover:bg-red-100 disabled:opacity-50 transition-all"
                   >
@@ -303,10 +307,10 @@ function DomainRow({ d, onDelete, onRefresh, onShowWizard }: {
 
               {/* DNS Check Result */}
               {dnsResult && (
-                <div className="bg-white rounded-xl border border-[#E4E4EC] p-4 space-y-3">
+                <div className="bg-white rounded-xl border border-[#E2E8F0] p-4 space-y-3">
                   <p className="text-xs font-semibold text-[#0A0A0A]">DNS Check Results</p>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                    <div className="flex items-start gap-2.5 bg-[#F8F8FC] rounded-xl p-3 border border-[#E4E4EC]">
+                    <div className="flex items-start gap-2.5 bg-[#F8F8FC] rounded-xl p-3 border border-[#E2E8F0]">
                       {dnsResult.cnameOk
                         ? <CheckCircle2 className="w-4 h-4 text-green-500 shrink-0 mt-0.5" />
                         : <WifiOff className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />}
@@ -321,7 +325,7 @@ function DomainRow({ d, onDelete, onRefresh, onShowWizard }: {
                         </p>
                       </div>
                     </div>
-                    <div className="flex items-start gap-2.5 bg-[#F8F8FC] rounded-xl p-3 border border-[#E4E4EC]">
+                    <div className="flex items-start gap-2.5 bg-[#F8F8FC] rounded-xl p-3 border border-[#E2E8F0]">
                       {dnsResult.txtOk
                         ? <CheckCircle2 className="w-4 h-4 text-green-500 shrink-0 mt-0.5" />
                         : <WifiOff className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />}
@@ -354,6 +358,17 @@ function DomainRow({ d, onDelete, onRefresh, onShowWizard }: {
             </div>
           </td>
         </tr>
+      )}
+      {unverifyConfirm && (
+        <ConfirmModal
+          open={unverifyConfirm}
+          title={`Revoke verification for "${d.domain}"?`}
+          description="This will mark the domain as unverified."
+          onClose={() => setUnverifyConfirm(false)}
+          onConfirm={doUnverify}
+          confirmText="Delete"
+          variant="danger"
+        />
       )}
     </>
   );
@@ -399,8 +414,8 @@ function AddDomainModal({ onClose, onAdded }: { onClose: () => void; onAdded: (c
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={onClose}>
-      <div className="bg-white rounded-2xl border border-[#E4E4EC] shadow-xl w-full max-w-lg mx-4" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between px-6 py-4 border-b border-[#E4E4EC]">
+      <div className="bg-white rounded-2xl border border-[#E2E8F0] shadow-xl w-full max-w-lg mx-4" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-6 py-4 border-b border-[#E2E8F0]">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-xl bg-[#0A0A0A] flex items-center justify-center">
               <Globe className="w-4 h-4 text-white" />
@@ -420,7 +435,7 @@ function AddDomainModal({ onClose, onAdded }: { onClose: () => void; onAdded: (c
               value={domain}
               onChange={(e) => setDomain(e.target.value)}
               placeholder="example.com"
-              className="w-full px-3.5 py-2.5 rounded-xl border border-[#E4E4EC] bg-[#F8F8FC] text-[#0A0A0A] text-sm outline-none focus:border-[#728DA7] focus:ring-2 focus:ring-[#728DA7]/15 transition-all"
+              className="w-full px-3.5 py-2.5 rounded-xl border border-[#E2E8F0] bg-[#F8F8FC] text-[#0A0A0A] text-sm outline-none focus:border-[#728DA7] focus:ring-2 focus:ring-[#728DA7]/15 transition-all"
               autoFocus
             />
             <p className="text-xs text-[#8888A0] mt-1">Enter the domain without protocol (e.g., example.com or go.example.com)</p>
@@ -432,7 +447,7 @@ function AddDomainModal({ onClose, onAdded }: { onClose: () => void; onAdded: (c
                 type="checkbox"
                 checked={isPlatformDomain}
                 onChange={(e) => setIsPlatformDomain(e.target.checked)}
-                className="mt-0.5 w-4 h-4 rounded border-[#E4E4EC] text-[#728DA7] focus:ring-[#728DA7]/30"
+                className="mt-0.5 w-4 h-4 rounded border-[#E2E8F0] text-[#728DA7] focus:ring-[#728DA7]/30"
               />
               <div>
                 <p className="text-sm font-semibold text-[#0A0A0A]">Platform Domain (visible to all users)</p>
@@ -452,7 +467,7 @@ function AddDomainModal({ onClose, onAdded }: { onClose: () => void; onAdded: (c
                 <select
                   value={workspaceId}
                   onChange={(e) => setWorkspaceId(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-[#E4E4EC] bg-[#F8F8FC] text-[#0A0A0A] text-sm outline-none focus:border-[#728DA7] focus:ring-2 focus:ring-[#728DA7]/15 transition-all"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-[#E2E8F0] bg-[#F8F8FC] text-[#0A0A0A] text-sm outline-none focus:border-[#728DA7] focus:ring-2 focus:ring-[#728DA7]/15 transition-all"
                 >
                   {workspaces.map((ws) => (
                     <option key={ws.id} value={ws.id}>
@@ -470,7 +485,7 @@ function AddDomainModal({ onClose, onAdded }: { onClose: () => void; onAdded: (c
                 type="checkbox"
                 checked={supportsSubdomains}
                 onChange={(e) => setSupportsSubdomains(e.target.checked)}
-                className="mt-0.5 w-4 h-4 rounded border-[#E4E4EC] text-[#0A0A0A] focus:ring-[#728DA7]/30"
+                className="mt-0.5 w-4 h-4 rounded border-[#E2E8F0] text-[#0A0A0A] focus:ring-[#728DA7]/30"
               />
               <div>
                 <p className="text-sm font-medium text-[#3A3A3E] group-hover:text-[#0A0A0A] transition-colors">Enable Subdomain Support</p>
@@ -483,7 +498,7 @@ function AddDomainModal({ onClose, onAdded }: { onClose: () => void; onAdded: (c
                 type="checkbox"
                 checked={autoVerify}
                 onChange={(e) => setAutoVerify(e.target.checked)}
-                className="mt-0.5 w-4 h-4 rounded border-[#E4E4EC] text-[#0A0A0A] focus:ring-[#728DA7]/30"
+                className="mt-0.5 w-4 h-4 rounded border-[#E2E8F0] text-[#0A0A0A] focus:ring-[#728DA7]/30"
               />
               <div>
                 <p className="text-sm font-medium text-[#3A3A3E] group-hover:text-[#0A0A0A] transition-colors">Auto-Verify Domain</p>
@@ -503,7 +518,7 @@ function AddDomainModal({ onClose, onAdded }: { onClose: () => void; onAdded: (c
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 py-2.5 rounded-xl border border-[#E4E4EC] text-sm font-medium text-[#3A3A3E] hover:bg-[#F4F4F6] transition-all"
+              className="flex-1 py-2.5 rounded-xl border border-[#E2E8F0] text-sm font-medium text-[#3A3A3E] hover:bg-[#F4F4F6] transition-all"
             >
               Cancel
             </button>
@@ -522,6 +537,8 @@ function AddDomainModal({ onClose, onAdded }: { onClose: () => void; onAdded: (c
 }
 
 export default function DomainsTab() {
+  const { toast } = useToast();
+  const [confirmModal, setConfirmModal] = useState<{ open: boolean; title: string; description: string; onConfirm: () => void } | null>(null);
   const [domains, setDomains] = useState<AdminDomain[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -545,14 +562,21 @@ export default function DomainsTab() {
 
   useEffect(() => { load(); }, []);
 
-  async function del(id: string, domain: string) {
-    if (!confirm(`Remove domain "${domain}"? This cannot be undone.`)) return;
-    try {
-      await apiFetch(`/admin/domains/${id}`, { method: "DELETE" });
-      setDomains((d) => d.filter((x) => x.id !== id));
-    } catch {
-      alert("Failed to remove domain. Please try again.");
-    }
+  function del(id: string, domain: string) {
+    setConfirmModal({
+      open: true,
+      title: `Remove domain "${domain}"?`,
+      description: "This cannot be undone.",
+      onConfirm: async () => {
+        try {
+          await apiFetch(`/admin/domains/${id}`, { method: "DELETE" });
+          setDomains((d) => d.filter((x) => x.id !== id));
+          toast("Domain removed successfully", "success");
+        } catch (e: any) {
+          toast(e?.message || "Failed to remove domain. Please try again.", "error");
+        }
+      },
+    });
   }
 
   const filtered = domains.filter((d) => {
@@ -574,7 +598,7 @@ export default function DomainsTab() {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       {/* How-To Banner */}
       <div className="bg-[#F0F4FF] border border-[#D0DCF4] rounded-2xl p-4 flex gap-3">
         <Globe className="w-5 h-5 text-[#4A7A94] shrink-0 mt-0.5" />
@@ -596,7 +620,7 @@ export default function DomainsTab() {
               key={f}
               onClick={() => setFilter(f)}
               className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all ${
-                filter === f ? "bg-[#0A0A0A] text-white" : "bg-white border border-[#E4E4EC] text-[#3A3A3E] hover:bg-[#F4F4F6]"
+                filter === f ? "bg-[#0A0A0A] text-white" : "bg-white border border-[#E2E8F0] text-[#3A3A3E] hover:bg-[#F4F4F6]"
               }`}
             >
               {f.charAt(0).toUpperCase() + f.slice(1)}
@@ -615,10 +639,10 @@ export default function DomainsTab() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search domain or owner…"
-              className="w-full pl-9 pr-3.5 py-2 rounded-xl border border-[#E4E4EC] bg-white text-sm outline-none focus:border-[#728DA7] focus:ring-2 focus:ring-[#728DA7]/15 transition-all"
+              className="w-full pl-9 pr-3.5 py-2 rounded-xl border border-[#E2E8F0] bg-white text-sm outline-none focus:border-[#728DA7] focus:ring-2 focus:ring-[#728DA7]/15 transition-all"
             />
           </div>
-          <button onClick={load} className="p-2 rounded-xl border border-[#E4E4EC] bg-white hover:bg-[#F4F4F6] transition-all" title="Refresh">
+          <button onClick={load} className="p-2 rounded-xl border border-[#E2E8F0] bg-white hover:bg-[#F4F4F6] transition-all" title="Refresh">
             <RefreshCw className="w-3.5 h-3.5 text-[#8888A0]" />
           </button>
           <button
@@ -656,11 +680,11 @@ export default function DomainsTab() {
         </div>
       )}
 
-      <div className="bg-white rounded-2xl border border-[#E4E4EC] overflow-hidden">
+      <div className="bg-white rounded-2xl border border-[#E2E8F0] overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm min-w-[680px]">
             <thead>
-              <tr className="bg-[#F8F8FC] border-b border-[#E4E4EC]">
+              <tr className="bg-[#F8F8FC] border-b border-[#E2E8F0]">
                 {["Domain", "Owner", "Workspace", "Status", "Added", ""].map((h) => (
                   <th key={h} className="text-left px-5 py-3 text-xs font-semibold text-[#8888A0] uppercase tracking-wide">{h}</th>
                 ))}
@@ -690,6 +714,18 @@ export default function DomainsTab() {
           </table>
         </div>
       </div>
+
+      {confirmModal && (
+        <ConfirmModal
+          open={confirmModal.open}
+          title={confirmModal.title}
+          description={confirmModal.description}
+          onClose={() => setConfirmModal(null)}
+          onConfirm={() => { confirmModal.onConfirm(); setConfirmModal(null); }}
+          confirmText="Delete"
+          variant="danger"
+        />
+      )}
     </div>
   );
 }

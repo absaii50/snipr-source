@@ -20,6 +20,11 @@ import { sendVerificationEmail, sendEmail } from "../lib/email";
 
 const router: IRouter = Router();
 
+/** Escape LIKE/ILIKE wildcard characters to prevent pattern injection */
+function escapeLike(str: string): string {
+  return str.replace(/[%_\\]/g, (ch) => `\\${ch}`);
+}
+
 // SECURITY: Admin credentials must be set via environment variables
 // Format: ADMIN_USERNAME=admin, ADMIN_PASSWORD_HASH=bcrypt_hash_here
 const ADMIN_USERNAME = process.env.ADMIN_USERNAME;
@@ -84,8 +89,23 @@ router.post("/admin/login", async (req, res): Promise<void> => {
       return;
     }
 
-    (req.session as any).isAdmin = true;
-    res.json({ ok: true });
+    // SECURITY: Regenerate session ID to prevent session fixation
+    req.session.regenerate((regenErr) => {
+      if (regenErr) {
+        console.error("Admin session regenerate error:", regenErr);
+        res.status(500).json({ error: "Session error" });
+        return;
+      }
+      (req.session as any).isAdmin = true;
+      req.session.save((err) => {
+        if (err) {
+          console.error("Admin session save error:", err);
+          res.status(500).json({ error: "Session error" });
+          return;
+        }
+        res.json({ ok: true });
+      });
+    });
   } catch (error) {
     console.error("Admin login bcrypt error:", error);
     res.status(500).json({ error: "Authentication failed" });
@@ -93,8 +113,10 @@ router.post("/admin/login", async (req, res): Promise<void> => {
 });
 
 router.post("/admin/logout", (req, res): void => {
-  (req.session as any).isAdmin = false;
-  res.json({ ok: true });
+  req.session.destroy((err) => {
+    if (err) console.error("Admin logout session destroy error:", err);
+    res.json({ ok: true });
+  });
 });
 
 router.get("/admin/me", (req, res): void => {
@@ -145,6 +167,118 @@ router.get("/admin/stats", requireAdmin, async (req, res): Promise<void> => {
   });
 });
 
+/* ── Plan Distribution ─────────────────────────────────────────────── */
+router.get("/admin/plan-distribution", requireAdmin, async (_req, res): Promise<void> => {
+  const rows = await db
+    .select({ plan: usersTable.plan, count: count() })
+    .from(usersTable)
+    .groupBy(usersTable.plan);
+
+  const distribution: Record<string, number> = {};
+  let total = 0;
+  for (const r of rows) {
+    distribution[r.plan] = r.count;
+    total += r.count;
+  }
+  res.json({ distribution, total });
+});
+
+/* ── Revenue Overview ────────────────────────────────────────────── */
+router.get("/admin/revenue", requireAdmin, async (_req, res): Promise<void> => {
+  const rows = await db
+    .select({
+      status: usersTable.stripeSubscriptionStatus,
+      plan: usersTable.plan,
+      count: count(),
+    })
+    .from(usersTable)
+    .where(sql`${usersTable.stripeSubscriptionId} IS NOT NULL`)
+    .groupBy(usersTable.stripeSubscriptionStatus, usersTable.plan);
+
+  let activeSubscriptions = 0;
+  let totalWithStripe = 0;
+  const byStatus: Record<string, number> = {};
+  const byPlan: Record<string, number> = {};
+
+  for (const r of rows) {
+    totalWithStripe += r.count;
+    byStatus[r.status ?? "unknown"] = (byStatus[r.status ?? "unknown"] || 0) + r.count;
+    byPlan[r.plan] = (byPlan[r.plan] || 0) + r.count;
+    if (r.status === "active" || r.status === "trialing") {
+      activeSubscriptions += r.count;
+    }
+  }
+
+  res.json({ activeSubscriptions, totalWithStripe, byStatus, byPlan });
+});
+
+/* ── Reports Summary ──────────────────────────────────────────────── */
+router.get("/admin/reports/summary", requireAdmin, async (req, res): Promise<void> => {
+  const days = Math.min(parseInt(req.query.days as string) || 1, 90);
+  const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+
+  const [clickRows] = await db
+    .select({ total: count() })
+    .from(clickEventsTable)
+    .where(sql`${clickEventsTable.timestamp} >= ${since}`);
+
+  const [uniqueRows] = await db
+    .select({ total: sql<number>`COUNT(DISTINCT ip_hash)` })
+    .from(clickEventsTable)
+    .where(sql`${clickEventsTable.timestamp} >= ${since}`);
+
+  const topCountries = await db
+    .select({ country: clickEventsTable.country, count: count() })
+    .from(clickEventsTable)
+    .where(sql`${clickEventsTable.timestamp} >= ${since}`)
+    .groupBy(clickEventsTable.country)
+    .orderBy(desc(count()))
+    .limit(5);
+
+  const topReferrers = await db
+    .select({ referrer: clickEventsTable.referrer, count: count() })
+    .from(clickEventsTable)
+    .where(sql`${clickEventsTable.timestamp} >= ${since} AND ${clickEventsTable.referrer} IS NOT NULL AND ${clickEventsTable.referrer} != ''`)
+    .groupBy(clickEventsTable.referrer)
+    .orderBy(desc(count()))
+    .limit(5);
+
+  const topSlugs = await db
+    .select({ slug: linksTable.slug, domain: domainsTable.domain, count: count() })
+    .from(clickEventsTable)
+    .innerJoin(linksTable, sql`${clickEventsTable.linkId} = ${linksTable.id}`)
+    .leftJoin(domainsTable, sql`${domainsTable.id} = ${linksTable.domainId}`)
+    .where(sql`${clickEventsTable.timestamp} >= ${since}`)
+    .groupBy(linksTable.slug, domainsTable.domain)
+    .orderBy(desc(count()))
+    .limit(10);
+
+  // Hourly breakdown (last 24h only)
+  const hourly = await db
+    .select({
+      hour: sql<number>`EXTRACT(HOUR FROM ${clickEventsTable.timestamp})::int`,
+      count: count(),
+    })
+    .from(clickEventsTable)
+    .where(sql`${clickEventsTable.timestamp} >= NOW() - INTERVAL '24 hours'`)
+    .groupBy(sql`EXTRACT(HOUR FROM ${clickEventsTable.timestamp})`)
+    .orderBy(sql`EXTRACT(HOUR FROM ${clickEventsTable.timestamp})`);
+
+  const hourlyMap: number[] = new Array(24).fill(0);
+  for (const h of hourly) hourlyMap[h.hour] = h.count;
+
+  res.json({
+    totalClicks: clickRows.total,
+    uniqueVisitors: uniqueRows.total,
+    topCountry: topCountries[0] || null,
+    topReferrer: topReferrers[0] || null,
+    topCountries,
+    topReferrers,
+    topSlugs,
+    hourlyBreakdown: hourlyMap,
+  });
+});
+
 /* ── Users ─────────────────────────────────────────────────────────── */
 router.get("/admin/users", requireAdmin, async (req, res): Promise<void> => {
   const search = (req.query.search as string) ?? "";
@@ -160,7 +294,7 @@ router.get("/admin/users", requireAdmin, async (req, res): Promise<void> => {
     .from(usersTable)
     .where(
       search
-        ? sql`lower(${usersTable.name}) like ${"%" + search.toLowerCase() + "%"} or lower(${usersTable.email}) like ${"%" + search.toLowerCase() + "%"}`
+        ? sql`lower(${usersTable.name}) like ${"%" + escapeLike(search.toLowerCase()) + "%"} or lower(${usersTable.email}) like ${"%" + escapeLike(search.toLowerCase()) + "%"}`
         : undefined
     )
     .orderBy(desc(usersTable.createdAt))
@@ -202,6 +336,33 @@ router.patch("/admin/users/:id/plan", requireAdmin, async (req, res): Promise<vo
   res.json({ ok: true, plan });
 });
 
+router.patch("/admin/users/:id/edit", requireAdmin, async (req, res): Promise<void> => {
+  const userId = req.params.id;
+  const { name, email, password } = req.body as { name?: string; email?: string; password?: string };
+
+  const updates: Record<string, unknown> = {};
+  if (name && name.trim()) updates.name = name.trim();
+  if (email && email.trim()) updates.email = email.trim().toLowerCase();
+  if (password && password.length >= 4) {
+    updates.passwordHash = await bcrypt.hash(password, 10);
+  }
+
+  if (Object.keys(updates).length === 0) {
+    res.status(400).json({ error: "No valid fields to update" });
+    return;
+  }
+
+  await db.update(usersTable).set(updates).where(eq(usersTable.id, userId));
+
+  const details: Record<string, string> = {};
+  if (updates.name) details.name = updates.name as string;
+  if (updates.email) details.email = updates.email as string;
+  if (updates.passwordHash) details.passwordReset = "true";
+  await logAuditAction("edit_user", "user", userId, details, req.ip);
+
+  res.json({ ok: true, updated: Object.keys(updates).filter(k => k !== "passwordHash") });
+});
+
 router.patch("/admin/users/:id/suspend", requireAdmin, async (req, res): Promise<void> => {
   const userId = req.params.id;
   await db.update(usersTable).set({ suspendedAt: new Date() }).where(eq(usersTable.id, userId));
@@ -237,8 +398,11 @@ router.get("/admin/links", requireAdmin, async (req, res): Promise<void> => {
       enabled: linksTable.enabled,
       createdAt: linksTable.createdAt,
       workspaceId: linksTable.workspaceId,
+      domainId: linksTable.domainId,
+      domain: domainsTable.domain,
     })
     .from(linksTable)
+    .leftJoin(domainsTable, sql`${domainsTable.id} = ${linksTable.domainId}`)
     .where(
       search
         ? sql`lower(${linksTable.slug}) like ${"%" + search.toLowerCase() + "%"} or lower(${linksTable.destinationUrl}) like ${"%" + search.toLowerCase() + "%"}`
@@ -589,7 +753,7 @@ router.get("/admin/email-logs", requireAdmin, async (req, res): Promise<void> =>
     conditions.push(eq(emailLogsTable.type, typeFilter));
   }
   if (search) {
-    conditions.push(ilike(emailLogsTable.to, `%${search}%`));
+    conditions.push(ilike(emailLogsTable.to, `%${escapeLike(search)}%`));
   }
   if (conditions.length > 0) {
     query = query.where(and(...conditions)) as any;
@@ -768,10 +932,11 @@ router.get("/admin/recent-signups", requireAdmin, async (req, res): Promise<void
 /* ── Top links (for overview) ──────────────────────────────────────── */
 router.get("/admin/top-links", requireAdmin, async (req, res): Promise<void> => {
   const rows = await db.execute(sql`
-    SELECT l.slug, l.destination_url, count(c.id) as clicks
+    SELECT l.slug, l.destination_url, d.domain, count(c.id) as clicks
     FROM links l
     LEFT JOIN click_events c ON c.link_id = l.id
-    GROUP BY l.id, l.slug, l.destination_url
+    LEFT JOIN domains d ON d.id = l.domain_id
+    GROUP BY l.id, l.slug, l.destination_url, d.domain
     ORDER BY clicks DESC
     LIMIT 5
   `);
@@ -935,7 +1100,7 @@ router.get("/admin/users/performance", requireAdmin, async (req, res): Promise<v
     LEFT JOIN click_events ce ON ce.link_id = l.id
       ${days > 0 ? sql`AND ce.timestamp >= NOW() - (${days}::int || ' days')::interval` : sql``}
     WHERE 1=1
-      ${search ? sql`AND (lower(u.name) LIKE ${"%" + search + "%"} OR lower(u.email) LIKE ${"%" + search + "%"})` : sql``}
+      ${search ? sql`AND (lower(u.name) LIKE ${"%" + escapeLike(search) + "%"} OR lower(u.email) LIKE ${"%" + escapeLike(search) + "%"})` : sql``}
       ${plan ? sql`AND u.plan = ${plan}` : sql``}
     GROUP BY u.id, u.name, u.email, u.plan, u.suspended_at, u.created_at, u.email_verified, w.name, w.slug
     ORDER BY ${sql.raw(orderBy)}
@@ -965,6 +1130,7 @@ router.get("/admin/users/:id/analytics", requireAdmin, async (req, res): Promise
       SELECT
         l.id, l.slug, l.destination_url AS destination_url, l.title,
         l.enabled, l.created_at, l.expires_at, l.click_limit,
+        d.domain AS domain,
         COUNT(ce.id)::int                                 AS total_clicks,
         COUNT(DISTINCT ce.ip_hash)::int                   AS unique_clicks,
         MAX(ce.timestamp)                                 AS last_click_at,
@@ -979,8 +1145,9 @@ router.get("/admin/users/:id/analytics", requireAdmin, async (req, res): Promise
          GROUP BY referrer ORDER BY COUNT(*) DESC LIMIT 1) AS top_referrer
       FROM links l
       LEFT JOIN click_events ce ON ce.link_id = l.id
+      LEFT JOIN domains d ON d.id = l.domain_id
       WHERE l.workspace_id = (SELECT id FROM workspaces WHERE user_id = ${userId} LIMIT 1)
-      GROUP BY l.id
+      GROUP BY l.id, d.domain
       ORDER BY total_clicks DESC
       LIMIT 500
     `),
@@ -1040,6 +1207,7 @@ router.get("/admin/links/performance", requireAdmin, async (req, res): Promise<v
     SELECT
       l.id, l.slug, l.destination_url, l.title,
       l.enabled, l.created_at, l.expires_at, l.click_limit,
+      d.domain AS domain,
       u.name  AS owner_name,
       u.email AS owner_email,
       u.plan  AS owner_plan,
@@ -1057,11 +1225,12 @@ router.get("/admin/links/performance", requireAdmin, async (req, res): Promise<v
     FROM links l
     LEFT JOIN workspaces w ON w.id = l.workspace_id
     LEFT JOIN users u ON u.id = w.user_id
+    LEFT JOIN domains d ON d.id = l.domain_id
     LEFT JOIN click_events ce ON ce.link_id = l.id
     WHERE 1=1
-      ${search ? sql`AND (lower(l.slug) LIKE ${"%" + search + "%"} OR lower(l.destination_url) LIKE ${"%" + search + "%"} OR lower(u.email) LIKE ${"%" + search + "%"})` : sql``}
+      ${search ? sql`AND (lower(l.slug) LIKE ${"%" + escapeLike(search) + "%"} OR lower(l.destination_url) LIKE ${"%" + escapeLike(search) + "%"} OR lower(u.email) LIKE ${"%" + escapeLike(search) + "%"})` : sql``}
       ${status === "active" ? sql`AND l.enabled = true` : status === "disabled" ? sql`AND l.enabled = false` : sql``}
-    GROUP BY l.id, u.name, u.email, u.plan, w.name
+    GROUP BY l.id, d.domain, u.name, u.email, u.plan, w.name
     HAVING COUNT(ce.id) >= ${minClicks}
     ORDER BY ${sql.raw(orderBy)}
     LIMIT 500
@@ -1137,6 +1306,32 @@ router.get("/admin/users/top", requireAdmin, async (req, res): Promise<void> => 
 
 /* ── Platform Settings ──────────────────────────────────────────────── */
 
+
+// --- Notifications (last 24h summary) ---
+
+router.get("/admin/notifications", requireAdmin, async (_req, res): Promise<void> => {
+  const last24h = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+  const [newSignups, failedEmails, recentAudit] = await Promise.all([
+    db.select({ id: usersTable.id, name: usersTable.name, email: usersTable.email, createdAt: usersTable.createdAt })
+      .from(usersTable)
+      .where(sql`${usersTable.createdAt} >= ${last24h}`)
+      .orderBy(desc(usersTable.createdAt))
+      .limit(10),
+    db.select({ id: emailLogsTable.id, recipient: emailLogsTable.recipient, subject: emailLogsTable.subject, createdAt: emailLogsTable.createdAt })
+      .from(emailLogsTable)
+      .where(sql`${emailLogsTable.status} = 'failed' AND ${emailLogsTable.createdAt} >= ${last24h}`)
+      .orderBy(desc(emailLogsTable.createdAt))
+      .limit(10),
+    db.select({ id: adminAuditLogTable.id, action: adminAuditLogTable.action, targetType: adminAuditLogTable.targetType, createdAt: adminAuditLogTable.createdAt })
+      .from(adminAuditLogTable)
+      .where(sql`${adminAuditLogTable.createdAt} >= ${last24h}`)
+      .orderBy(desc(adminAuditLogTable.createdAt))
+      .limit(10),
+  ]);
+
+  res.json({ newSignups, failedEmails, recentAudit });
+});
 
 // --- Audit Log ---
 
@@ -1279,7 +1474,14 @@ router.post("/admin/users/:id/impersonate", requireAdmin, async (req, res): Prom
   session.workspaceId = ws?.id ?? null;
 
   await logAuditAction("impersonate_user", "user", userId, { userName: user.name }, req.ip);
-  res.json({ ok: true, user: { id: user.id, name: user.name, email: user.email } });
+  req.session.save((err) => {
+    if (err) {
+      console.error("Impersonate session save error:", err);
+      res.status(500).json({ error: "Session error" });
+      return;
+    }
+    res.json({ ok: true, user: { id: user.id, name: user.name, email: user.email } });
+  });
 });
 
 router.post("/admin/stop-impersonate", requireAdmin, async (req, res): Promise<void> => {
@@ -1291,7 +1493,10 @@ router.post("/admin/stop-impersonate", requireAdmin, async (req, res): Promise<v
     await logAuditAction("stop_impersonate", "user", imp.userId, { userName: imp.userName }, req.ip);
   }
   delete session.impersonating;
-  res.json({ ok: true });
+  req.session.save((err) => {
+    if (err) console.error("Stop-impersonate session save error:", err);
+    res.json({ ok: true });
+  });
 });
 
 router.get("/admin/impersonation-status", requireAdmin, (req, res): void => {
@@ -1720,6 +1925,73 @@ router.get("/admin/users/:id/workspace-detail", requireAdmin, async (req, res): 
   });
 });
 
+router.get("/admin/users/:id/activity-timeline", requireAdmin, async (req, res): Promise<void> => {
+  const userId = req.params.id;
+
+  // Get user's workspace
+  const [ws] = await db.select({ id: workspacesTable.id }).from(workspacesTable).where(eq(workspacesTable.userId, userId)).limit(1);
+  if (!ws) { res.json({ events: [] }); return; }
+
+  // Get user's links
+  const userLinks = await db.select({ id: linksTable.id, slug: linksTable.slug, createdAt: linksTable.createdAt })
+    .from(linksTable).where(eq(linksTable.workspaceId, ws.id));
+
+  const events: Array<{ type: string; description: string; timestamp: string; meta?: Record<string, unknown> }> = [];
+
+  // Link creation events
+  for (const link of userLinks) {
+    events.push({ type: "link_created", description: `Created link /${link.slug}`, timestamp: link.createdAt?.toISOString() || "", meta: { slug: link.slug } });
+  }
+
+  // Recent clicks on user's links (last 50)
+  if (userLinks.length > 0) {
+    const linkIds = userLinks.map(l => l.id);
+    const clicks = await db.select({
+      slug: clickEventsTable.slug,
+      country: clickEventsTable.country,
+      timestamp: clickEventsTable.timestamp,
+    })
+      .from(clickEventsTable)
+      .where(inArray(clickEventsTable.linkId, linkIds))
+      .orderBy(desc(clickEventsTable.timestamp))
+      .limit(50);
+
+    for (const c of clicks) {
+      events.push({ type: "click", description: `Click on /${c.slug} from ${c.country || "Unknown"}`, timestamp: c.timestamp?.toISOString() || "", meta: { slug: c.slug, country: c.country } });
+    }
+  }
+
+  // Emails sent to this user
+  const [user] = await db.select({ email: usersTable.email }).from(usersTable).where(eq(usersTable.id, userId)).limit(1);
+  if (user) {
+    const emails = await db.select({ subject: emailLogsTable.subject, status: emailLogsTable.status, createdAt: emailLogsTable.createdAt })
+      .from(emailLogsTable)
+      .where(eq(emailLogsTable.recipient, user.email))
+      .orderBy(desc(emailLogsTable.createdAt))
+      .limit(20);
+
+    for (const e of emails) {
+      events.push({ type: "email", description: `${e.status === "sent" ? "Sent" : "Failed"}: ${e.subject}`, timestamp: e.createdAt?.toISOString() || "", meta: { status: e.status } });
+    }
+  }
+
+  // Admin actions targeting this user
+  const auditActions = await db.select({ action: adminAuditLogTable.action, details: adminAuditLogTable.details, createdAt: adminAuditLogTable.createdAt })
+    .from(adminAuditLogTable)
+    .where(eq(adminAuditLogTable.targetId, userId))
+    .orderBy(desc(adminAuditLogTable.createdAt))
+    .limit(20);
+
+  for (const a of auditActions) {
+    events.push({ type: "admin_action", description: `Admin: ${a.action}`, timestamp: a.createdAt?.toISOString() || "", meta: { action: a.action } });
+  }
+
+  // Sort all events by timestamp descending
+  events.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+
+  res.json({ events: events.slice(0, 100) });
+});
+
 // --- Mass Email / Platform Notifications ---
 
 router.post("/admin/notifications/preview", requireAdmin, async (req, res): Promise<void> => {
@@ -1825,6 +2097,30 @@ interface PlatformConfig {
   access_enforce_2fa?: boolean;
   access_ip_allowlist?: boolean;
 }
+
+/* ── Database Backup ──────────────────────────────────────────────── */
+router.post("/admin/backup", requireAdmin, async (req, res): Promise<void> => {
+  try {
+    const { exec } = require("child_process");
+    const dbUrl = process.env.DATABASE_URL;
+    if (!dbUrl) { res.status(500).json({ error: "DATABASE_URL not configured" }); return; }
+
+    const filename = `snipr-backup-${new Date().toISOString().slice(0, 10)}.sql`;
+    res.setHeader("Content-Type", "application/sql");
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+
+    const child = exec(`pg_dump "${dbUrl}" --no-owner --no-acl`, { maxBuffer: 100 * 1024 * 1024 });
+    child.stdout.pipe(res);
+    child.stderr.on("data", (d: string) => console.error("pg_dump stderr:", d));
+    child.on("error", (err: Error) => {
+      if (!res.headersSent) res.status(500).json({ error: err.message });
+    });
+
+    await logAuditAction("database_backup", null, null, null, req.ip);
+  } catch (err: any) {
+    if (!res.headersSent) res.status(500).json({ error: err.message });
+  }
+});
 
 router.get("/admin/platform-settings", requireAdmin, async (_req, res): Promise<void> => {
   const [row] = await db.select().from(platformSettingsTable).where(eq(platformSettingsTable.key, PLATFORM_SETTINGS_KEY));

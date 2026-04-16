@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq, and, gte, lte, sql, sum, count, desc } from "drizzle-orm";
-import { db, conversionsTable, linksTable, workspacesTable } from "@workspace/db";
+import { db, conversionsTable, linksTable } from "@workspace/db";
 import { requireAuth } from "../lib/auth";
 
 const router: IRouter = Router();
@@ -14,33 +14,21 @@ function parseDateRange(from?: string, to?: string) {
   return { fromDate, toDate };
 }
 
-router.post("/conversions", async (req, res): Promise<void> => {
+router.post("/conversions", requireAuth, async (req, res): Promise<void> => {
   const body = req.body as Record<string, unknown>;
-
-  if (!body.workspaceId && !body.slug) {
-    res.status(400).json({ error: "workspaceId or slug required" });
-    return;
-  }
-
-  let workspaceId = body.workspaceId as string | undefined;
+  const workspaceId = req.session.workspaceId!;
   let linkId = body.linkId as string | undefined;
 
   if (body.slug) {
     const [link] = await db
       .select()
       .from(linksTable)
-      .where(eq(linksTable.slug, body.slug as string));
+      .where(and(eq(linksTable.slug, body.slug as string), eq(linksTable.workspaceId, workspaceId)));
     if (!link) {
       res.status(404).json({ error: "Link not found" });
       return;
     }
     linkId = link.id;
-    workspaceId = link.workspaceId;
-  }
-
-  if (!workspaceId) {
-    res.status(400).json({ error: "workspaceId required" });
-    return;
   }
 
   const [conv] = await db

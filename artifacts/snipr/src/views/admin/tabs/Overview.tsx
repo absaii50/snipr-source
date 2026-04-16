@@ -31,7 +31,7 @@ interface HealthData {
   checks?: Record<string, boolean>;
 }
 interface RecentUser { id: string; name: string; email: string; createdAt: string; }
-interface TopLink { slug: string; destination_url: string; clicks: number; }
+interface TopLink { slug: string; destination_url: string; clicks: number; domain: string | null; }
 interface TopUser {
   id: string; name: string; email: string; plan: string;
   total_links: number; total_clicks: number; clicks_7d: number;
@@ -43,7 +43,7 @@ function Kpi({ label, value, sub, icon: Icon, accent, bg }: {
   icon: React.ElementType; accent: string; bg: string;
 }) {
   return (
-    <div className="bg-white rounded-2xl border border-[#E4E4EC] p-5 hover:shadow-md transition-all hover:-translate-y-0.5">
+    <div className="bg-white rounded-2xl border border-[#E2E8F0] p-5 hover:shadow-md transition-all hover:-translate-y-0.5">
       <div className="flex items-start justify-between mb-3">
         <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: bg }}>
           <Icon className="w-5 h-5" style={{ color: accent }} />
@@ -137,7 +137,7 @@ export default function Overview() {
   if (loading) return (
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
       {[...Array(8)].map((_, i) => (
-        <div key={i} className="bg-white rounded-2xl border border-[#E4E4EC] h-28 animate-pulse" />
+        <div key={i} className="bg-white rounded-2xl border border-[#E2E8F0] h-28 animate-pulse" />
       ))}
     </div>
   );
@@ -145,14 +145,14 @@ export default function Overview() {
   if (!stats) return null;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-sm font-semibold text-[#0A0A0A]">Platform Health</h2>
           <p className="text-xs text-[#8888A0]">Live across all workspaces</p>
         </div>
         <button onClick={refresh} disabled={refreshing}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[#E4E4EC] text-xs text-[#3A3A3E] hover:bg-[#F4F4F6] transition-all disabled:opacity-60">
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[#E2E8F0] text-xs text-[#3A3A3E] hover:bg-[#F4F4F6] transition-all disabled:opacity-60">
           <RefreshCw className={`w-3 h-3 ${refreshing ? "animate-spin" : ""}`} />
           Refresh
         </button>
@@ -178,7 +178,7 @@ export default function Overview() {
       </div>
 
       {health && (
-        <div className="bg-white rounded-2xl border border-[#E4E4EC] p-5">
+        <div className="bg-white rounded-2xl border border-[#E2E8F0] p-5">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
               <Server className="w-4 h-4 text-[#728DA7]" />
@@ -192,7 +192,7 @@ export default function Overview() {
             </div>
             <span className="text-[10px] text-[#8888A0]">Auto-refreshes every 30s</span>
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
             <div className="rounded-xl bg-[#F8F8FC] p-3">
               <div className="flex items-center gap-1.5 mb-1">
                 <Clock className="w-3 h-3 text-[#8888A0]" />
@@ -265,7 +265,7 @@ export default function Overview() {
       )}
 
       {/* Platform traffic area chart */}
-      <div className="bg-white rounded-2xl border border-[#E4E4EC] p-5">
+      <div className="bg-white rounded-2xl border border-[#E2E8F0] p-5">
         <div className="flex items-center justify-between mb-4">
           <div>
             <h3 className="text-sm font-semibold text-[#0A0A0A]">Platform Traffic</h3>
@@ -276,7 +276,7 @@ export default function Overview() {
         {chartData.length === 0 ? (
           <div className="h-32 flex items-center justify-center text-sm text-[#8888A0]">No click data yet</div>
         ) : (
-          <ResponsiveContainer width="100%" height={140}>
+          <ResponsiveContainer width="100%" height={200}>
             <AreaChart data={chartData} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
               <defs>
                 <linearGradient id="clickGrad" x1="0" y1="0" x2="0" y2="1">
@@ -300,8 +300,8 @@ export default function Overview() {
       {/* Top users + recent signups + top links */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Top users by traffic */}
-        <div className="lg:col-span-1 bg-white rounded-2xl border border-[#E4E4EC] overflow-hidden">
-          <div className="px-5 py-4 border-b border-[#E4E4EC] flex items-center gap-2">
+        <div className="lg:col-span-1 bg-white rounded-2xl border border-[#E2E8F0] overflow-hidden">
+          <div className="px-5 py-4 border-b border-[#E2E8F0] flex items-center gap-2">
             <Crown className="w-4 h-4 text-amber-500" />
             <h3 className="text-sm font-semibold text-[#0A0A0A]">Top Users by Traffic</h3>
           </div>
@@ -338,8 +338,8 @@ export default function Overview() {
         </div>
 
         {/* Recent signups */}
-        <div className="bg-white rounded-2xl border border-[#E4E4EC] overflow-hidden">
-          <div className="px-5 py-4 border-b border-[#E4E4EC] flex items-center gap-2">
+        <div className="bg-white rounded-2xl border border-[#E2E8F0] overflow-hidden">
+          <div className="px-5 py-4 border-b border-[#E2E8F0] flex items-center gap-2">
             <UserPlus className="w-4 h-4 text-[#728DA7]" />
             <h3 className="text-sm font-semibold text-[#0A0A0A]">Recent Signups</h3>
           </div>
@@ -363,8 +363,8 @@ export default function Overview() {
         </div>
 
         {/* Top links */}
-        <div className="bg-white rounded-2xl border border-[#E4E4EC] overflow-hidden">
-          <div className="px-5 py-4 border-b border-[#E4E4EC] flex items-center gap-2">
+        <div className="bg-white rounded-2xl border border-[#E2E8F0] overflow-hidden">
+          <div className="px-5 py-4 border-b border-[#E2E8F0] flex items-center gap-2">
             <TrendingUp className="w-4 h-4 text-[#728DA7]" />
             <h3 className="text-sm font-semibold text-[#0A0A0A]">Top Performing Links</h3>
           </div>
@@ -378,7 +378,7 @@ export default function Overview() {
                   {i + 1}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <div className="text-sm font-mono font-medium text-[#0A0A0A]">snipr.sh/{l.slug}</div>
+                  <div className="text-sm font-mono font-medium text-[#0A0A0A]">{l.domain || "snipr.sh"}/{l.slug}</div>
                   <div className="text-xs text-[#8888A0] truncate">{l.destination_url}</div>
                 </div>
                 <div className="text-xs font-semibold text-[#728DA7] shrink-0 bg-[#EEF3F7] px-2 py-0.5 rounded-full">

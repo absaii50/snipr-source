@@ -1,9 +1,9 @@
 import { Router, type IRouter } from "express";
-import { eq, and, or, count, inArray, gte, sql, desc } from "drizzle-orm";
+import { eq, and, or, count, countDistinct, inArray, gte, sql, desc } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import QRCode from "qrcode";
 import bcrypt from "bcryptjs";
-import { db, linksTable, workspacesTable, linkTagsTable, tagsTable, foldersTable, clickEventsTable, domainsTable } from "@workspace/db";
+import { db, linksTable, workspacesTable, linkTagsTable, tagsTable, foldersTable, clickEventsTable, domainsTable, platformSettingsTable } from "@workspace/db";
 import {
   CreateLinkBody,
   UpdateLinkBody,
@@ -151,18 +151,83 @@ router.post("/links", requireAuth, async (req, res): Promise<void> => {
 
   let iosDeepLink: string | null = null;
   if (body.iosDeepLink && typeof body.iosDeepLink === "string") {
+    // Allow http/https and common app deep link schemes
+    try {
+      const u = new URL(body.iosDeepLink);
+      if (!["http:", "https:"].includes(u.protocol) && !body.iosDeepLink.includes("://")) {
+        res.status(400).json({ error: "Validation error", message: "iOS deep link must be a valid URL" });
+        return;
+      }
+    } catch {
+      // Deep links like "myapp://path" won't parse with new URL(), allow them if they contain ://
+      if (!body.iosDeepLink.includes("://")) {
+        res.status(400).json({ error: "Validation error", message: "iOS deep link must be a valid URL with a scheme" });
+        return;
+      }
+    }
+    // Block dangerous schemes
+    if (/^(javascript|data|vbscript|file):/i.test(body.iosDeepLink)) {
+      res.status(400).json({ error: "Validation error", message: "iOS deep link uses a disallowed scheme" });
+      return;
+    }
     iosDeepLink = body.iosDeepLink;
   }
   let androidDeepLink: string | null = null;
   if (body.androidDeepLink && typeof body.androidDeepLink === "string") {
+    try {
+      const u = new URL(body.androidDeepLink);
+      if (!["http:", "https:"].includes(u.protocol) && !body.androidDeepLink.includes("://")) {
+        res.status(400).json({ error: "Validation error", message: "Android deep link must be a valid URL" });
+        return;
+      }
+    } catch {
+      if (!body.androidDeepLink.includes("://")) {
+        res.status(400).json({ error: "Validation error", message: "Android deep link must be a valid URL with a scheme" });
+        return;
+      }
+    }
+    if (/^(javascript|data|vbscript|file):/i.test(body.androidDeepLink)) {
+      res.status(400).json({ error: "Validation error", message: "Android deep link uses a disallowed scheme" });
+      return;
+    }
     androidDeepLink = body.androidDeepLink;
   }
 
-  // Require a verified custom domain for every link
-  if (!body.domainId || typeof body.domainId !== "string") {
+  // Resolve domain: use provided domainId, or fall back to platform default domain
+  let resolvedDomainId = (body.domainId && typeof body.domainId === "string") ? body.domainId : null;
+
+  if (!resolvedDomainId) {
+    // Try platform default domain
+    try {
+      const [cfgRow] = await db.select().from(platformSettingsTable).where(eq(platformSettingsTable.key, "platform_config"));
+      if (cfgRow) {
+        const cfg = JSON.parse(cfgRow.value);
+        if (cfg.default_domain) {
+          const [defaultDom] = await db
+            .select({ id: domainsTable.id })
+            .from(domainsTable)
+            .where(and(eq(domainsTable.domain, cfg.default_domain), eq(domainsTable.verified, true)));
+          if (defaultDom) resolvedDomainId = defaultDom.id;
+        }
+      }
+    } catch {}
+  }
+
+  if (!resolvedDomainId) {
+    // Final fallback: first verified platform domain
+    const [firstPlatform] = await db
+      .select({ id: domainsTable.id })
+      .from(domainsTable)
+      .where(and(eq(domainsTable.isPlatformDomain, true), eq(domainsTable.verified, true)))
+      .orderBy(domainsTable.createdAt)
+      .limit(1);
+    if (firstPlatform) resolvedDomainId = firstPlatform.id;
+  }
+
+  if (!resolvedDomainId) {
     res.status(400).json({
       error: "Validation error",
-      message: "A verified custom domain is required. snipr.sh cannot be used as a URL shortener.",
+      message: "A verified custom domain is required. No default domain is configured.",
     });
     return;
   }
@@ -171,7 +236,7 @@ router.post("/links", requireAuth, async (req, res): Promise<void> => {
     .select({ id: domainsTable.id })
     .from(domainsTable)
     .where(and(
-      eq(domainsTable.id, body.domainId),
+      eq(domainsTable.id, resolvedDomainId),
       eq(domainsTable.verified, true),
       or(
         eq(domainsTable.workspaceId, workspaceId),
@@ -267,14 +332,18 @@ router.get("/links/clicks", requireAuth, async (req, res): Promise<void> => {
   const linkIds = links.map((l) => l.id);
 
   const clicks = await db
-    .select({ linkId: clickEventsTable.linkId, total: count() })
+    .select({
+      linkId: clickEventsTable.linkId,
+      total: count(),
+      unique: countDistinct(clickEventsTable.ipHash),
+    })
     .from(clickEventsTable)
     .where(inArray(clickEventsTable.linkId, linkIds))
     .groupBy(clickEventsTable.linkId);
 
-  const result: Record<string, number> = {};
+  const result: Record<string, { total: number; unique: number }> = {};
   for (const row of clicks) {
-    result[row.linkId] = Number(row.total);
+    result[row.linkId] = { total: Number(row.total), unique: Number(row.unique) };
   }
 
   res.json(result);
@@ -502,6 +571,17 @@ router.put("/links/:id", requireAuth, async (req, res): Promise<void> => {
   const body = req.body as Record<string, unknown>;
 
   if (parsed.data.destinationUrl !== undefined && parsed.data.destinationUrl !== null) {
+    // SECURITY: Validate destination URL protocol on update
+    try {
+      const urlObj = new URL(parsed.data.destinationUrl);
+      if (!["http:", "https:"].includes(urlObj.protocol)) {
+        res.status(400).json({ error: "Validation error", message: "Destination URL must be http or https" });
+        return;
+      }
+    } catch {
+      res.status(400).json({ error: "Validation error", message: "Invalid destination URL" });
+      return;
+    }
     updateData.destinationUrl = parsed.data.destinationUrl;
   }
   if (parsed.data.title !== undefined) {
@@ -516,13 +596,12 @@ router.put("/links/:id", requireAuth, async (req, res): Promise<void> => {
   if (parsed.data.slug !== undefined && parsed.data.slug !== null) {
     const newSlug = parsed.data.slug.trim().toLowerCase().replace(/[^a-z0-9_-]/g, "-");
     if (newSlug !== existing.slug) {
-      // SUBDOMAIN SUPPORT: Check slug conflict scoped to workspace and domain
+      // Check slug conflict scoped to domain (global uniqueness per domain, not per workspace)
       const [slugConflict] = await db
         .select()
         .from(linksTable)
         .where(and(
           eq(linksTable.slug, newSlug),
-          eq(linksTable.workspaceId, workspaceId),
           eq(linksTable.domainId, existing.domainId)
         ));
       if (slugConflict) {
@@ -547,7 +626,21 @@ router.put("/links/:id", requireAuth, async (req, res): Promise<void> => {
     updateData.clickLimit = typeof body.clickLimit === "number" ? body.clickLimit : null;
   }
   if ("fallbackUrl" in body) {
-    updateData.fallbackUrl = typeof body.fallbackUrl === "string" && body.fallbackUrl ? body.fallbackUrl : null;
+    if (body.fallbackUrl && typeof body.fallbackUrl === "string") {
+      try {
+        const fbUrl = new URL(body.fallbackUrl);
+        if (!["http:", "https:"].includes(fbUrl.protocol)) {
+          res.status(400).json({ error: "Validation error", message: "Fallback URL must be http or https" });
+          return;
+        }
+        updateData.fallbackUrl = body.fallbackUrl;
+      } catch {
+        res.status(400).json({ error: "Validation error", message: "Fallback URL is not a valid URL" });
+        return;
+      }
+    } else {
+      updateData.fallbackUrl = null;
+    }
   }
   if ("folderId" in body) {
     updateData.folderId = typeof body.folderId === "string" && body.folderId ? body.folderId : null;
@@ -559,10 +652,34 @@ router.put("/links/:id", requireAuth, async (req, res): Promise<void> => {
     updateData.hideReferrer = typeof body.hideReferrer === "boolean" ? body.hideReferrer : false;
   }
   if ("iosDeepLink" in body) {
-    updateData.iosDeepLink = typeof body.iosDeepLink === "string" && body.iosDeepLink ? body.iosDeepLink : null;
+    if (body.iosDeepLink && typeof body.iosDeepLink === "string") {
+      if (/^(javascript|data|vbscript|file):/i.test(body.iosDeepLink)) {
+        res.status(400).json({ error: "Validation error", message: "iOS deep link uses a disallowed scheme" });
+        return;
+      }
+      if (!body.iosDeepLink.includes("://")) {
+        res.status(400).json({ error: "Validation error", message: "iOS deep link must be a valid URL with a scheme" });
+        return;
+      }
+      updateData.iosDeepLink = body.iosDeepLink;
+    } else {
+      updateData.iosDeepLink = null;
+    }
   }
   if ("androidDeepLink" in body) {
-    updateData.androidDeepLink = typeof body.androidDeepLink === "string" && body.androidDeepLink ? body.androidDeepLink : null;
+    if (body.androidDeepLink && typeof body.androidDeepLink === "string") {
+      if (/^(javascript|data|vbscript|file):/i.test(body.androidDeepLink)) {
+        res.status(400).json({ error: "Validation error", message: "Android deep link uses a disallowed scheme" });
+        return;
+      }
+      if (!body.androidDeepLink.includes("://")) {
+        res.status(400).json({ error: "Validation error", message: "Android deep link must be a valid URL with a scheme" });
+        return;
+      }
+      updateData.androidDeepLink = body.androidDeepLink;
+    } else {
+      updateData.androidDeepLink = null;
+    }
   }
 
   // Require a verified custom domain — cannot clear domainId

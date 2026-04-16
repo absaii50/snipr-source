@@ -1,7 +1,8 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
-import { Link2, ArrowRight, X, Sparkles } from "lucide-react";
+import { ArrowRight, X, Sparkles } from "lucide-react";
+import { SniprLogo } from "@/components/SniprLogo";
 import { useAuth } from "@/hooks/use-auth";
 
 export function PublicNavbar() {
@@ -18,7 +19,7 @@ export function PublicNavbar() {
             <Sparkles className="w-3.5 h-3.5 text-[#728DA7] flex-shrink-0" />
             <span className="bg-[#728DA7] text-white text-[9.5px] font-bold px-2 py-0.5 rounded-full tracking-wide">NEW</span>
             <span>AI Link Insights are live — understand which links drive real conversions.</span>
-            <a href="#" className="text-[#8BBAD4] hover:text-white font-semibold inline-flex items-center gap-1 transition-colors underline-offset-2 hover:underline">
+            <a href="/signup" className="text-[#8BBAD4] hover:text-white font-semibold inline-flex items-center gap-1 transition-colors underline-offset-2 hover:underline">
               Try it free <ArrowRight className="w-3 h-3"/>
             </a>
           </div>
@@ -37,8 +38,8 @@ export function PublicNavbar() {
 
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2 group flex-shrink-0">
-            <div className="bg-[#728DA7] text-white p-1.5 rounded-lg group-hover:bg-[#5a7a94] transition-colors">
-              <Link2 className="w-[15px] h-[15px]" />
+            <div className="bg-[#728DA7] text-white p-1.5 rounded-lg group-hover:bg-[#5a7a94] transition-colors flex items-center justify-center">
+              <SniprLogo size={15} color="white" />
             </div>
             <span className="font-display font-bold text-[17px] text-[#EFEFF0] tracking-tight">Snipr</span>
             <span className="hidden sm:inline-flex text-[9px] font-bold text-[#728DA7] border border-[#728DA7]/25 px-1.5 py-0.5 rounded-full ml-0.5 tracking-wider">

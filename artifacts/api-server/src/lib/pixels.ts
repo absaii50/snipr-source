@@ -65,7 +65,7 @@ export function buildPixelPage(pixels: Pixel[], destinationUrl: string): string 
 <meta charset="utf-8">
 <meta http-equiv="refresh" content="0;url=${dest}">
 ${scripts}
-<script>window.location.href=${JSON.stringify(destinationUrl)};</script>
+<script>window.location.href=${JSON.stringify(destinationUrl).replace(/</g, "\\u003c")};</script>
 </head>
 <body></body>
 </html>`;

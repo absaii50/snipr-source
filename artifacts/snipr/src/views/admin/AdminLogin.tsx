@@ -35,7 +35,7 @@ export default function AdminLogin({ onLogin }: { onLogin: () => void }) {
           <p className="text-sm text-[#8888A0] mt-1">Snipr platform management</p>
         </div>
 
-        <div className="bg-white rounded-2xl border border-[#E4E4EC] p-8 shadow-sm">
+        <div className="bg-white rounded-2xl border border-[#E2E8F0] p-8 shadow-sm">
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-[#3A3A3E] mb-1.5">Username</label>
@@ -43,7 +43,7 @@ export default function AdminLogin({ onLogin }: { onLogin: () => void }) {
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-[#E4E4EC] bg-[#F8F8FC] text-[#0A0A0A] text-sm outline-none focus:border-[#728DA7] focus:ring-2 focus:ring-[#728DA7]/15 transition-all"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-[#E2E8F0] bg-[#F8F8FC] text-[#0A0A0A] text-sm outline-none focus:border-[#728DA7] focus:ring-2 focus:ring-[#728DA7]/15 transition-all"
                 placeholder="admin"
                 autoFocus
               />
@@ -55,7 +55,7 @@ export default function AdminLogin({ onLogin }: { onLogin: () => void }) {
                   type={showPw ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full px-3.5 py-2.5 pr-10 rounded-xl border border-[#E4E4EC] bg-[#F8F8FC] text-[#0A0A0A] text-sm outline-none focus:border-[#728DA7] focus:ring-2 focus:ring-[#728DA7]/15 transition-all"
+                  className="w-full px-3.5 py-2.5 pr-10 rounded-xl border border-[#E2E8F0] bg-[#F8F8FC] text-[#0A0A0A] text-sm outline-none focus:border-[#728DA7] focus:ring-2 focus:ring-[#728DA7]/15 transition-all"
                   placeholder="••••••••"
                 />
                 <button type="button" onClick={() => setShowPw(!showPw)}

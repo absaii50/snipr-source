@@ -53,7 +53,7 @@ export default function Cookies() {
       <PublicNavbar />
 
       {/* ── Page header ── */}
-      <div className="bg-[#FAFAFA] border-b border-[#E8E8E8]">
+      <div className="bg-[#FAFAFA] border-b border-[#E2E8F0]">
         <div className="container max-w-6xl mx-auto px-6 py-20">
           <p className="text-[10px] font-bold tracking-[0.28em] uppercase text-[#888] mb-4">Legal</p>
           <h1 className="font-display font-black text-[42px] md:text-[56px] text-[#0A0A0A] tracking-[-0.035em] leading-[1.04] mb-5">
@@ -71,7 +71,7 @@ export default function Cookies() {
 
           {/* Intro */}
           <section>
-            <h2 className="font-display font-black text-[22px] text-[#0A0A0A] tracking-tight mb-4 pb-3 border-b border-[#EBEBEB]">
+            <h2 className="font-display font-black text-[22px] text-[#0A0A0A] tracking-tight mb-4 pb-3 border-b border-[#E2E8F0]">
               What Are Cookies?
             </h2>
             <p className="text-[14px] text-[#555] leading-[1.8]">
@@ -85,7 +85,7 @@ export default function Cookies() {
           {/* Cookie types */}
           {cookieTypes.map((type) => (
             <section key={type.name}>
-              <div className="flex items-center gap-3 mb-4 pb-3 border-b border-[#EBEBEB]">
+              <div className="flex items-center gap-3 mb-4 pb-3 border-b border-[#E2E8F0]">
                 <h2 className="font-display font-black text-[22px] text-[#0A0A0A] tracking-tight flex-1">
                   {type.name}
                 </h2>
@@ -100,10 +100,10 @@ export default function Cookies() {
               <p className="text-[14px] text-[#555] leading-[1.8] mb-6">{type.description}</p>
 
               {/* Cookie table */}
-              <div className="rounded-xl border border-[#EBEBEB] overflow-hidden">
+              <div className="rounded-xl border border-[#E2E8F0] overflow-hidden">
                 <table className="w-full text-[13px]">
                   <thead>
-                    <tr className="bg-[#FAFAFA] border-b border-[#EBEBEB]">
+                    <tr className="bg-[#FAFAFA] border-b border-[#E2E8F0]">
                       <th className="text-left px-5 py-3 font-semibold text-[#0A0A0A]">Cookie name</th>
                       <th className="text-left px-5 py-3 font-semibold text-[#0A0A0A]">Purpose</th>
                       <th className="text-left px-5 py-3 font-semibold text-[#0A0A0A] whitespace-nowrap">Expiry</th>
@@ -111,7 +111,7 @@ export default function Cookies() {
                   </thead>
                   <tbody>
                     {type.examples.map((ex, i) => (
-                      <tr key={ex.name} className={i < type.examples.length - 1 ? "border-b border-[#EBEBEB]" : ""}>
+                      <tr key={ex.name} className={i < type.examples.length - 1 ? "border-b border-[#E2E8F0]" : ""}>
                         <td className="px-5 py-3.5 font-mono text-[12px] text-[#728DA7]">{ex.name}</td>
                         <td className="px-5 py-3.5 text-[#555]">{ex.purpose}</td>
                         <td className="px-5 py-3.5 text-[#888] whitespace-nowrap">{ex.expiry}</td>
@@ -125,7 +125,7 @@ export default function Cookies() {
 
           {/* Managing cookies */}
           <section>
-            <h2 className="font-display font-black text-[22px] text-[#0A0A0A] tracking-tight mb-4 pb-3 border-b border-[#EBEBEB]">
+            <h2 className="font-display font-black text-[22px] text-[#0A0A0A] tracking-tight mb-4 pb-3 border-b border-[#E2E8F0]">
               Managing Your Cookie Preferences
             </h2>
             <div className="space-y-5">
@@ -146,7 +146,7 @@ export default function Cookies() {
 
           {/* Contact */}
           <section>
-            <h2 className="font-display font-black text-[22px] text-[#0A0A0A] tracking-tight mb-4 pb-3 border-b border-[#EBEBEB]">
+            <h2 className="font-display font-black text-[22px] text-[#0A0A0A] tracking-tight mb-4 pb-3 border-b border-[#E2E8F0]">
               Questions?
             </h2>
             <p className="text-[14px] text-[#555] leading-[1.8]">

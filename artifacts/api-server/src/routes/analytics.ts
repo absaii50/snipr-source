@@ -123,7 +123,7 @@ router.get("/analytics/workspace", requireAuth, async (req, res): Promise<void> 
   const [qrStats] = await db
     .select({
       qrClicks: sql<number>`cast(sum(case when ${clickEventsTable.isQr} = true then 1 else 0 end) as int)`,
-      directClicks: sql<number>`cast(sum(case when ${clickEventsTable.isQr} = false then 1 else 0 end) as int)`,
+      directClicks: sql<number>`cast(sum(case when ${clickEventsTable.isQr} IS NOT TRUE then 1 else 0 end) as int)`,
     })
     .from(clickEventsTable)
     .innerJoin(linksTable, eq(clickEventsTable.linkId, linksTable.id))
@@ -246,7 +246,7 @@ router.get("/analytics/links/:id", requireAuth, async (req, res): Promise<void> 
       totalClicks: count(),
       uniqueClicks: countDistinct(clickEventsTable.ipHash),
       qrClicks: sql<number>`cast(sum(case when ${clickEventsTable.isQr} = true then 1 else 0 end) as int)`,
-      directClicks: sql<number>`cast(sum(case when ${clickEventsTable.isQr} = false then 1 else 0 end) as int)`,
+      directClicks: sql<number>`cast(sum(case when ${clickEventsTable.isQr} IS NOT TRUE then 1 else 0 end) as int)`,
     })
     .from(clickEventsTable)
     .where(
@@ -370,6 +370,48 @@ router.get("/analytics/links/:id/events", requireAuth, async (req, res): Promise
     .offset(offset);
 
   res.json(events);
+});
+
+// GET /api/analytics/events — workspace-wide click log with pagination
+router.get("/analytics/events", requireAuth, async (req, res): Promise<void> => {
+  const workspaceId = req.session.workspaceId!;
+  const limit = Math.min(Number(req.query.limit ?? 50), 200);
+  const offset = Number(req.query.offset ?? 0);
+
+  const events = await db
+    .select({
+      id: clickEventsTable.id,
+      linkId: clickEventsTable.linkId,
+      slug: linksTable.slug,
+      domainId: linksTable.domainId,
+      destinationUrl: linksTable.destinationUrl,
+      timestamp: clickEventsTable.timestamp,
+      referrer: clickEventsTable.referrer,
+      browser: clickEventsTable.browser,
+      os: clickEventsTable.os,
+      device: clickEventsTable.device,
+      country: clickEventsTable.country,
+      city: clickEventsTable.city,
+      isQr: clickEventsTable.isQr,
+      utmSource: clickEventsTable.utmSource,
+      utmMedium: clickEventsTable.utmMedium,
+      utmCampaign: clickEventsTable.utmCampaign,
+    })
+    .from(clickEventsTable)
+    .innerJoin(linksTable, eq(clickEventsTable.linkId, linksTable.id))
+    .where(eq(linksTable.workspaceId, workspaceId))
+    .orderBy(desc(clickEventsTable.timestamp))
+    .limit(limit)
+    .offset(offset);
+
+  // Get total count for pagination
+  const [{ total }] = await db
+    .select({ total: count() })
+    .from(clickEventsTable)
+    .innerJoin(linksTable, eq(clickEventsTable.linkId, linksTable.id))
+    .where(eq(linksTable.workspaceId, workspaceId));
+
+  res.json({ events, total: Number(total), limit, offset });
 });
 
 // GET /api/stats/today — today's click count for the workspace

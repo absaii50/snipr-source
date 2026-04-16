@@ -71,7 +71,7 @@ export default function Terms() {
       <PublicNavbar />
 
       {/* ── Page header ── */}
-      <div className="bg-[#FAFAFA] border-b border-[#E8E8E8]">
+      <div className="bg-[#FAFAFA] border-b border-[#E2E8F0]">
         <div className="container max-w-6xl mx-auto px-6 py-20">
           <p className="text-[10px] font-bold tracking-[0.28em] uppercase text-[#888] mb-4">Legal</p>
           <h1 className="font-display font-black text-[42px] md:text-[56px] text-[#0A0A0A] tracking-[-0.035em] leading-[1.04] mb-5">
@@ -111,7 +111,7 @@ export default function Terms() {
             <div className="flex-1 max-w-[720px]">
               {sections.map((section) => (
                 <section key={section.id} id={section.id} className="mb-12 scroll-mt-28">
-                  <h2 className="font-display font-black text-[22px] text-[#0A0A0A] tracking-tight mb-4 pb-3 border-b border-[#EBEBEB]">
+                  <h2 className="font-display font-black text-[22px] text-[#0A0A0A] tracking-tight mb-4 pb-3 border-b border-[#E2E8F0]">
                     {section.title}
                   </h2>
                   <p className="text-[14px] text-[#555] leading-[1.8]">{section.body}</p>

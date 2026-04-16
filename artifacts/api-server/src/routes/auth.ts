@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
-import { eq, and, gt } from "drizzle-orm";
+import { eq, and, gt, inArray } from "drizzle-orm";
 import geoip from "geoip-lite";
 import { db, usersTable, workspacesTable, workspaceMembersTable } from "@workspace/db";
 import {
@@ -56,6 +56,17 @@ router.post("/auth/register", async (req, res): Promise<void> => {
     joinedAt: new Date(),
   });
 
+  // Auto-accept any pending invitations for this email
+  await db
+    .update(workspaceMembersTable)
+    .set({ status: "active", userId: user.id, joinedAt: new Date(), inviteToken: null })
+    .where(
+      and(
+        eq(workspaceMembersTable.email, user.email),
+        eq(workspaceMembersTable.status, "invited")
+      )
+    );
+
   // Send verification email (non-blocking)
   sendVerificationEmail({
     id: user.id,
@@ -67,9 +78,16 @@ router.post("/auth/register", async (req, res): Promise<void> => {
   req.session.userId = user.id;
   req.session.workspaceId = workspace.id;
 
-  res.status(201).json({
-    user: { id: user.id, name: user.name, email: user.email, emailVerified: user.emailVerified, createdAt: user.createdAt },
-    workspace: { id: workspace.id, name: workspace.name, slug: workspace.slug },
+  req.session.save((err) => {
+    if (err) {
+      logger.error({ err }, "Failed to save session after register");
+      res.status(500).json({ error: "Session error" });
+      return;
+    }
+    res.status(201).json({
+      user: { id: user.id, name: user.name, email: user.email, emailVerified: user.emailVerified, createdAt: user.createdAt },
+      workspace: { id: workspace.id, name: workspace.name, slug: workspace.slug },
+    });
   });
 });
 
@@ -116,9 +134,16 @@ router.post("/auth/login", async (req, res): Promise<void> => {
   req.session.userId = user.id;
   req.session.workspaceId = workspace.id;
 
-  res.json({
-    user: { id: user.id, name: user.name, email: user.email, emailVerified: user.emailVerified, createdAt: user.createdAt },
-    workspace: { id: workspace.id, name: workspace.name, slug: workspace.slug },
+  req.session.save((err) => {
+    if (err) {
+      logger.error({ err }, "Failed to save session after login");
+      res.status(500).json({ error: "Session error" });
+      return;
+    }
+    res.json({
+      user: { id: user.id, name: user.name, email: user.email, emailVerified: user.emailVerified, createdAt: user.createdAt },
+      workspace: { id: workspace.id, name: workspace.name, slug: workspace.slug },
+    });
   });
 });
 
@@ -511,6 +536,22 @@ router.delete("/auth/account", requireAuth, async (req, res): Promise<void> => {
     res.status(401).json({ error: "Password is incorrect" });
     return;
   }
+
+  // Clean up workspace members for this user's workspaces
+  const userWorkspaces = await db
+    .select({ id: workspacesTable.id })
+    .from(workspacesTable)
+    .where(eq(workspacesTable.userId, user.id));
+
+  if (userWorkspaces.length > 0) {
+    const wsIds = userWorkspaces.map((w) => w.id);
+    await db.delete(workspaceMembersTable).where(
+      inArray(workspaceMembersTable.workspaceId, wsIds)
+    );
+  }
+
+  // Also remove this user from any workspaces they were invited to
+  await db.delete(workspaceMembersTable).where(eq(workspaceMembersTable.userId, user.id));
 
   await db.delete(workspacesTable).where(eq(workspacesTable.userId, user.id));
   await db.delete(usersTable).where(eq(usersTable.id, user.id));

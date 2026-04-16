@@ -6,7 +6,9 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useAuth } from "@/hooks/use-auth";
-import { Link2, BarChart3, Globe, Zap } from "lucide-react";
+import { useSearchParams } from "next/navigation";
+import { BarChart3, Globe, Zap } from "lucide-react";
+import { SniprLogo } from "@/components/SniprLogo";
 
 const loginSchema = z.object({
   email: z.string().email({ message: "Please enter a valid email" }),
@@ -16,7 +18,11 @@ const loginSchema = z.object({
 type LoginForm = z.infer<typeof loginSchema>;
 
 export default function Login() {
-  const { login, isLoggingIn } = useAuth();
+  const searchParams = useSearchParams();
+  const inviteToken = searchParams.get("invite");
+  const { login, isLoggingIn } = useAuth(
+    inviteToken ? { redirectTo: `/join?token=${inviteToken}` } : undefined
+  );
 
   const form = useForm<LoginForm>({
     resolver: zodResolver(loginSchema),
@@ -34,8 +40,8 @@ export default function Login() {
         <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, white 1px, transparent 0)', backgroundSize: '24px 24px' }} />
         <div className="relative z-10">
           <div className="flex items-center gap-2.5 mb-16">
-            <div className="bg-white/10 p-2 rounded-xl backdrop-blur-sm">
-              <Link2 className="w-5 h-5 text-white" />
+            <div className="bg-white/10 p-2 rounded-xl backdrop-blur-sm flex items-center justify-center">
+              <SniprLogo size={20} color="white" />
             </div>
             <span className="font-bold text-lg text-white tracking-tight">Snipr</span>
           </div>
@@ -67,27 +73,27 @@ export default function Login() {
         <div className="w-full max-w-[380px]">
           {/* Mobile logo */}
           <div className="flex flex-col items-center mb-10 lg:hidden">
-            <div className="bg-[#0A0A0A] text-white p-2.5 rounded-xl mb-3">
-              <Link2 className="w-5 h-5" />
+            <div className="bg-[#0A0A0A] p-2.5 rounded-xl mb-3 flex items-center justify-center">
+              <SniprLogo size={20} color="white" />
             </div>
             <span className="font-bold text-lg text-[#0A0A0A]">Snipr</span>
           </div>
 
           <div className="mb-8">
             <h1 className="text-[26px] font-bold text-[#0A0A0A] tracking-tight">Welcome back</h1>
-            <p className="text-[#6B7280] text-[15px] mt-1.5">Enter your credentials to access your account</p>
+            <p className="text-[#7A7A84] text-[15px] mt-1.5">Enter your credentials to access your account</p>
           </div>
 
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
             <div className="space-y-1.5">
-              <Label htmlFor="email" className="text-[13px] font-medium text-[#374151]">Email address</Label>
+              <Label htmlFor="email" className="text-[13px] font-medium text-[#3A3A3E]">Email address</Label>
               <Input
                 id="email"
                 type="email"
                 placeholder="name@company.com"
                 autoComplete="email"
                 {...form.register("email")}
-                className="rounded-xl h-11 text-[14px] bg-white border border-[#E5E7EB] text-[#0A0A0A] placeholder:text-[#C0C0C8] focus-visible:ring-2 focus-visible:ring-[#0A0A0A]/10 focus-visible:border-[#0A0A0A] transition-all shadow-sm"
+                className="rounded-xl h-11 text-[14px] bg-white border border-[#E2E8F0] text-[#0A0A0A] placeholder:text-[#C0C0C8] focus-visible:ring-2 focus-visible:ring-[#0A0A0A]/10 focus-visible:border-[#0A0A0A] transition-all shadow-sm"
               />
               {form.formState.errors.email && (
                 <p className="text-xs text-red-500 font-medium mt-1">{form.formState.errors.email.message}</p>
@@ -96,8 +102,8 @@ export default function Login() {
 
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
-                <Label htmlFor="password" className="text-[13px] font-medium text-[#374151]">Password</Label>
-                <Link href="/forgot-password" className="text-[12px] font-medium text-[#6B7280] hover:text-[#0A0A0A] transition-colors">
+                <Label htmlFor="password" className="text-[13px] font-medium text-[#3A3A3E]">Password</Label>
+                <Link href="/forgot-password" className="text-[12px] font-medium text-[#7A7A84] hover:text-[#0A0A0A] transition-colors">
                   Forgot password?
                 </Link>
               </div>
@@ -107,7 +113,7 @@ export default function Login() {
                 placeholder="Enter your password"
                 autoComplete="current-password"
                 {...form.register("password")}
-                className="rounded-xl h-11 text-[14px] bg-white border border-[#E5E7EB] text-[#0A0A0A] placeholder:text-[#C0C0C8] focus-visible:ring-2 focus-visible:ring-[#0A0A0A]/10 focus-visible:border-[#0A0A0A] transition-all shadow-sm"
+                className="rounded-xl h-11 text-[14px] bg-white border border-[#E2E8F0] text-[#0A0A0A] placeholder:text-[#C0C0C8] focus-visible:ring-2 focus-visible:ring-[#0A0A0A]/10 focus-visible:border-[#0A0A0A] transition-all shadow-sm"
               />
               {form.formState.errors.password && (
                 <p className="text-xs text-red-500 font-medium mt-1">{form.formState.errors.password.message}</p>
@@ -128,7 +134,7 @@ export default function Login() {
             </button>
           </form>
 
-          <p className="mt-8 text-center text-[13px] text-[#9CA3AF]">
+          <p className="mt-8 text-center text-[13px] text-[#7A7A84]">
             Don&apos;t have an account?{" "}
             <Link href="/signup" className="text-[#0A0A0A] font-semibold hover:underline">
               Create one

@@ -45,7 +45,13 @@ app.use(
   }),
 );
 
-app.use(compression());
+app.use(compression({
+  filter: (req, res) => {
+    // Never compress SSE streams — compression buffers data, breaking real-time delivery
+    if (req.path.includes("/realtime/stream")) return false;
+    return compression.filter(req, res);
+  },
+}));
 
 app.post(
   '/api/stripe/webhook',
@@ -140,10 +146,10 @@ const redirectLimiter = rateLimit({
 
 const apiLimiter = rateLimit({
   windowMs: 60 * 1000,
-  max: () => getRateLimitOverride("API General") ?? 200,
+  max: () => getRateLimitOverride("API General") ?? 600,
   standardHeaders: true,
   legacyHeaders: false,
-  skip: (req) => isIpWhitelisted(req.ip || ""),
+  skip: (req) => isIpWhitelisted(req.ip || "") || req.path.startsWith("/api/realtime/"),
   handler: rateLimitHandler,
 });
 

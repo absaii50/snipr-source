@@ -36,7 +36,7 @@ export default function CheckoutReturn() {
     <div className="min-h-screen bg-[#F8F8FA] font-sans flex items-center justify-center px-4">
       <div className="max-w-md w-full">
         {loading ? (
-          <div className="bg-white rounded-2xl border border-[#E4E4EC] p-10 text-center">
+          <div className="bg-white rounded-2xl border border-[#E2E8F0] p-10 text-center">
             <RefreshCw className="w-8 h-8 text-[#728DA7] mx-auto mb-4 animate-spin" />
             <h2 className="text-[18px] font-bold text-[#0A0A0A] mb-2">
               Processing payment...
@@ -66,7 +66,7 @@ export default function CheckoutReturn() {
               </Link>
               <Link
                 href="/billing"
-                className="inline-flex items-center justify-center gap-2 w-full h-10 rounded-xl text-[13px] font-semibold border border-[#E4E4EC] text-[#555] hover:bg-[#F4F4F6] transition-colors"
+                className="inline-flex items-center justify-center gap-2 w-full h-10 rounded-xl text-[13px] font-semibold border border-[#E2E8F0] text-[#555] hover:bg-[#F4F4F6] transition-colors"
               >
                 View subscription details
               </Link>

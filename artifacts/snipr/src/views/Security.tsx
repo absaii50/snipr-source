@@ -66,7 +66,7 @@ export default function Security() {
       <PublicNavbar />
 
       {/* ── Page header ── */}
-      <div className="bg-[#FAFAFA] border-b border-[#E8E8E8]">
+      <div className="bg-[#FAFAFA] border-b border-[#E2E8F0]">
         <div className="container max-w-6xl mx-auto px-6 py-20">
           <p className="text-[10px] font-bold tracking-[0.28em] uppercase text-[#888] mb-4">Trust & Safety</p>
           <h1 className="font-display font-black text-[42px] md:text-[56px] text-[#0A0A0A] tracking-[-0.035em] leading-[1.04] mb-5">
@@ -85,7 +85,7 @@ export default function Security() {
       <main className="flex-1">
 
         {/* ── Certifications strip ── */}
-        <div className="bg-white border-b border-[#EBEBEB]">
+        <div className="bg-white border-b border-[#E2E8F0]">
           <div className="container max-w-6xl mx-auto px-6 py-10">
             <p className="text-[10px] font-bold tracking-[0.24em] uppercase text-[#BBB] mb-6">Certifications & Compliance</p>
             <div className="flex flex-wrap gap-3">
@@ -111,7 +111,7 @@ export default function Security() {
             </h2>
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
               {practices.map((p) => (
-                <div key={p.title} className="bg-white rounded-2xl p-7 border border-[#E8E8E8]">
+                <div key={p.title} className="bg-white rounded-2xl p-7 border border-[#E2E8F0]">
                   <div className="w-10 h-10 rounded-xl bg-[#728DA7]/8 flex items-center justify-center mb-5">
                     <p.icon className="w-5 h-5 text-[#728DA7]" />
                   </div>
@@ -124,7 +124,7 @@ export default function Security() {
         </div>
 
         {/* ── Infrastructure ── */}
-        <div className="bg-white border-y border-[#EBEBEB]">
+        <div className="bg-white border-y border-[#E2E8F0]">
           <div className="container max-w-6xl mx-auto px-6 py-20">
             <div className="grid md:grid-cols-2 gap-16 items-center">
               <div>
@@ -148,7 +148,7 @@ export default function Security() {
                   ))}
                 </div>
               </div>
-              <div className="bg-[#FAFAFA] rounded-2xl p-8 border border-[#EBEBEB]">
+              <div className="bg-[#FAFAFA] rounded-2xl p-8 border border-[#E2E8F0]">
                 <p className="text-[10px] font-bold tracking-[0.24em] uppercase text-[#BBB] mb-5">Data Flow</p>
                 <div className="space-y-3">
                   {[
@@ -189,7 +189,7 @@ export default function Security() {
                 We will acknowledge your report within 24 hours, provide status updates as we investigate, and offer public credit (if desired) upon resolution. We commit to not pursuing legal action against researchers who follow responsible disclosure guidelines.
               </p>
 
-              <div className="bg-white rounded-2xl border border-[#E8E8E8] p-6 mb-8">
+              <div className="bg-white rounded-2xl border border-[#E2E8F0] p-6 mb-8">
                 <p className="text-[12px] font-bold tracking-[0.18em] uppercase text-[#BBB] mb-4">In-scope vulnerabilities</p>
                 <div className="space-y-2.5">
                   {bugBountyScope.map((item) => (

@@ -27,6 +27,31 @@ const COLORS = [
   { hex: "#8B5CF6", label: "Violet" },
 ];
 
+const glassCard = {
+  background: "rgba(17,24,39,0.65)",
+  backdropFilter: "blur(16px)",
+  WebkitBackdropFilter: "blur(16px)",
+  border: "1px solid rgba(255,255,255,0.06)",
+  boxShadow: "0 1px 2px rgba(0,0,0,0.3), 0 8px 32px rgba(0,0,0,0.3)",
+  borderRadius: "20px",
+} as const;
+
+const glassSectionHeader = {
+  background: "rgba(255,255,255,0.03)",
+  borderBottom: "1px solid rgba(255,255,255,0.06)",
+} as const;
+
+const gradientButton = {
+  background: "linear-gradient(135deg, #818CF8, #A78BFA)",
+  boxShadow: "0 2px 8px rgba(129,140,248,0.25)",
+} as const;
+
+const glassInput = {
+  border: "1px solid rgba(255,255,255,0.1)",
+  background: "rgba(255,255,255,0.05)",
+  color: "#E2E8F0",
+} as const;
+
 function ColorPicker({ value, onChange }: { value: string; onChange: (c: string) => void }) {
   return (
     <div className="flex flex-wrap gap-2">
@@ -36,10 +61,10 @@ function ColorPicker({ value, onChange }: { value: string; onChange: (c: string)
           type="button"
           title={label}
           onClick={() => onChange(hex)}
-          className="w-7 h-7 rounded-full flex items-center justify-center transition-all hover:scale-110 ring-offset-2"
+          className="w-7 h-7 rounded-[10px] flex items-center justify-center transition-all hover:scale-110 ring-offset-2"
           style={{
             backgroundColor: hex,
-            boxShadow: value === hex ? `0 0 0 2px white, 0 0 0 4px ${hex}` : undefined,
+            boxShadow: value === hex ? `0 0 0 2px rgba(17,24,39,0.9), 0 0 0 4px ${hex}` : undefined,
           }}
         >
           {value === hex && <Check className="w-3.5 h-3.5 text-white" strokeWidth={3} />}
@@ -84,7 +109,8 @@ function InlineRenameInput({
       onChange={(e) => setVal(e.target.value)}
       onBlur={commit}
       onKeyDown={onKey}
-      className="flex-1 min-w-0 px-2 py-0.5 text-sm font-semibold rounded-lg border border-[#4F46E5] bg-white outline-none focus:ring-2 focus:ring-[#4F46E5]/20"
+      className="flex-1 min-w-0 px-2 py-0.5 text-sm font-semibold rounded-[14px] outline-none focus:ring-2 focus:ring-[#818CF8]/20"
+      style={{ border: "1px solid #818CF8", background: "rgba(17,24,39,0.9)", color: "#E2E8F0" }}
     />
   );
 }
@@ -206,30 +232,42 @@ export default function Organize() {
       <div className="p-6 lg:p-8 max-w-7xl mx-auto w-full space-y-8">
 
         {/* Header */}
-        <div>
-          <h1 className="text-2xl font-bold text-[#111827] tracking-tight">Organize</h1>
-          <p className="text-[#8B96A8] mt-1">
-            Group your {totalLinks > 0 ? totalLinks : ""} links with folders and tags for easier management.
-          </p>
+        <div className="flex items-center gap-4">
+          <div
+            className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0"
+            style={{ background: "linear-gradient(135deg, #818CF8, #A78BFA)", boxShadow: "0 4px 12px rgba(129,140,248,0.25)" }}
+          >
+            <FolderOpen className="w-6 h-6 text-white" />
+          </div>
+          <div>
+            <h1 className="text-[28px] font-bold text-[#F1F5F9] tracking-tight font-[family-name:var(--font-space-grotesk)]">Organize</h1>
+            <p className="text-[#94A3B8] mt-0.5">
+              Group your {totalLinks > 0 ? totalLinks : ""} links with folders and tags for easier management.
+            </p>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
 
-          {/* ── Folders ── */}
+          {/* -- Folders -- */}
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-[#EEF0F8] flex items-center justify-center">
-                  <FolderOpen className="w-4 h-4 text-[#4F46E5]" />
+                <div
+                  className="w-8 h-8 rounded-lg flex items-center justify-center"
+                  style={{ background: "rgba(129,140,248,0.12)" }}
+                >
+                  <FolderOpen className="w-4 h-4 text-[#818CF8]" />
                 </div>
                 <div>
-                  <h2 className="text-base font-semibold text-[#111827]">Folders</h2>
-                  <p className="text-xs text-[#8B96A8]">{(folders as any[]).length} folder{(folders as any[]).length !== 1 ? "s" : ""}</p>
+                  <h2 className="text-base font-semibold text-[#F1F5F9]">Folders</h2>
+                  <p className="text-xs text-[#64748B]">{(folders as any[]).length} folder{(folders as any[]).length !== 1 ? "s" : ""}</p>
                 </div>
               </div>
               <button
                 onClick={() => { setShowFolderForm(true); setRenamingFolderId(null); }}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-[#4F46E5] text-white hover:bg-[#4338CA] transition-colors"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-white hover:opacity-90 transition-all"
+                style={gradientButton}
               >
                 <Plus className="w-3.5 h-3.5" /> New Folder
               </button>
@@ -237,27 +275,29 @@ export default function Organize() {
 
             {/* Create form */}
             {showFolderForm && (
-              <div className="bg-white rounded-2xl border border-[#DDE2EE] shadow-sm p-4 space-y-4">
+              <div className="rounded-[20px] p-4 space-y-4" style={glassCard}>
                 <form onSubmit={handleCreateFolder} className="space-y-4">
                   <div>
-                    <label className="text-xs font-semibold text-[#8B96A8] mb-1.5 block">Folder name</label>
+                    <label className="text-xs font-semibold text-[#64748B] mb-1.5 block">Folder name</label>
                     <input
                       autoFocus
-                      placeholder="e.g. Marketing, Social Media…"
+                      placeholder="e.g. Marketing, Social Media..."
                       value={folderName}
                       onChange={(e) => setFolderName(e.target.value)}
-                      className="w-full px-3 py-2 text-sm rounded-xl border border-[#DDE2EE] bg-[#F8F9FB] focus:outline-none focus:ring-2 focus:ring-[#4F46E5]/20 focus:border-[#4F46E5] transition"
+                      className="w-full px-3 py-2 text-sm rounded-[14px] focus:outline-none focus:ring-2 focus:ring-[#818CF8]/20 focus:border-[#818CF8] transition"
+                      style={glassInput}
                     />
                   </div>
                   <div>
-                    <label className="text-xs font-semibold text-[#8B96A8] mb-2 block">Color</label>
+                    <label className="text-xs font-semibold text-[#64748B] mb-2 block">Color</label>
                     <ColorPicker value={folderColor} onChange={setFolderColor} />
                   </div>
                   <div className="flex gap-2 pt-1">
                     <button
                       type="submit"
                       disabled={!folderName.trim() || createFolder.isPending}
-                      className="flex-1 py-2 rounded-xl text-sm font-semibold bg-[#4F46E5] text-white hover:bg-[#4338CA] disabled:opacity-40 transition-colors flex items-center justify-center gap-2"
+                      className="flex-1 py-2 rounded-xl text-sm font-semibold text-white disabled:opacity-40 transition-all flex items-center justify-center gap-2 hover:opacity-90"
+                      style={gradientButton}
                     >
                       {createFolder.isPending && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                       Create Folder
@@ -265,7 +305,7 @@ export default function Organize() {
                     <button
                       type="button"
                       onClick={() => setShowFolderForm(false)}
-                      className="px-4 py-2 rounded-xl text-sm font-semibold text-[#8B96A8] hover:bg-[#F2F4FB] transition-colors"
+                      className="px-4 py-2 rounded-xl text-sm font-semibold text-[#64748B] hover:bg-[rgba(255,255,255,0.03)] transition-colors"
                     >
                       Cancel
                     </button>
@@ -275,34 +315,41 @@ export default function Organize() {
             )}
 
             {/* Folder list */}
-            <div className="bg-white rounded-2xl border border-[#DDE2EE] shadow-[0_1px_3px_rgba(0,0,0,0.06),0_1px_2px_rgba(0,0,0,0.04)] overflow-hidden">
+            <div className="rounded-[20px] overflow-hidden" style={glassCard}>
               {foldersLoading ? (
                 <div className="py-16 flex justify-center">
-                  <Loader2 className="w-5 h-5 animate-spin text-[#8B96A8]" />
+                  <Loader2 className="w-5 h-5 animate-spin text-[#64748B]" />
                 </div>
               ) : (folders as any[]).length === 0 ? (
                 <div className="py-14 flex flex-col items-center gap-3 text-center px-6">
-                  <div className="w-12 h-12 rounded-2xl bg-[#EEF0F8] flex items-center justify-center">
-                    <FolderPlus className="w-6 h-6 text-[#4F46E5]" />
+                  <div
+                    className="w-12 h-12 rounded-2xl flex items-center justify-center"
+                    style={{ background: "rgba(129,140,248,0.12)" }}
+                  >
+                    <FolderPlus className="w-6 h-6 text-[#818CF8]" />
                   </div>
                   <div>
-                    <p className="text-sm font-semibold text-[#111827]">No folders yet</p>
-                    <p className="text-xs text-[#8B96A8] mt-0.5">Create your first folder to group related links.</p>
+                    <p className="text-sm font-semibold text-[#F1F5F9]">No folders yet</p>
+                    <p className="text-xs text-[#94A3B8] mt-0.5">Create your first folder to group related links.</p>
                   </div>
                   <button
                     onClick={() => setShowFolderForm(true)}
-                    className="mt-1 text-xs font-semibold text-[#4F46E5] hover:text-[#4338CA] transition-colors"
+                    className="mt-1 text-xs font-semibold text-[#818CF8] hover:text-[#A78BFA] transition-colors"
                   >
                     + Create a folder
                   </button>
                 </div>
               ) : (
-                <ul className="divide-y divide-[#F2F4FB]">
+                <ul className="divide-y" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
                   {(folders as any[]).map((folder) => {
                     const count = folderCounts[folder.id] ?? 0;
                     const isRenaming = renamingFolderId === folder.id;
                     return (
-                      <li key={folder.id} className="group flex items-center gap-3 px-4 py-3.5 hover:bg-[#F8F9FB] transition-colors">
+                      <li
+                        key={folder.id}
+                        className="group flex items-center gap-3 px-4 py-3.5 hover:bg-[rgba(255,255,255,0.03)] transition-colors"
+                        style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}
+                      >
                         {/* Color swatch / icon */}
                         <div
                           className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors"
@@ -321,7 +368,7 @@ export default function Organize() {
                             />
                           ) : (
                             <>
-                              <span className="text-sm font-semibold text-[#111827] truncate">{folder.name}</span>
+                              <span className="text-sm font-semibold text-[#F1F5F9] truncate">{folder.name}</span>
                               <span
                                 className="text-xs font-medium px-1.5 py-0.5 rounded-full flex-shrink-0"
                                 style={{ backgroundColor: `${folder.color}15`, color: folder.color }}
@@ -338,21 +385,21 @@ export default function Organize() {
                             <button
                               onClick={() => router.push(`/links?folder=${folder.id}`)}
                               title="View links in this folder"
-                              className="w-7 h-7 rounded-lg flex items-center justify-center text-[#8B96A8] hover:text-[#4F46E5] hover:bg-[#EEF0F8] transition-colors"
+                              className="w-7 h-7 rounded-lg flex items-center justify-center text-[#64748B] hover:text-[#818CF8] hover:bg-[rgba(129,140,248,0.12)] transition-colors"
                             >
                               <Link2 className="w-3.5 h-3.5" />
                             </button>
                             <button
                               onClick={() => setRenamingFolderId(folder.id)}
                               title="Rename folder"
-                              className="w-7 h-7 rounded-lg flex items-center justify-center text-[#8B96A8] hover:text-[#4F46E5] hover:bg-[#EEF0F8] transition-colors"
+                              className="w-7 h-7 rounded-lg flex items-center justify-center text-[#64748B] hover:text-[#818CF8] hover:bg-[rgba(129,140,248,0.12)] transition-colors"
                             >
                               <Pencil className="w-3.5 h-3.5" />
                             </button>
                             <button
                               onClick={() => handleDeleteFolder(folder.id, folder.name)}
                               title="Delete folder"
-                              className="w-7 h-7 rounded-lg flex items-center justify-center text-[#8B96A8] hover:text-red-500 hover:bg-red-50 transition-colors"
+                              className="w-7 h-7 rounded-lg flex items-center justify-center text-[#64748B] hover:text-[#F87171] hover:bg-[rgba(248,113,113,0.1)] transition-colors"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>
@@ -366,21 +413,25 @@ export default function Organize() {
             </div>
           </div>
 
-          {/* ── Tags ── */}
+          {/* -- Tags -- */}
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-[#EEF0F8] flex items-center justify-center">
-                  <TagIcon className="w-4 h-4 text-[#4F46E5]" />
+                <div
+                  className="w-8 h-8 rounded-lg flex items-center justify-center"
+                  style={{ background: "rgba(129,140,248,0.12)" }}
+                >
+                  <TagIcon className="w-4 h-4 text-[#818CF8]" />
                 </div>
                 <div>
-                  <h2 className="text-base font-semibold text-[#111827]">Tags</h2>
-                  <p className="text-xs text-[#8B96A8]">{(tags as any[]).length} tag{(tags as any[]).length !== 1 ? "s" : ""}</p>
+                  <h2 className="text-base font-semibold text-[#F1F5F9]">Tags</h2>
+                  <p className="text-xs text-[#64748B]">{(tags as any[]).length} tag{(tags as any[]).length !== 1 ? "s" : ""}</p>
                 </div>
               </div>
               <button
                 onClick={() => { setShowTagForm(true); setRenamingTagId(null); }}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-[#4F46E5] text-white hover:bg-[#4338CA] transition-colors"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-white hover:opacity-90 transition-all"
+                style={gradientButton}
               >
                 <Plus className="w-3.5 h-3.5" /> New Tag
               </button>
@@ -388,27 +439,29 @@ export default function Organize() {
 
             {/* Create tag form */}
             {showTagForm && (
-              <div className="bg-white rounded-2xl border border-[#DDE2EE] shadow-sm p-4 space-y-4">
+              <div className="rounded-[20px] p-4 space-y-4" style={glassCard}>
                 <form onSubmit={handleCreateTag} className="space-y-4">
                   <div>
-                    <label className="text-xs font-semibold text-[#8B96A8] mb-1.5 block">Tag name</label>
+                    <label className="text-xs font-semibold text-[#64748B] mb-1.5 block">Tag name</label>
                     <input
                       autoFocus
-                      placeholder="e.g. campaign, product-launch…"
+                      placeholder="e.g. campaign, product-launch..."
                       value={tagName}
                       onChange={(e) => setTagName(e.target.value)}
-                      className="w-full px-3 py-2 text-sm rounded-xl border border-[#DDE2EE] bg-[#F8F9FB] focus:outline-none focus:ring-2 focus:ring-[#4F46E5]/20 focus:border-[#4F46E5] transition"
+                      className="w-full px-3 py-2 text-sm rounded-[14px] focus:outline-none focus:ring-2 focus:ring-[#818CF8]/20 focus:border-[#818CF8] transition"
+                      style={glassInput}
                     />
                   </div>
                   <div>
-                    <label className="text-xs font-semibold text-[#8B96A8] mb-2 block">Color</label>
+                    <label className="text-xs font-semibold text-[#64748B] mb-2 block">Color</label>
                     <ColorPicker value={tagColor} onChange={setTagColor} />
                   </div>
                   <div className="flex gap-2 pt-1">
                     <button
                       type="submit"
                       disabled={!tagName.trim() || createTag.isPending}
-                      className="flex-1 py-2 rounded-xl text-sm font-semibold bg-[#4F46E5] text-white hover:bg-[#4338CA] disabled:opacity-40 transition-colors flex items-center justify-center gap-2"
+                      className="flex-1 py-2 rounded-xl text-sm font-semibold text-white disabled:opacity-40 transition-all flex items-center justify-center gap-2 hover:opacity-90"
+                      style={gradientButton}
                     >
                       {createTag.isPending && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                       Create Tag
@@ -416,7 +469,7 @@ export default function Organize() {
                     <button
                       type="button"
                       onClick={() => setShowTagForm(false)}
-                      className="px-4 py-2 rounded-xl text-sm font-semibold text-[#8B96A8] hover:bg-[#F2F4FB] transition-colors"
+                      className="px-4 py-2 rounded-xl text-sm font-semibold text-[#64748B] hover:bg-[rgba(255,255,255,0.03)] transition-colors"
                     >
                       Cancel
                     </button>
@@ -426,33 +479,40 @@ export default function Organize() {
             )}
 
             {/* Tag list */}
-            <div className="bg-white rounded-2xl border border-[#DDE2EE] shadow-[0_1px_3px_rgba(0,0,0,0.06),0_1px_2px_rgba(0,0,0,0.04)] overflow-hidden">
+            <div className="rounded-[20px] overflow-hidden" style={glassCard}>
               {tagsLoading ? (
                 <div className="py-16 flex justify-center">
-                  <Loader2 className="w-5 h-5 animate-spin text-[#8B96A8]" />
+                  <Loader2 className="w-5 h-5 animate-spin text-[#64748B]" />
                 </div>
               ) : (tags as any[]).length === 0 ? (
                 <div className="py-14 flex flex-col items-center gap-3 text-center px-6">
-                  <div className="w-12 h-12 rounded-2xl bg-[#EEF0F8] flex items-center justify-center">
-                    <Hash className="w-6 h-6 text-[#4F46E5]" />
+                  <div
+                    className="w-12 h-12 rounded-2xl flex items-center justify-center"
+                    style={{ background: "rgba(129,140,248,0.12)" }}
+                  >
+                    <Hash className="w-6 h-6 text-[#818CF8]" />
                   </div>
                   <div>
-                    <p className="text-sm font-semibold text-[#111827]">No tags yet</p>
-                    <p className="text-xs text-[#8B96A8] mt-0.5">Tags let you label links across different folders.</p>
+                    <p className="text-sm font-semibold text-[#F1F5F9]">No tags yet</p>
+                    <p className="text-xs text-[#94A3B8] mt-0.5">Tags let you label links across different folders.</p>
                   </div>
                   <button
                     onClick={() => setShowTagForm(true)}
-                    className="mt-1 text-xs font-semibold text-[#4F46E5] hover:text-[#4338CA] transition-colors"
+                    className="mt-1 text-xs font-semibold text-[#818CF8] hover:text-[#A78BFA] transition-colors"
                   >
                     + Create a tag
                   </button>
                 </div>
               ) : (
-                <ul className="divide-y divide-[#F2F4FB]">
+                <ul className="divide-y" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
                   {(tags as any[]).map((tag) => {
                     const isRenaming = renamingTagId === tag.id;
                     return (
-                      <li key={tag.id} className="group flex items-center gap-3 px-4 py-3.5 hover:bg-[#F8F9FB] transition-colors">
+                      <li
+                        key={tag.id}
+                        className="group flex items-center gap-3 px-4 py-3.5 hover:bg-[rgba(255,255,255,0.03)] transition-colors"
+                        style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}
+                      >
                         {/* Color dot */}
                         <div
                           className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
@@ -485,21 +545,21 @@ export default function Organize() {
                             <button
                               onClick={() => router.push(`/links?tag=${tag.id}`)}
                               title="View links with this tag"
-                              className="w-7 h-7 rounded-lg flex items-center justify-center text-[#8B96A8] hover:text-[#4F46E5] hover:bg-[#EEF0F8] transition-colors"
+                              className="w-7 h-7 rounded-lg flex items-center justify-center text-[#64748B] hover:text-[#818CF8] hover:bg-[rgba(129,140,248,0.12)] transition-colors"
                             >
                               <Link2 className="w-3.5 h-3.5" />
                             </button>
                             <button
                               onClick={() => setRenamingTagId(tag.id)}
                               title="Rename tag"
-                              className="w-7 h-7 rounded-lg flex items-center justify-center text-[#8B96A8] hover:text-[#4F46E5] hover:bg-[#EEF0F8] transition-colors"
+                              className="w-7 h-7 rounded-lg flex items-center justify-center text-[#64748B] hover:text-[#818CF8] hover:bg-[rgba(129,140,248,0.12)] transition-colors"
                             >
                               <Pencil className="w-3.5 h-3.5" />
                             </button>
                             <button
                               onClick={() => handleDeleteTag(tag.id, tag.name)}
                               title="Delete tag"
-                              className="w-7 h-7 rounded-lg flex items-center justify-center text-[#8B96A8] hover:text-red-500 hover:bg-red-50 transition-colors"
+                              className="w-7 h-7 rounded-lg flex items-center justify-center text-[#64748B] hover:text-[#F87171] hover:bg-[rgba(248,113,113,0.1)] transition-colors"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>
@@ -516,33 +576,36 @@ export default function Organize() {
         </div>
 
         {/* Tips section */}
-        <div className="bg-[#EEF0F8] rounded-2xl border border-[#DDE2EE] p-5">
-          <p className="text-xs font-semibold text-[#4F46E5] uppercase tracking-wider mb-3">How it works</p>
+        <div className="rounded-[20px] p-5" style={glassCard}>
+          <p className="text-xs font-semibold text-[#818CF8] uppercase tracking-wider mb-3">How it works</p>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             {[
               {
-                icon: <FolderOpen className="w-4 h-4 text-[#4F46E5]" />,
+                icon: <FolderOpen className="w-4 h-4 text-[#818CF8]" />,
                 title: "One folder per link",
                 body: "Each link belongs to a single folder. Use folders for broad categories like campaigns or clients.",
               },
               {
-                icon: <TagIcon className="w-4 h-4 text-[#4F46E5]" />,
+                icon: <TagIcon className="w-4 h-4 text-[#818CF8]" />,
                 title: "Multiple tags per link",
                 body: "Links can have many tags. Use tags for cross-cutting concerns like channel, status, or priority.",
               },
               {
-                icon: <ChevronRight className="w-4 h-4 text-[#4F46E5]" />,
+                icon: <ChevronRight className="w-4 h-4 text-[#818CF8]" />,
                 title: "Filter in Links",
                 body: "Click the link icon on any folder or tag to jump straight to a filtered view in your Links page.",
               },
             ].map(({ icon, title, body }) => (
               <div key={title} className="flex gap-3">
-                <div className="w-7 h-7 rounded-lg bg-white border border-[#DDE2EE] flex items-center justify-center flex-shrink-0 mt-0.5">
+                <div
+                  className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5"
+                  style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}
+                >
                   {icon}
                 </div>
                 <div>
-                  <p className="text-xs font-semibold text-[#111827]">{title}</p>
-                  <p className="text-xs text-[#8B96A8] mt-0.5 leading-relaxed">{body}</p>
+                  <p className="text-xs font-semibold text-[#F1F5F9]">{title}</p>
+                  <p className="text-xs text-[#64748B] mt-0.5 leading-relaxed">{body}</p>
                 </div>
               </div>
             ))}

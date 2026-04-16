@@ -7,7 +7,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useState, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
-import { Link2, BarChart3, Globe, Zap, ShieldCheck, ArrowLeft, CheckCircle2, Eye, EyeOff, AlertTriangle } from "lucide-react";
+import { BarChart3, Globe, Zap, ShieldCheck, ArrowLeft, CheckCircle2, Eye, EyeOff, AlertTriangle } from "lucide-react";
+import { SniprLogo } from "@/components/SniprLogo";
 import { useResetPassword } from "@workspace/api-client-react";
 
 const resetSchema = z.object({
@@ -105,8 +106,8 @@ export default function ResetPassword() {
         <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, white 1px, transparent 0)', backgroundSize: '24px 24px' }} />
         <div className="relative z-10">
           <div className="flex items-center gap-2.5 mb-16">
-            <div className="bg-white/10 p-2 rounded-xl backdrop-blur-sm">
-              <Link2 className="w-5 h-5 text-white" />
+            <div className="bg-white/10 p-2 rounded-xl backdrop-blur-sm flex items-center justify-center">
+              <SniprLogo size={20} color="white" />
             </div>
             <span className="font-bold text-lg text-white tracking-tight">Snipr</span>
           </div>
@@ -136,8 +137,8 @@ export default function ResetPassword() {
       <div className="flex-1 flex items-center justify-center px-6 py-12 bg-[#FAFAFA]">
         <div className="w-full max-w-[380px]">
           <div className="flex flex-col items-center mb-10 lg:hidden">
-            <div className="bg-[#0A0A0A] text-white p-2.5 rounded-xl mb-3">
-              <Link2 className="w-5 h-5" />
+            <div className="bg-[#0A0A0A] p-2.5 rounded-xl mb-3 flex items-center justify-center">
+              <SniprLogo size={20} color="white" />
             </div>
             <span className="font-bold text-lg text-[#0A0A0A]">Snipr</span>
           </div>
@@ -185,7 +186,7 @@ export default function ResetPassword() {
                       autoComplete="new-password"
                       autoFocus
                       {...form.register("password")}
-                      className="rounded-xl h-11 text-[14px] bg-white border border-[#E5E7EB] text-[#0A0A0A] placeholder:text-[#C0C0C8] focus-visible:ring-2 focus-visible:ring-[#0A0A0A]/10 focus-visible:border-[#0A0A0A] transition-all shadow-sm pr-10"
+                      className="rounded-xl h-11 text-[14px] bg-white border border-[#E2E8F0] text-[#0A0A0A] placeholder:text-[#C0C0C8] focus-visible:ring-2 focus-visible:ring-[#0A0A0A]/10 focus-visible:border-[#0A0A0A] transition-all shadow-sm pr-10"
                     />
                     <button
                       type="button"
@@ -202,7 +203,7 @@ export default function ResetPassword() {
                           <div
                             key={i}
                             className={`h-1 flex-1 rounded-full transition-all ${
-                              i <= strength.score ? strength.color : "bg-slate-100"
+                              i <= strength.score ? strength.color : "bg-[#F4F4F6]"
                             }`}
                           />
                         ))}
@@ -228,7 +229,7 @@ export default function ResetPassword() {
                       placeholder="Re-enter your password"
                       autoComplete="new-password"
                       {...form.register("confirmPassword")}
-                      className="rounded-xl h-11 text-[14px] bg-white border border-[#E5E7EB] text-[#0A0A0A] placeholder:text-[#C0C0C8] focus-visible:ring-2 focus-visible:ring-[#0A0A0A]/10 focus-visible:border-[#0A0A0A] transition-all shadow-sm pr-10"
+                      className="rounded-xl h-11 text-[14px] bg-white border border-[#E2E8F0] text-[#0A0A0A] placeholder:text-[#C0C0C8] focus-visible:ring-2 focus-visible:ring-[#0A0A0A]/10 focus-visible:border-[#0A0A0A] transition-all shadow-sm pr-10"
                     />
                     <button
                       type="button"

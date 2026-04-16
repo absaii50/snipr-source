@@ -18,6 +18,14 @@ const TABS: { key: TabKey; label: string; icon: React.ReactNode }[] = [
   { key: "events", label: "By Event", icon: <TrendingUp className="w-3.5 h-3.5" /> },
 ];
 
+const glassCard = {
+  background: "rgba(17,24,39,0.65)",
+  backdropFilter: "blur(16px)",
+  WebkitBackdropFilter: "blur(16px)",
+  border: "1px solid rgba(255,255,255,0.06)",
+  borderRadius: "16px",
+} as const;
+
 export default function Revenue() {
   const [fromDate, setFromDate] = useState(() => {
     const d = new Date();
@@ -60,30 +68,44 @@ export default function Revenue() {
 
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold text-[#111827] tracking-tight">Revenue & Attribution</h1>
-            <p className="text-[#8B96A8] mt-1">Break down earnings by link, campaign, and event type.</p>
+          <div className="flex items-center gap-3">
+            <div
+              className="w-11 h-11 flex items-center justify-center rounded-[14px]"
+              style={{ background: "linear-gradient(135deg, #818CF8, #A78BFA)" }}
+            >
+              <DollarSign className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <h1 className="font-[family-name:var(--font-space-grotesk)] text-[28px] font-bold text-[#F1F5F9] tracking-tight">
+                Revenue & Attribution
+              </h1>
+              <p className="text-[#94A3B8] mt-0.5 text-sm">Break down earnings by link, campaign, and event type.</p>
+            </div>
           </div>
 
           {/* Date range picker */}
-          <div className="flex items-center gap-2 bg-white rounded-xl border border-[#DDE2EE] shadow-sm px-3 py-2">
-            <CalendarDays className="w-4 h-4 text-[#8B96A8] flex-shrink-0" />
+          <div
+            className="flex items-center gap-2 px-3 py-2"
+            style={{ ...glassCard, borderRadius: "14px" }}
+          >
+            <CalendarDays className="w-4 h-4 text-[#64748B] flex-shrink-0" />
             <input
               type="date"
               value={fromDate}
               onChange={(e) => setFromDate(e.target.value)}
-              className="bg-transparent border-none text-xs font-medium text-[#111827] outline-none"
+              className="bg-transparent border-none text-xs font-medium text-[#E2E8F0] outline-none rounded-[14px]"
             />
-            <span className="text-[#8B96A8] text-xs">→</span>
+            <span className="text-[#94A3B8] text-xs">&rarr;</span>
             <input
               type="date"
               value={toDate}
               onChange={(e) => setToDate(e.target.value)}
-              className="bg-transparent border-none text-xs font-medium text-[#111827] outline-none"
+              className="bg-transparent border-none text-xs font-medium text-[#E2E8F0] outline-none rounded-[14px]"
             />
             <button
               onClick={() => setAppliedDates({ from: fromDate, to: toDate })}
-              className="ml-1 px-3 py-1.5 rounded-lg text-xs font-semibold bg-[#4F46E5] text-white hover:bg-[#4338CA] transition-colors"
+              className="ml-1 px-3 py-1.5 rounded-[14px] text-xs font-semibold text-white transition-colors"
+              style={{ background: "linear-gradient(135deg, #818CF8, #A5B4FC)" }}
             >
               Apply
             </button>
@@ -96,56 +118,63 @@ export default function Revenue() {
             {
               label: "Total Revenue",
               value: isLoading ? null : formatCurrency(totalRevenue),
-              icon: <DollarSign className="w-4 h-4 text-emerald-600" />,
-              iconBg: "bg-emerald-50",
-              valueColor: "text-emerald-600",
+              icon: <DollarSign className="w-4 h-4 text-white" />,
+              iconGradient: "linear-gradient(135deg, #34D399, #10B981)",
+              valueColor: "text-[#34D399]",
             },
             {
               label: "Total Conversions",
               value: isLoading ? null : totalConversions.toLocaleString(),
-              icon: <TrendingUp className="w-4 h-4 text-[#4F46E5]" />,
-              iconBg: "bg-[#EEF0F8]",
-              valueColor: "text-[#111827]",
+              icon: <TrendingUp className="w-4 h-4 text-white" />,
+              iconGradient: "linear-gradient(135deg, #818CF8, #A5B4FC)",
+              valueColor: "text-[#F1F5F9]",
             },
             {
               label: "Avg. Order Value",
               value: isLoading ? null : formatCurrency(avgOrder),
-              icon: <Hash className="w-4 h-4 text-violet-600" />,
-              iconBg: "bg-violet-50",
-              valueColor: "text-[#111827]",
+              icon: <Hash className="w-4 h-4 text-white" />,
+              iconGradient: "linear-gradient(135deg, #A78BFA, #C4B5FD)",
+              valueColor: "text-[#F1F5F9]",
             },
-          ].map(({ label, value, icon, iconBg, valueColor }) => (
+          ].map(({ label, value, icon, iconGradient, valueColor }) => (
             <div
               key={label}
-              className="bg-white rounded-2xl border border-[#DDE2EE] shadow-[0_1px_3px_rgba(0,0,0,0.06)] p-5"
+              className="p-5"
+              style={glassCard}
             >
               <div className="flex items-center justify-between mb-3">
-                <p className="text-xs font-semibold text-[#8B96A8] uppercase tracking-wide">{label}</p>
-                <div className={`w-7 h-7 rounded-lg ${iconBg} flex items-center justify-center`}>{icon}</div>
+                <p className="text-xs font-semibold text-[#94A3B8] uppercase tracking-wide">{label}</p>
+                <div
+                  className="w-7 h-7 rounded-lg flex items-center justify-center"
+                  style={{ background: iconGradient }}
+                >
+                  {icon}
+                </div>
               </div>
               {value === null ? (
-                <div className="h-7 w-24 bg-[#F2F4FB] rounded-lg animate-pulse" />
+                <div className="h-7 w-24 rounded-lg animate-pulse" style={{ background: "rgba(255,255,255,0.03)" }} />
               ) : (
-                <p className={`text-2xl font-bold ${valueColor}`}>{value}</p>
+                <p className={`text-[28px] font-extrabold ${valueColor}`}>{value}</p>
               )}
             </div>
           ))}
         </div>
 
         {/* Breakdown table */}
-        <div className="bg-white rounded-2xl border border-[#DDE2EE] shadow-[0_1px_3px_rgba(0,0,0,0.06)] overflow-hidden">
+        <div className="overflow-hidden" style={glassCard}>
 
           {/* Tab bar */}
-          <div className="flex items-center gap-1 px-4 pt-4 border-b border-[#F2F4FB]">
+          <div className="flex items-center gap-1 px-4 pt-4 pb-3">
             {TABS.map(({ key, label, icon }) => (
               <button
                 key={key}
                 onClick={() => setActiveTab(key)}
-                className={`flex items-center gap-1.5 px-3 py-2 mb-[-1px] text-xs font-semibold rounded-t-lg border-b-2 transition-colors ${
+                className={`flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-[14px] transition-colors ${
                   activeTab === key
-                    ? "text-[#4F46E5] border-[#4F46E5] bg-[#EEF0F8]"
-                    : "text-[#8B96A8] border-transparent hover:text-[#111827]"
+                    ? "text-[#A5B4FC]"
+                    : "text-[#64748B] hover:text-[#E2E8F0] hover:bg-[rgba(255,255,255,0.03)]"
                 }`}
+                style={activeTab === key ? { background: "rgba(129,140,248,0.12)" } : undefined}
               >
                 {icon}
                 {label}
@@ -155,16 +184,19 @@ export default function Revenue() {
 
           {isLoading ? (
             <div className="py-16 flex justify-center">
-              <Loader2 className="w-5 h-5 animate-spin text-[#8B96A8]" />
+              <Loader2 className="w-5 h-5 animate-spin text-[#64748B]" />
             </div>
           ) : activeData.length === 0 ? (
             <div className="py-16 flex flex-col items-center gap-3 text-center px-6">
-              <div className="w-12 h-12 rounded-2xl bg-[#EEF0F8] flex items-center justify-center">
-                <DollarSign className="w-6 h-6 text-[#4F46E5]" />
+              <div
+                className="w-12 h-12 rounded-[14px] flex items-center justify-center"
+                style={{ background: "linear-gradient(135deg, #818CF8, #A5B4FC)" }}
+              >
+                <DollarSign className="w-6 h-6 text-white" />
               </div>
               <div>
-                <p className="text-sm font-semibold text-[#111827]">No data for this period</p>
-                <p className="text-xs text-[#8B96A8] mt-1">
+                <p className="text-sm font-semibold text-[#F1F5F9]">No data for this period</p>
+                <p className="text-xs text-[#64748B] mt-1">
                   Try adjusting the date range or start tracking conversions from the Conversions page.
                 </p>
               </div>
@@ -173,31 +205,31 @@ export default function Revenue() {
             <div className="overflow-x-auto">
               <table className="w-full text-sm text-left">
                 <thead>
-                  <tr className="bg-[#F8F9FB] border-b border-[#F2F4FB]">
+                  <tr style={{ background: "rgba(255,255,255,0.03)" }}>
                     {columns.map((col, i) => (
                       <th
                         key={col}
-                        className={`px-5 py-3 text-xs font-semibold text-[#8B96A8] uppercase tracking-wide ${i > 0 ? "text-right" : ""}`}
+                        className={`px-5 py-3 text-xs font-semibold text-[#94A3B8] uppercase tracking-wide ${i > 0 ? "text-right" : ""}`}
                       >
                         {col}
                       </th>
                     ))}
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[#F2F4FB]">
+                <tbody className="divide-y divide-[rgba(255,255,255,0.06)]">
                   {activeData.map((row: any, i: number) => (
-                    <tr key={i} className="hover:bg-[#F8F9FB] transition-colors">
-                      <td className="px-5 py-3.5 font-medium text-[#111827]">
+                    <tr key={i} className="hover:bg-[rgba(255,255,255,0.03)] transition-colors">
+                      <td className="px-5 py-3.5 font-medium text-[#E2E8F0]">
                         {activeTab === "links" ? (
                           <div>
-                            <span className="text-[#4F46E5] font-semibold">/{row.slug ?? "unknown"}</span>
+                            <span className="text-[#818CF8] font-semibold">/{row.slug ?? "unknown"}</span>
                             {row.title && (
-                              <div className="text-xs text-[#8B96A8] mt-0.5">{row.title}</div>
+                              <div className="text-xs text-[#64748B] mt-0.5">{row.title}</div>
                             )}
                           </div>
                         ) : activeTab === "campaigns" ? (
                           row.campaign === "(none)" ? (
-                            <span className="text-[#8B96A8] italic text-sm">No campaign</span>
+                            <span className="text-[#64748B] italic text-sm">No campaign</span>
                           ) : (
                             row.campaign
                           )
@@ -205,24 +237,24 @@ export default function Revenue() {
                           <span className="capitalize">{row.eventName}</span>
                         )}
                       </td>
-                      <td className="px-5 py-3.5 text-right font-semibold text-[#111827]">
+                      <td className="px-5 py-3.5 text-right font-semibold text-[#E2E8F0]">
                         {Number(row.conversions).toLocaleString()}
                       </td>
-                      <td className="px-5 py-3.5 text-right font-bold text-emerald-600">
+                      <td className="px-5 py-3.5 text-right font-bold text-[#34D399]">
                         {formatCurrency(Number(row.revenue))}
                       </td>
                     </tr>
                   ))}
                 </tbody>
                 <tfoot>
-                  <tr className="bg-[#F8F9FB] border-t-2 border-[#DDE2EE]">
-                    <td className="px-5 py-4 text-xs font-bold text-[#111827] uppercase tracking-wide">
+                  <tr style={{ background: "rgba(255,255,255,0.03)", borderTop: "2px solid rgba(255,255,255,0.1)" }}>
+                    <td className="px-5 py-4 text-xs font-bold text-[#F1F5F9] uppercase tracking-wide">
                       Total
                     </td>
-                    <td className="px-5 py-4 text-right font-bold text-[#111827]">
+                    <td className="px-5 py-4 text-right font-bold text-[#F1F5F9]">
                       {totalConversions.toLocaleString()}
                     </td>
-                    <td className="px-5 py-4 text-right font-bold text-emerald-600">
+                    <td className="px-5 py-4 text-right font-bold text-[#34D399]">
                       {formatCurrency(totalRevenue)}
                     </td>
                   </tr>

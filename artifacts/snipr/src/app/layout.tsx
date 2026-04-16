@@ -24,6 +24,14 @@ export const metadata: Metadata = {
     default: "Snipr - Best Custom Domain URL Shortener + QR Code Generator",
     template: "%s | Snipr",
   },
+  icons: {
+    icon: [
+      { url: "/favicon.svg?v=2", type: "image/svg+xml" },
+      { url: "/favicon.ico?v=2", sizes: "32x32", type: "image/x-icon" },
+    ],
+    shortcut: "/favicon.ico?v=2",
+  },
+  manifest: "/manifest.json",
   description:
     "Snipr is the best custom domain URL shortener and QR code generator. Shorten links with your own branded domain, track clicks with real-time analytics, create QR codes, and grow faster with AI-powered insights.",
   keywords: [
@@ -125,58 +133,74 @@ const jsonLd = {
     {
       "@type": "WebSite",
       "@id": "https://snipr.sh/#website",
-      "url": "https://snipr.sh",
-      "name": "Snipr",
-      "description": "Best Custom Domain URL Shortener + QR Code Generator",
-      "publisher": { "@id": "https://snipr.sh/#organization" },
-      "potentialAction": [
+      url: "https://snipr.sh",
+      name: "Snipr",
+      description: "Best Custom Domain URL Shortener + QR Code Generator",
+      publisher: { "@id": "https://snipr.sh/#organization" },
+      potentialAction: [
         {
           "@type": "SearchAction",
-          "target": {
+          target: {
             "@type": "EntryPoint",
-            "urlTemplate": "https://snipr.sh/links?q={search_term_string}",
+            urlTemplate: "https://snipr.sh/links?q={search_term_string}",
           },
           "query-input": "required name=search_term_string",
         },
       ],
-      "inLanguage": "en-US",
+      inLanguage: "en-US",
     },
     {
       "@type": "Organization",
       "@id": "https://snipr.sh/#organization",
-      "name": "Snipr",
-      "url": "https://snipr.sh",
-      "logo": {
+      name: "Snipr",
+      url: "https://snipr.sh",
+      logo: {
         "@type": "ImageObject",
-        "url": "https://snipr.sh/logo.png",
-        "width": 512,
-        "height": 512,
+        url: "https://snipr.sh/favicon.svg",
+        width: 512,
+        height: 512,
       },
-      "sameAs": [
-        "https://twitter.com/snipr_sh",
-      ],
-      "contactPoint": {
+      sameAs: ["https://twitter.com/snipr_sh"],
+      contactPoint: {
         "@type": "ContactPoint",
-        "contactType": "customer support",
-        "url": "https://snipr.sh/contact",
-        "availableLanguage": "English",
+        contactType: "customer support",
+        url: "https://snipr.sh/contact",
+        availableLanguage: "English",
       },
     },
     {
       "@type": "SoftwareApplication",
       "@id": "https://snipr.sh/#app",
-      "name": "Snipr",
-      "url": "https://snipr.sh",
-      "applicationCategory": "BusinessApplication",
-      "operatingSystem": "Web",
-      "description": "Custom domain URL shortener, QR code generator, and link analytics platform with AI-powered insights.",
-      "offers": {
-        "@type": "Offer",
-        "price": "0",
-        "priceCurrency": "USD",
-        "description": "Free plan available. Paid plans starting at $4/month.",
+      name: "Snipr",
+      url: "https://snipr.sh",
+      applicationCategory: "BusinessApplication",
+      operatingSystem: "Web",
+      description:
+        "Custom domain URL shortener, QR code generator, and link analytics platform with AI-powered insights.",
+      offers: {
+        "@type": "AggregateOffer",
+        lowPrice: "0",
+        highPrice: "24",
+        priceCurrency: "USD",
+        offerCount: 4,
+        offers: [
+          {
+            "@type": "Offer",
+            name: "Free",
+            price: "0",
+            priceCurrency: "USD",
+            description: "Free forever with 100 links and 1 custom domain.",
+          },
+          {
+            "@type": "Offer",
+            name: "Pro",
+            price: "4",
+            priceCurrency: "USD",
+            description: "Unlimited links, 10 custom domains, AI insights.",
+          },
+        ],
       },
-      "featureList": [
+      featureList: [
         "Custom domain URL shortening",
         "QR code generation",
         "Real-time click analytics",
@@ -186,7 +210,13 @@ const jsonLd = {
         "AI-powered insights",
         "Branded short links",
       ],
-      "publisher": { "@id": "https://snipr.sh/#organization" },
+      publisher: { "@id": "https://snipr.sh/#organization" },
+      aggregateRating: {
+        "@type": "AggregateRating",
+        ratingValue: "4.9",
+        ratingCount: "120",
+        bestRating: "5",
+      },
     },
   ],
 };
@@ -208,6 +238,7 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
       </head>

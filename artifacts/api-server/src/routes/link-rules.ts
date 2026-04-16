@@ -67,6 +67,17 @@ router.put("/links/:id/rules", requireAuth, async (req, res): Promise<void> => {
       res.status(422).json({ error: "Validation error", message: "Each rule must have a destinationUrl" });
       return;
     }
+    // SECURITY: Validate rule destinationUrl is http/https only
+    try {
+      const urlObj = new URL(rule.destinationUrl);
+      if (!["http:", "https:"].includes(urlObj.protocol)) {
+        res.status(422).json({ error: "Validation error", message: "Rule destination URL must be http or https" });
+        return;
+      }
+    } catch {
+      res.status(422).json({ error: "Validation error", message: `Invalid rule destination URL: ${rule.destinationUrl}` });
+      return;
+    }
   }
 
   await db.delete(linkRulesTable).where(eq(linkRulesTable.linkId, id));

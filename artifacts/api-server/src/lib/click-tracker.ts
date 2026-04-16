@@ -6,7 +6,6 @@ import { Request } from "express";
 import { logger } from "./logger";
 import { fireIntegrations } from "./integrations-fire";
 import { broadcast } from "./realtime-bus";
-import { isBot } from "./bot-detector";
 
 type Link = typeof linksTable.$inferSelect;
 type ClickPayload = typeof clickEventsTable.$inferInsert;
@@ -16,6 +15,9 @@ function hashIp(ip: string): string {
 }
 
 function getRealIp(req: Request): string {
+  // Prefer Cloudflare's real client IP header (most accurate, not a proxy IP)
+  const cfIp = req.headers["cf-connecting-ip"];
+  if (cfIp) return (Array.isArray(cfIp) ? cfIp[0] : cfIp).trim();
   const forwarded = req.headers["x-forwarded-for"];
   if (forwarded) {
     const first = Array.isArray(forwarded) ? forwarded[0] : forwarded.split(",")[0];
@@ -61,27 +63,47 @@ const FLUSH_INTERVAL_MS = 500;
 
 const clickQueue: ClickPayload[] = [];
 
+// Proper async mutex — stores the in-flight flush promise so shutdown can await it
+let flushPromise: Promise<void> | null = null;
+
 async function flushQueue(): Promise<void> {
-  if (clickQueue.length === 0) return;
+  if (clickQueue.length === 0 || flushPromise) return;
 
-  const batch = clickQueue.splice(0, BATCH_MAX);
+  const doFlush = async () => {
+    try {
+      while (clickQueue.length > 0) {
+        const batch = clickQueue.splice(0, BATCH_MAX);
+        try {
+          await db.insert(clickEventsTable).values(batch);
+        } catch (error) {
+          // Drop the batch rather than re-queuing — re-queuing risks double-counting
+          // if the INSERT partially succeeded before the error.
+          logger.error(error, {
+            message: "Failed to flush click queue — batch dropped to prevent duplicates",
+            batchSize: batch.length,
+          });
+        }
+      }
+    } finally {
+      flushPromise = null;
+    }
+  };
 
-  try {
-    await db.insert(clickEventsTable).values(batch);
-  } catch (error) {
-    // Drop the batch rather than re-queuing — re-queuing risks double-counting
-    // if the INSERT partially succeeded before the error.
-    logger.error(error, {
-      message: "Failed to flush click queue — batch dropped to prevent duplicates",
-      batchSize: batch.length,
-    });
-  }
+  flushPromise = doFlush();
+  return flushPromise;
 }
 
-setInterval(flushQueue, FLUSH_INTERVAL_MS);
+const flushInterval = setInterval(flushQueue, FLUSH_INTERVAL_MS);
 
 // Flush remaining events on graceful shutdown to minimise data loss
 async function shutdown() {
+  clearInterval(flushInterval); // Stop scheduling new flushes
+
+  // Wait for any in-flight flush to complete first
+  if (flushPromise) {
+    await flushPromise;
+  }
+  // Now flush any remaining items
   await flushQueue();
   process.exit(0);
 }
@@ -92,14 +114,16 @@ process.once("SIGINT", shutdown);
 
 export async function trackClick(req: Request, link: Link, isQr: boolean = false): Promise<void> {
   try {
-    // Skip bots, crawlers, prefetch requests, and HEAD requests
-    if (isBot(req)) return;
-
     const ip = getRealIp(req);
-    const ipHash = ip ? hashIp(ip) : null;
+    const ipHash = ip ? hashIp(ip) : hashIp("unknown-" + Date.now());
     const ua = req.headers["user-agent"];
     const { browser, os, device } = parseUserAgent(ua);
-    const { country, city } = getGeo(ip);
+
+    // Use Cloudflare's cf-ipcountry header when available — far more accurate than geoip-lite
+    const cfCountry = req.headers["cf-ipcountry"] as string | undefined;
+    const geo = getGeo(ip);
+    const country = (cfCountry && cfCountry !== "XX" && cfCountry !== "T1") ? cfCountry.toUpperCase() : geo.country;
+    const city = geo.city;
     const referrer = parseReferrer(req.headers.referer ?? (req.headers.referrer as string | undefined));
 
     const utmSource = (req.query.utm_source as string) ?? null;
@@ -162,7 +186,8 @@ export async function trackClick(req: Request, link: Link, isQr: boolean = false
       timestamp: new Date().toISOString(),
       isQr,
     });
-  } catch {
-    // Fire-and-forget: swallow errors so redirect is never broken
+  } catch (error) {
+    // Fire-and-forget: log but never break the redirect
+    logger.error(error, { message: "trackClick failed", linkId: link.id, slug: link.slug });
   }
 }

@@ -11,6 +11,10 @@ export interface Domain {
   workspaceId: string;
   domain: string;
   verified: boolean;
+  isPlatformDomain: boolean;
+  isParentDomain?: boolean;
+  supportsSubdomains?: boolean;
+  purpose?: string;
   createdAt: Date;
   updatedAt: Date;
 }

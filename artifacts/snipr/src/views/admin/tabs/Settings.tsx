@@ -3,16 +3,17 @@ import { useEffect, useState } from "react";
 import {
   Globe, Sliders, ToggleLeft, ShieldCheck, Save,
   CheckCircle2, Loader2,
-  RefreshCw, Megaphone, Gauge,
+  RefreshCw, Megaphone, Gauge, Database, Download,
 } from "lucide-react";
 import { apiFetch } from "../utils";
+import { useToast } from "../Toast";
 
 function Section({ icon: Icon, title, children, badge }: {
   icon: React.ElementType; title: string; children: React.ReactNode; badge?: string;
 }) {
   return (
-    <div className="bg-white rounded-2xl border border-[#E4E4EC] overflow-hidden">
-      <div className="px-5 py-4 border-b border-[#E4E4EC] flex items-center gap-2">
+    <div className="bg-white rounded-2xl border border-[#E2E8F0] overflow-hidden">
+      <div className="px-5 py-4 border-b border-[#E2E8F0] flex items-center gap-2">
         <Icon className="w-4 h-4 text-[#728DA7]" />
         <h3 className="text-sm font-semibold text-[#0A0A0A]">{title}</h3>
         {badge && <span className="ml-1.5 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-green-100 text-green-700">{badge}</span>}
@@ -33,7 +34,7 @@ function FieldRow({ label, placeholder, type = "text", sub, value, onChange }: {
         {sub && <div className="text-xs text-[#8888A0] mt-0.5">{sub}</div>}
       </div>
       <input type={type} placeholder={placeholder} value={value} onChange={e => onChange(e.target.value)}
-        className="flex-1 px-3 py-2 rounded-xl border border-[#E4E4EC] bg-white text-sm text-[#0A0A0A] outline-none focus:border-[#728DA7] focus:ring-2 focus:ring-[#728DA7]/15 transition-all" />
+        className="flex-1 px-3 py-2 rounded-xl border border-[#E2E8F0] bg-white text-sm text-[#0A0A0A] outline-none focus:border-[#728DA7] focus:ring-2 focus:ring-[#728DA7]/15 transition-all" />
     </div>
   );
 }
@@ -76,8 +77,12 @@ export default function SettingsTab() {
   const [newWhitelistIp, setNewWhitelistIp] = useState("");
   const [editingLimit, setEditingLimit] = useState<string | null>(null);
   const [editLimitValue, setEditLimitValue] = useState("");
+  const [dbSizeMb, setDbSizeMb] = useState<number | null>(null);
+  const [dbLoading, setDbLoading] = useState(true);
+  const [backupLoading, setBackupLoading] = useState(false);
+  const { toast } = useToast();
 
-  useEffect(() => { loadAnnouncement(); loadRateLimits(); loadPlatformSettings(); }, []);
+  useEffect(() => { loadAnnouncement(); loadRateLimits(); loadPlatformSettings(); loadDbSize(); }, []);
 
   async function loadAnnouncement() {
     try {
@@ -102,18 +107,18 @@ export default function SettingsTab() {
       await apiFetch("/admin/platform-settings", { method: "POST", body: JSON.stringify(platformCfg) });
       setPlatformSaved(true);
       setTimeout(() => setPlatformSaved(false), 2000);
-    } catch { alert("Failed to save settings"); }
+    } catch { toast("Failed to save settings", "error"); }
     finally { setPlatformSaving(false); }
   }
 
   async function changePassword() {
-    if (!newPassword || newPassword.length < 4) { alert("Password must be at least 4 characters"); return; }
+    if (!newPassword || newPassword.length < 4) { toast("Password must be at least 4 characters", "error"); return; }
     setPasswordSaving(true);
     try {
       await apiFetch("/admin/change-password", { method: "POST", body: JSON.stringify({ password: newPassword }) });
       setNewPassword("");
-      alert("Password changed successfully. Use the new password on next login.");
-    } catch { alert("Failed to change password"); }
+      toast("Password changed successfully. Use the new password on next login.", "success");
+    } catch { toast("Failed to change password", "error"); }
     finally { setPasswordSaving(false); }
   }
 
@@ -125,7 +130,7 @@ export default function SettingsTab() {
     setAnnouncementSaving(true);
     try {
       await apiFetch("/admin/announcement", { method: "POST", body: JSON.stringify(announcement) });
-    } catch { alert("Failed to save announcement"); }
+    } catch { toast("Failed to save announcement", "error"); }
     finally { setAnnouncementSaving(false); }
   }
 
@@ -138,6 +143,40 @@ export default function SettingsTab() {
     } catch {}
   }
 
+  async function loadDbSize() {
+    setDbLoading(true);
+    try {
+      const data = await apiFetch("/admin/health-detail");
+      setDbSizeMb(data.dbSizeMb ?? null);
+    } catch { setDbSizeMb(null); }
+    finally { setDbLoading(false); }
+  }
+
+  async function downloadBackup() {
+    setBackupLoading(true);
+    try {
+      const res = await fetch("/api/admin/backup", {
+        method: "POST",
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Backup failed");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      const disposition = res.headers.get("Content-Disposition");
+      const match = disposition?.match(/filename="?([^"]+)"?/);
+      a.download = match?.[1] || `snipr-backup-${new Date().toISOString().slice(0, 10)}.sql`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      toast("Backup downloaded successfully", "success");
+    } catch (e: any) {
+      toast(e.message || "Failed to generate backup", "error");
+    } finally { setBackupLoading(false); }
+  }
+
   async function addWhitelistIp() {
     if (!newWhitelistIp.trim()) return;
     try {
@@ -146,7 +185,7 @@ export default function SettingsTab() {
       });
       setWhitelist(data.whitelist || []);
       setNewWhitelistIp("");
-    } catch { alert("Failed to add IP"); }
+    } catch { toast("Failed to add IP", "error"); }
   }
 
   async function removeWhitelistIp(ip: string) {
@@ -155,7 +194,7 @@ export default function SettingsTab() {
         method: "POST", body: JSON.stringify({ ip, action: "remove" }),
       });
       setWhitelist(data.whitelist || []);
-    } catch { alert("Failed to remove IP"); }
+    } catch { toast("Failed to remove IP", "error"); }
   }
 
   async function adjustLimit(name: string, max: number | null) {
@@ -165,12 +204,12 @@ export default function SettingsTab() {
       });
       setEditingLimit(null);
       loadRateLimits();
-    } catch { alert("Failed to adjust limit"); }
+    } catch { toast("Failed to adjust limit", "error"); }
   }
 
 
   return (
-    <div className="space-y-5 max-w-3xl">
+    <div className="space-y-5 max-w-4xl">
       {platformSaved && (
         <div className="bg-green-50 border border-green-200 rounded-2xl px-5 py-3 flex items-center gap-3">
           <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0" />
@@ -239,7 +278,7 @@ export default function SettingsTab() {
             <div className="flex-1 flex gap-2">
               <input type="password" placeholder="New password (min 4 chars)" value={newPassword}
                 onChange={e => setNewPassword(e.target.value)}
-                className="flex-1 px-3 py-2 rounded-xl border border-[#E4E4EC] bg-white text-sm text-[#0A0A0A] outline-none focus:border-[#728DA7] focus:ring-2 focus:ring-[#728DA7]/15 transition-all" />
+                className="flex-1 px-3 py-2 rounded-xl border border-[#E2E8F0] bg-white text-sm text-[#0A0A0A] outline-none focus:border-[#728DA7] focus:ring-2 focus:ring-[#728DA7]/15 transition-all" />
               <button onClick={changePassword} disabled={passwordSaving || newPassword.length < 4}
                 className="px-3 py-2 rounded-xl bg-[#0A0A0A] text-white text-xs font-semibold hover:bg-[#1A1A2E] disabled:opacity-40 disabled:cursor-not-allowed transition-all whitespace-nowrap">
                 {passwordSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Update"}
@@ -302,7 +341,7 @@ export default function SettingsTab() {
               onChange={e => setAnnouncement(a => ({ ...a, text: e.target.value }))}
               placeholder="Enter your announcement message..."
               rows={2}
-              className="w-full px-3 py-2.5 rounded-xl border border-[#E4E4EC] bg-white text-sm outline-none focus:border-[#728DA7] focus:ring-2 focus:ring-[#728DA7]/15 transition-all resize-none"
+              className="w-full px-3 py-2.5 rounded-xl border border-[#E2E8F0] bg-white text-sm outline-none focus:border-[#728DA7] focus:ring-2 focus:ring-[#728DA7]/15 transition-all resize-none"
             />
           </div>
           {announcement.text && (
@@ -346,7 +385,7 @@ export default function SettingsTab() {
                     {editingLimit === rl.name ? (
                       <div className="flex items-center gap-1.5">
                         <input type="number" value={editLimitValue} onChange={e => setEditLimitValue(e.target.value)}
-                          className="w-20 px-2 py-1 rounded-lg border border-[#E4E4EC] text-xs" min={1} max={10000} />
+                          className="w-20 px-2 py-1 rounded-lg border border-[#E2E8F0] text-xs" min={1} max={10000} />
                         <button onClick={() => adjustLimit(rl.name, parseInt(editLimitValue) || rl.max)}
                           className="px-2 py-1 rounded-lg bg-[#0A0A0A] text-white text-[10px] font-semibold">Save</button>
                         {rl.overridden && (
@@ -358,7 +397,7 @@ export default function SettingsTab() {
                       </div>
                     ) : (
                       <button onClick={() => { setEditingLimit(rl.name); setEditLimitValue(String(rl.effectiveMax)); }}
-                        className="px-2 py-1 rounded-lg text-[10px] text-[#728DA7] hover:bg-[#F4F4F6] border border-[#E4E4EC]">
+                        className="px-2 py-1 rounded-lg text-[10px] text-[#728DA7] hover:bg-[#F4F4F6] border border-[#E2E8F0]">
                         <Sliders className="w-3 h-3 inline mr-1" />Adjust
                       </button>
                     )}
@@ -369,7 +408,7 @@ export default function SettingsTab() {
             </div>
           )}
 
-          <div className="p-3 bg-[#F8F8FC] rounded-xl border border-[#E4E4EC]">
+          <div className="p-3 bg-[#F8F8FC] rounded-xl border border-[#E2E8F0]">
             <div className="text-xs font-semibold text-[#0A0A0A] mb-2 flex items-center gap-1.5">
               <ShieldCheck className="w-3.5 h-3.5 text-[#728DA7]" />
               IP Whitelist
@@ -378,14 +417,14 @@ export default function SettingsTab() {
             <div className="flex items-center gap-2 mb-2">
               <input value={newWhitelistIp} onChange={e => setNewWhitelistIp(e.target.value)}
                 placeholder="Enter IP address..." onKeyDown={e => e.key === "Enter" && addWhitelistIp()}
-                className="flex-1 px-2.5 py-1.5 rounded-lg border border-[#E4E4EC] bg-white text-xs outline-none focus:border-[#728DA7]" />
+                className="flex-1 px-2.5 py-1.5 rounded-lg border border-[#E2E8F0] bg-white text-xs outline-none focus:border-[#728DA7]" />
               <button onClick={addWhitelistIp} disabled={!newWhitelistIp.trim()}
                 className="px-3 py-1.5 rounded-lg bg-[#728DA7] text-white text-xs font-semibold hover:bg-[#5A7590] disabled:opacity-40">Add</button>
             </div>
             {whitelist.length > 0 ? (
               <div className="flex flex-wrap gap-1.5">
                 {whitelist.map(ip => (
-                  <span key={ip} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-white border border-[#E4E4EC] text-[10px] font-mono text-[#3A3A3E]">
+                  <span key={ip} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-white border border-[#E2E8F0] text-[10px] font-mono text-[#3A3A3E]">
                     {ip}
                     <button onClick={() => removeWhitelistIp(ip)} className="text-red-400 hover:text-red-600 ml-0.5">&times;</button>
                   </span>
@@ -430,6 +469,38 @@ export default function SettingsTab() {
             className="px-3 py-1.5 rounded-lg text-xs font-medium text-[#8888A0] hover:text-[#3A3A3E] hover:bg-[#F4F4F6] transition-all flex items-center gap-1.5">
             <RefreshCw className="w-3 h-3" /> Refresh
           </button>
+        </div>
+      </Section>
+
+      {/* ─── Database ────────────────────────────────────────────── */}
+      <Section icon={Database} title="Database">
+        <div className="space-y-4">
+          <div className="flex items-center justify-between py-3 border-b border-[#F4F4F6]">
+            <div>
+              <div className="text-sm font-medium text-[#0A0A0A]">Database Size</div>
+              <div className="text-xs text-[#8888A0] mt-0.5">Current PostgreSQL database size on disk</div>
+            </div>
+            <div className="text-sm font-semibold text-[#0A0A0A]">
+              {dbLoading ? (
+                <Loader2 className="w-4 h-4 animate-spin text-[#728DA7]" />
+              ) : dbSizeMb !== null ? (
+                <span>{dbSizeMb < 1024 ? `${dbSizeMb.toFixed(1)} MB` : `${(dbSizeMb / 1024).toFixed(2)} GB`}</span>
+              ) : (
+                <span className="text-[#8888A0]">Unavailable</span>
+              )}
+            </div>
+          </div>
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-sm font-medium text-[#0A0A0A]">Download Backup</div>
+              <div className="text-xs text-[#8888A0] mt-0.5">Generate and download a full SQL dump of the database</div>
+            </div>
+            <button onClick={downloadBackup} disabled={backupLoading}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#0A0A0A] text-white text-xs font-semibold hover:bg-[#1A1A2E] disabled:opacity-40 disabled:cursor-not-allowed transition-all">
+              {backupLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
+              {backupLoading ? "Generating..." : "Download Backup"}
+            </button>
+          </div>
         </div>
       </Section>
     </div>
