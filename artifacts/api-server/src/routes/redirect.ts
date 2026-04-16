@@ -91,6 +91,31 @@ function extractSubdomainAndDomain(host: string): { subdomain: string | null; do
   return { subdomain, domain };
 }
 
+/** Forward marketing tracking params from the short-link URL onto the destination URL.
+ *  Only the standard Google/Meta analytics params are copied. The destination URL's
+ *  own params always win — we never overwrite values the user already baked in. */
+const TRACKING_PARAMS = [
+  "utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content", "utm_id",
+  "gclid", "fbclid", "ttclid", "msclkid",
+] as const;
+
+function mergeUtmIntoUrl(destination: string, sourceQuery: Record<string, any>): string {
+  try {
+    const url = new URL(destination);
+    for (const key of TRACKING_PARAMS) {
+      const raw = sourceQuery[key];
+      // Handle array query (?a=1&a=2) by picking the first non-empty value
+      const val = Array.isArray(raw) ? raw.find((v) => typeof v === "string" && v.length > 0) : raw;
+      if (typeof val !== "string" || val.length === 0) continue;
+      if (url.searchParams.has(key)) continue; // destination's own value wins
+      url.searchParams.set(key, val);
+    }
+    return url.toString();
+  } catch {
+    return destination;
+  }
+}
+
 function weightedRandom<T extends { conditions: any; destinationUrl: string }>(rules: T[]): T | null {
   const total = rules.reduce((sum, r) => sum + (Number(r.conditions?.weight) || 1), 0);
   let rand = Math.random() * total;
@@ -441,30 +466,35 @@ router.use(async (req, res, next): Promise<void> => {
     setImmediate(() => { trackClick(req as any, link, req.query.qr === "1"); });
   }
 
+  // Forward marketing params from the short-link URL to the destination (opt-in per link).
+  const finalDestination = (link as any).propagateUtm
+    ? mergeUtmIntoUrl(link.destinationUrl, req.query as Record<string, any>)
+    : link.destinationUrl;
+
   if (link.iosDeepLink || link.androidDeepLink) {
-    serveDeepLinkPage(res, link.destinationUrl, link.iosDeepLink, link.androidDeepLink);
+    serveDeepLinkPage(res, finalDestination, link.iosDeepLink, link.androidDeepLink);
     return;
   }
 
   if (link.isCloaked) {
-    serveCloakedPage(res, link.destinationUrl);
+    serveCloakedPage(res, finalDestination);
     return;
   }
 
   if (link.hideReferrer) {
     res.setHeader("Referrer-Policy", "no-referrer");
     res.status(200).send(`<!DOCTYPE html>
-<html><head><meta charset="utf-8"><meta name="referrer" content="no-referrer"><meta http-equiv="refresh" content="0;url=${escapeHtml(link.destinationUrl)}"><title>Redirecting...</title></head><body></body></html>`);
+<html><head><meta charset="utf-8"><meta name="referrer" content="no-referrer"><meta http-equiv="refresh" content="0;url=${escapeHtml(finalDestination)}"><title>Redirecting...</title></head><body></body></html>`);
     return;
   }
 
   // Bots/crawlers get a clean 301 for SEO link juice
   if (bot) {
-    res.redirect(301, link.destinationUrl);
+    res.redirect(301, finalDestination);
     return;
   }
   // Real browsers get an instant HTML redirect — never cached by browser
-  res.status(200).send(`<!DOCTYPE html><html><head><meta charset="utf-8"><meta http-equiv="refresh" content="0;url=${escapeHtml(link.destinationUrl)}"><script>window.location.replace("${escapeJsString(link.destinationUrl)}")</script><title>Redirecting…</title></head><body></body></html>`);
+  res.status(200).send(`<!DOCTYPE html><html><head><meta charset="utf-8"><meta http-equiv="refresh" content="0;url=${escapeHtml(finalDestination)}"><script>window.location.replace("${escapeJsString(finalDestination)}")</script><title>Redirecting…</title></head><body></body></html>`);
 });
 
 /* ── Standard Redirect ──────────────────────────────────────────────────── */
@@ -605,6 +635,11 @@ router.get("/r/:slug", async (req, res): Promise<void> => {
   // Fire click tracking asynchronously — skip bots
   if (!bot) {
     setImmediate(() => { trackClick(req as any, link, isQr); });
+  }
+
+  // Forward marketing params from the short-link URL to the destination (opt-in per link).
+  if ((link as any).propagateUtm) {
+    destination = mergeUtmIntoUrl(destination, req.query as Record<string, any>);
   }
 
   const pixels = await db

@@ -126,11 +126,24 @@ export async function trackClick(req: Request, link: Link, isQr: boolean = false
     const city = geo.city;
     const referrer = parseReferrer(req.headers.referer ?? (req.headers.referrer as string | undefined));
 
-    const utmSource = (req.query.utm_source as string) ?? null;
-    const utmMedium = (req.query.utm_medium as string) ?? null;
-    const utmCampaign = (req.query.utm_campaign as string) ?? null;
-    const utmTerm = (req.query.utm_term as string) ?? null;
-    const utmContent = (req.query.utm_content as string) ?? null;
+    // Coerce each UTM param to a clean string or null:
+    // - Arrays (?utm=a&utm=b) → pick first non-empty
+    // - Empty strings → null
+    // - Non-strings → null
+    // - Trim + cap at 255 chars to prevent abuse
+    const utm = (key: string): string | null => {
+      const raw = (req.query as Record<string, unknown>)[key];
+      const pick = Array.isArray(raw) ? raw.find((v) => typeof v === "string" && v.length > 0) : raw;
+      if (typeof pick !== "string") return null;
+      const trimmed = pick.trim();
+      if (trimmed.length === 0) return null;
+      return trimmed.slice(0, 255);
+    };
+    const utmSource = utm("utm_source");
+    const utmMedium = utm("utm_medium");
+    const utmCampaign = utm("utm_campaign");
+    const utmTerm = utm("utm_term");
+    const utmContent = utm("utm_content");
 
     clickQueue.push({
       linkId: link.id,

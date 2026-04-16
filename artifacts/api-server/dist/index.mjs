@@ -72869,6 +72869,7 @@ var linksTable = pgTable("links", {
   hideReferrer: boolean("hide_referrer").notNull().default(false),
   iosDeepLink: text("ios_deep_link"),
   androidDeepLink: text("android_deep_link"),
+  propagateUtm: boolean("propagate_utm").notNull().default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => /* @__PURE__ */ new Date())
 }, (table) => [
@@ -105792,11 +105793,19 @@ async function trackClick(req, link, isQr = false) {
     const country = cfCountry && cfCountry !== "XX" && cfCountry !== "T1" ? cfCountry.toUpperCase() : geo.country;
     const city = geo.city;
     const referrer = parseReferrer(req.headers.referer ?? req.headers.referrer);
-    const utmSource = req.query.utm_source ?? null;
-    const utmMedium = req.query.utm_medium ?? null;
-    const utmCampaign = req.query.utm_campaign ?? null;
-    const utmTerm = req.query.utm_term ?? null;
-    const utmContent = req.query.utm_content ?? null;
+    const utm = (key) => {
+      const raw = req.query[key];
+      const pick2 = Array.isArray(raw) ? raw.find((v) => typeof v === "string" && v.length > 0) : raw;
+      if (typeof pick2 !== "string") return null;
+      const trimmed = pick2.trim();
+      if (trimmed.length === 0) return null;
+      return trimmed.slice(0, 255);
+    };
+    const utmSource = utm("utm_source");
+    const utmMedium = utm("utm_medium");
+    const utmCampaign = utm("utm_campaign");
+    const utmTerm = utm("utm_term");
+    const utmContent = utm("utm_content");
     clickQueue.push({
       linkId: link.id,
       timestamp: /* @__PURE__ */ new Date(),
@@ -106611,6 +106620,33 @@ function extractSubdomainAndDomain(host) {
   const subdomain = parts.slice(0, -2).join(".") || null;
   return { subdomain, domain: domain2 };
 }
+var TRACKING_PARAMS = [
+  "utm_source",
+  "utm_medium",
+  "utm_campaign",
+  "utm_term",
+  "utm_content",
+  "utm_id",
+  "gclid",
+  "fbclid",
+  "ttclid",
+  "msclkid"
+];
+function mergeUtmIntoUrl(destination, sourceQuery) {
+  try {
+    const url2 = new URL(destination);
+    for (const key of TRACKING_PARAMS) {
+      const raw = sourceQuery[key];
+      const val = Array.isArray(raw) ? raw.find((v) => typeof v === "string" && v.length > 0) : raw;
+      if (typeof val !== "string" || val.length === 0) continue;
+      if (url2.searchParams.has(key)) continue;
+      url2.searchParams.set(key, val);
+    }
+    return url2.toString();
+  } catch {
+    return destination;
+  }
+}
 function weightedRandom(rules) {
   const total = rules.reduce((sum2, r) => sum2 + (Number(r.conditions?.weight) || 1), 0);
   let rand = Math.random() * total;
@@ -106910,25 +106946,26 @@ router18.use(async (req, res, next) => {
       trackClick(req, link, req.query.qr === "1");
     });
   }
+  const finalDestination = link.propagateUtm ? mergeUtmIntoUrl(link.destinationUrl, req.query) : link.destinationUrl;
   if (link.iosDeepLink || link.androidDeepLink) {
-    serveDeepLinkPage(res, link.destinationUrl, link.iosDeepLink, link.androidDeepLink);
+    serveDeepLinkPage(res, finalDestination, link.iosDeepLink, link.androidDeepLink);
     return;
   }
   if (link.isCloaked) {
-    serveCloakedPage(res, link.destinationUrl);
+    serveCloakedPage(res, finalDestination);
     return;
   }
   if (link.hideReferrer) {
     res.setHeader("Referrer-Policy", "no-referrer");
     res.status(200).send(`<!DOCTYPE html>
-<html><head><meta charset="utf-8"><meta name="referrer" content="no-referrer"><meta http-equiv="refresh" content="0;url=${escapeHtml3(link.destinationUrl)}"><title>Redirecting...</title></head><body></body></html>`);
+<html><head><meta charset="utf-8"><meta name="referrer" content="no-referrer"><meta http-equiv="refresh" content="0;url=${escapeHtml3(finalDestination)}"><title>Redirecting...</title></head><body></body></html>`);
     return;
   }
   if (bot) {
-    res.redirect(301, link.destinationUrl);
+    res.redirect(301, finalDestination);
     return;
   }
-  res.status(200).send(`<!DOCTYPE html><html><head><meta charset="utf-8"><meta http-equiv="refresh" content="0;url=${escapeHtml3(link.destinationUrl)}"><script>window.location.replace("${escapeJsString(link.destinationUrl)}")</script><title>Redirecting\u2026</title></head><body></body></html>`);
+  res.status(200).send(`<!DOCTYPE html><html><head><meta charset="utf-8"><meta http-equiv="refresh" content="0;url=${escapeHtml3(finalDestination)}"><script>window.location.replace("${escapeJsString(finalDestination)}")</script><title>Redirecting\u2026</title></head><body></body></html>`);
 });
 router18.get("/r/:slug", async (req, res) => {
   const rawSlug = req.params.slug;
@@ -107045,6 +107082,9 @@ router18.get("/r/:slug", async (req, res) => {
     setImmediate(() => {
       trackClick(req, link, isQr);
     });
+  }
+  if (link.propagateUtm) {
+    destination = mergeUtmIntoUrl(destination, req.query);
   }
   const pixels = await db.select().from(pixelsTable).where(eq(pixelsTable.workspaceId, link.workspaceId));
   if (pixels.length > 0) {
