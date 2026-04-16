@@ -9,6 +9,8 @@ import {
   TrendingUp, MousePointerClick,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import { BrowserIcon } from "@/components/icons/BrowserIcon";
+import { OsIcon } from "@/components/icons/OsIcon";
 
 /* ───────────────────── Types ───────────────────── */
 interface ClickEvent {
@@ -61,24 +63,6 @@ function countryName(code: string | null): string {
   try { return new Intl.DisplayNames(["en"], { type: "region" }).of(code) ?? code; } catch { return code; }
 }
 
-function browserIcon(browser: string | null) {
-  const name = browser?.toLowerCase() ?? "";
-  if (name.includes("chrome")) return "🌐";
-  if (name.includes("firefox")) return "🦊";
-  if (name.includes("safari")) return "🧭";
-  if (name.includes("edge")) return "📐";
-  if (name.includes("opera")) return "🔴";
-  return "🌐";
-}
-
-function osIcon(os: string | null) {
-  const name = os?.toLowerCase() ?? "";
-  if (name.includes("windows")) return "🪟";
-  if (name.includes("mac") || name.includes("ios")) return "🍎";
-  if (name.includes("android")) return "🤖";
-  if (name.includes("linux")) return "🐧";
-  return "💻";
-}
 
 /* ───── Mini Sparkline (SVG) ───── */
 function MiniSparkline({ data, color, height = 32 }: { data: number[]; color: string; height?: number }) {
@@ -574,8 +558,8 @@ export default function Live() {
                                 <DetailRow icon={<MapPin className="w-3.5 h-3.5 text-[#10B981]" />} label="Location" value={`${ev.city ? ev.city + ", " : ""}${ev.country ? countryName(ev.country) : "Unknown"}`} />
                                 <DetailRow icon={<span className="flex items-center w-5">{countryFlag(ev.country)}</span>} label="Country" value={ev.country ?? "N/A"} />
                                 <DetailRow icon={<DeviceIcon device={ev.device} className="w-3.5 h-3.5 text-[#8B5CF6]" />} label="Device" value={ev.device ?? "desktop"} />
-                                <DetailRow icon={<span className="text-[14px]">{osIcon(ev.os)}</span>} label="OS" value={ev.os ?? "Unknown"} />
-                                <DetailRow icon={<span className="text-[14px]">{browserIcon(ev.browser)}</span>} label="Browser" value={ev.browser ?? "Unknown"} />
+                                <DetailRow icon={<OsIcon os={ev.os} size={14} className="text-[#71717A]" />} label="OS" value={ev.os ?? "Unknown"} />
+                                <DetailRow icon={<BrowserIcon browser={ev.browser} size={14} className="text-[#71717A]" />} label="Browser" value={ev.browser ?? "Unknown"} />
                                 <DetailRow icon={<Navigation className="w-3.5 h-3.5 text-[#A1A1AA]" />} label="Referrer" value={ev.referrer ?? "Direct"} />
                                 <DetailRow icon={<Clock className="w-3.5 h-3.5 text-[#FB923C]" />} label="Time" value={new Date(ev.timestamp).toLocaleString()} />
                                 <DetailRow icon={<QrCode className="w-3.5 h-3.5 text-[#A78BFA]" />} label="QR Scan" value={ev.isQr ? "Yes" : "No"} />
@@ -645,7 +629,7 @@ export default function Live() {
                             {browserCounts.map(([browser, count]) => (
                               <div key={browser} className="flex items-center justify-between">
                                 <span className="text-[12px] text-[#A1A1AA] flex items-center gap-2">
-                                  <span className="text-[13px]">{browserIcon(browser)}</span> {browser}
+                                  <BrowserIcon browser={browser} size={13} className="text-[#71717A]" /> {browser}
                                 </span>
                                 <span className="text-[12px] font-semibold text-[#E4E4E7] tabular-nums">{count}</span>
                               </div>
@@ -662,7 +646,7 @@ export default function Live() {
                             {osCounts.map(([os, count]) => (
                               <div key={os} className="flex items-center justify-between">
                                 <span className="text-[12px] text-[#A1A1AA] flex items-center gap-2">
-                                  <span className="text-[13px]">{osIcon(os)}</span> {os}
+                                  <OsIcon os={os} size={13} className="text-[#71717A]" /> {os}
                                 </span>
                                 <span className="text-[12px] font-semibold text-[#E4E4E7] tabular-nums">{count}</span>
                               </div>

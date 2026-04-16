@@ -27,6 +27,8 @@ const AnalyticsAreaChart = dynamic(
   { ssr: false }
 );
 import { format, parseISO, subDays } from "date-fns";
+import { BrowserIcon } from "@/components/icons/BrowserIcon";
+import { OsIcon } from "@/components/icons/OsIcon";
 
 const iso = (d: Date) => d.toISOString().split("T")[0];
 
@@ -134,19 +136,6 @@ function deviceColor(device: string) {
   if (d === "tablet") return "#06B6D4";
   return "#06B6D4";
 }
-
-function browserIcon(browser: string | null) {
-  const name = browser?.toLowerCase() ?? "";
-  if (name.includes("chrome")) return "🌐";
-  if (name.includes("firefox")) return "🦊";
-  if (name.includes("safari")) return "🧭";
-  if (name.includes("edge")) return "📐";
-  if (name.includes("opera")) return "🔴";
-  if (name.includes("brave")) return "🦁";
-  if (name.includes("samsung")) return "📱";
-  return "🌐";
-}
-
 
 function fmtNum(n: number) {
   if (n >= 1_000_000) return (n / 1_000_000).toFixed(1).replace(/\.0$/, "") + "M";
@@ -385,7 +374,7 @@ export default function Analytics() {
                         return (
                           <div key={b.label} className="flex items-center justify-between">
                             <span className="text-[12px] text-[#A1A1AA] flex items-center gap-1.5">
-                              <span className="text-[14px]">{browserIcon(b.label)}</span>
+                              <BrowserIcon browser={b.label} size={13} className="text-[#71717A]" />
                               {b.label}
                             </span>
                             <div className="flex items-center gap-2">
@@ -512,7 +501,7 @@ export default function Analytics() {
                         {topBrowsers.map((b: { label: string; count: number }) => (
                           <div key={b.label} className="flex items-center justify-between">
                             <span className="text-[11px] text-[#A1A1AA] flex items-center gap-1.5">
-                              <span className="text-[12px]">{browserIcon(b.label)}</span>
+                              <BrowserIcon browser={b.label} size={12} className="text-[#71717A]" />
                               {b.label}
                             </span>
                             <span className="text-[11px] font-semibold text-[#A1A1AA]">{b.count}</span>
@@ -684,7 +673,7 @@ export default function Analytics() {
                     return (
                       <div key={o.label} className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-lg bg-[#27272A] flex items-center justify-center shrink-0">
-                          <span className="text-[14px]">{osIcon(o.label)}</span>
+                          <OsIcon os={o.label} size={14} className="text-[#A1A1AA]" />
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex justify-between items-center mb-1">
@@ -916,16 +905,6 @@ function getLinkTrend(current: number, prev?: number): "up" | "down" | "flat" | 
   return "flat";
 }
 
-function osIcon(os: string): string {
-  const name = os.toLowerCase();
-  if (name.includes("windows")) return "🪟";
-  if (name.includes("mac") || name.includes("os x")) return "🍎";
-  if (name.includes("ios")) return "📱";
-  if (name.includes("android")) return "🤖";
-  if (name.includes("linux")) return "🐧";
-  if (name.includes("chrome")) return "💻";
-  return "💻";
-}
 
 function UtmColumn({
   title, icon, data, color,
