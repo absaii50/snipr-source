@@ -1,5 +1,5 @@
 "use client";
-import { useState, type FormEvent } from "react";
+import { useState, useEffect, useRef, type FormEvent } from "react";
 import { PublicNavbar } from "@/components/layout/PublicNavbar";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
@@ -232,17 +232,33 @@ function TweetCard({ t }: { t: typeof twitterTestimonials[0] }) {
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
+const PLATFORM_DOMAINS = ["snipr.my", "snipr.page", "snipr.is"] as const;
+
 export default function Home() {
   const [urlInput, setUrlInput] = useState("");
+  const [selectedDomain, setSelectedDomain] = useState<string>(PLATFORM_DOMAINS[0]);
+  const [domainPickerOpen, setDomainPickerOpen] = useState(false);
+  const domainPickerRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    if (!domainPickerOpen) return;
+    const onClick = (e: MouseEvent) => {
+      if (domainPickerRef.current && !domainPickerRef.current.contains(e.target as Node)) {
+        setDomainPickerOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", onClick);
+    return () => document.removeEventListener("mousedown", onClick);
+  }, [domainPickerOpen]);
 
   const handleShorten = (e: FormEvent) => {
     e.preventDefault();
-    if (urlInput.trim()) {
-      router.push(`/signup?url=${encodeURIComponent(urlInput.trim())}`);
-    } else {
-      router.push("/signup");
-    }
+    const params = new URLSearchParams();
+    if (urlInput.trim()) params.set("url", urlInput.trim());
+    params.set("domain", selectedDomain);
+    router.push(`/signup?${params.toString()}`);
   };
 
   return (
@@ -288,22 +304,62 @@ export default function Home() {
             </p>
 
             {/* URL input row */}
-            <form onSubmit={handleShorten} className="flex items-stretch max-w-2xl mx-auto bg-white border border-[#CACACA] rounded-2xl overflow-hidden shadow-[0_2px_12px_rgba(0,0,0,0.08)] mb-9 h-[58px]">
-              {/* Chain link icon */}
-              <div className="flex items-center justify-center w-[56px] flex-shrink-0 border-r border-[#E2E2E2]">
-                <Link2 className="w-[18px] h-[18px] text-[#B0B0B0]" />
+            <form onSubmit={handleShorten} className="relative flex items-stretch max-w-2xl mx-auto bg-white border border-[#CACACA] rounded-2xl shadow-[0_2px_12px_rgba(0,0,0,0.08)] mb-9 h-[58px]">
+              {/* Domain picker — rebrandly-style */}
+              <div ref={domainPickerRef} className="relative flex-shrink-0 border-r border-[#E2E2E2]">
+                <button
+                  type="button"
+                  onClick={() => setDomainPickerOpen((v) => !v)}
+                  aria-haspopup="listbox"
+                  aria-expanded={domainPickerOpen}
+                  className={`h-full pl-4 pr-3 flex items-center gap-2 text-[13.5px] font-semibold text-[#222] bg-[#F7F7F7] hover:bg-[#F0F0F0] transition-colors rounded-l-2xl tabular-nums ${
+                    domainPickerOpen ? "bg-[#F0F0F0]" : ""
+                  }`}
+                >
+                  <Globe className="w-[15px] h-[15px] text-[#728DA7] flex-shrink-0" />
+                  <span>{selectedDomain}</span>
+                  <ChevronDown className={`w-[13px] h-[13px] text-[#888] flex-shrink-0 transition-transform ${domainPickerOpen ? "rotate-180" : ""}`} />
+                </button>
+
+                {domainPickerOpen && (
+                  <ul
+                    role="listbox"
+                    className="absolute top-[calc(100%+6px)] left-0 min-w-[180px] bg-white border border-[#E2E2E2] rounded-xl shadow-[0_8px_28px_rgba(0,0,0,0.12)] overflow-hidden z-20 py-1"
+                  >
+                    {PLATFORM_DOMAINS.map((d) => {
+                      const isSelected = d === selectedDomain;
+                      return (
+                        <li key={d}>
+                          <button
+                            type="button"
+                            role="option"
+                            aria-selected={isSelected}
+                            onClick={() => { setSelectedDomain(d); setDomainPickerOpen(false); }}
+                            className={`w-full flex items-center justify-between px-4 py-2.5 text-[13.5px] text-left transition-colors ${
+                              isSelected ? "bg-[#F2F5F8] text-[#0A0A0A] font-semibold" : "text-[#333] hover:bg-[#F7F7F7]"
+                            }`}
+                          >
+                            <span>{d}</span>
+                            {isSelected && <Check className="w-3.5 h-3.5 text-[#728DA7]" />}
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
               </div>
+
               <input
                 type="url"
                 value={urlInput}
                 onChange={(e) => setUrlInput(e.target.value)}
                 placeholder="https://www.example.com/long-url"
-                className="flex-1 h-full px-4 text-[14px] text-[#222] placeholder:text-[#B8B8B8] outline-none bg-transparent"
+                className="flex-1 min-w-0 h-full px-4 text-[14px] text-[#222] placeholder:text-[#B8B8B8] outline-none bg-transparent"
                 suppressHydrationWarning
               />
               <button
                 type="submit"
-                className="flex-shrink-0 h-full px-6 bg-[#111111] hover:bg-[#2a2a2a] active:bg-[#000] text-white text-[13.5px] font-bold tracking-[0.01em] transition-colors whitespace-nowrap"
+                className="flex-shrink-0 h-full px-6 bg-[#111111] hover:bg-[#2a2a2a] active:bg-[#000] text-white text-[13.5px] font-bold tracking-[0.01em] transition-colors whitespace-nowrap rounded-r-2xl"
               >
                 Shorten for Free&nbsp;<span className="opacity-60 font-normal">→</span>
               </button>
