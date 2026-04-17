@@ -1,9 +1,9 @@
 import { Router, type IRouter } from "express";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
-import { eq, and, gt, inArray } from "drizzle-orm";
+import { eq, and, gt, inArray, desc } from "drizzle-orm";
 import geoip from "geoip-lite";
-import { db, usersTable, workspacesTable, workspaceMembersTable } from "@workspace/db";
+import { db, usersTable, workspacesTable, workspaceMembersTable, emailLogsTable } from "@workspace/db";
 import {
   RegisterBody,
   LoginBody,
@@ -38,7 +38,13 @@ router.post("/auth/register", async (req, res): Promise<void> => {
 
   const [user] = await db
     .insert(usersTable)
-    .values({ name, email: email.toLowerCase(), passwordHash, emailVerificationToken })
+    .values({
+      name,
+      email: email.toLowerCase(),
+      passwordHash,
+      emailVerificationToken,
+      emailVerificationSentAt: new Date(),
+    })
     .returning();
 
   const workspaceSlug = email.toLowerCase().split("@")[0].replace(/[^a-z0-9]/g, "-") + "-" + Date.now();
@@ -67,13 +73,23 @@ router.post("/auth/register", async (req, res): Promise<void> => {
       )
     );
 
-  // Send verification email (non-blocking)
-  sendVerificationEmail({
-    id: user.id,
-    name: user.name,
-    email: user.email,
-    emailVerificationToken,
-  }).catch((err) => logger.error({ err }, "Failed to send verification email"));
+  // Send verification email — await so we can surface delivery failures to the user.
+  let emailDeliveryError: string | null = null;
+  try {
+    const result = await sendVerificationEmail({
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      emailVerificationToken,
+    });
+    if (result?.error) {
+      logger.error({ error: result.error }, "Verification email rejected by provider on signup");
+      emailDeliveryError = "We couldn't deliver your verification email. You can request a new one from your dashboard.";
+    }
+  } catch (err: any) {
+    logger.error({ err }, "Failed to send verification email on signup");
+    emailDeliveryError = "We couldn't deliver your verification email. You can request a new one from your dashboard.";
+  }
 
   req.session.userId = user.id;
   req.session.workspaceId = workspace.id;
@@ -87,6 +103,7 @@ router.post("/auth/register", async (req, res): Promise<void> => {
     res.status(201).json({
       user: { id: user.id, name: user.name, email: user.email, emailVerified: user.emailVerified, createdAt: user.createdAt },
       workspace: { id: workspace.id, name: workspace.name, slug: workspace.slug },
+      emailDeliveryError,
     });
   });
 });
@@ -169,8 +186,21 @@ router.get("/auth/me", requireAuth, async (req, res): Promise<void> => {
     .from(workspacesTable)
     .where(eq(workspacesTable.userId, user.id));
 
+  // Tell the frontend whether the last verification email was actually delivered
+  // so the "Check your inbox" gate can show a warning if delivery failed.
+  let lastVerificationFailed = false;
+  if (!user.emailVerified) {
+    const [lastLog] = await db
+      .select({ status: emailLogsTable.status })
+      .from(emailLogsTable)
+      .where(and(eq(emailLogsTable.userId, user.id), eq(emailLogsTable.type, "verification")))
+      .orderBy(desc(emailLogsTable.createdAt))
+      .limit(1);
+    if (lastLog && lastLog.status !== "sent") lastVerificationFailed = true;
+  }
+
   res.json({
-    user: { id: user.id, name: user.name, email: user.email, emailVerified: user.emailVerified, createdAt: user.createdAt },
+    user: { id: user.id, name: user.name, email: user.email, emailVerified: user.emailVerified, createdAt: user.createdAt, lastVerificationFailed },
     workspace: workspace
       ? { id: workspace.id, name: workspace.name, slug: workspace.slug }
       : null,
@@ -284,8 +314,10 @@ async function handleVerifyEmail(req: import("express").Request, res: import("ex
     return;
   }
 
-  // Verification tokens expire after 24 hours (based on when token was last set via updatedAt)
-  const tokenAge = Date.now() - new Date(user.updatedAt).getTime();
+  // Verification tokens expire 24h after they were last sent.
+  // Fall back to createdAt for users who signed up before emailVerificationSentAt existed.
+  const sentAt = user.emailVerificationSentAt ?? user.createdAt;
+  const tokenAge = Date.now() - new Date(sentAt).getTime();
   const TOKEN_EXPIRY_MS = 24 * 60 * 60 * 1000; // 24 hours
   if (tokenAge > TOKEN_EXPIRY_MS) {
     res.status(410).json({ error: "Verification link has expired. Please request a new one from the dashboard." });
@@ -330,15 +362,20 @@ router.post("/auth/resend-verification", requireAuth, async (req, res): Promise<
   const newToken = crypto.randomUUID();
   await db
     .update(usersTable)
-    .set({ emailVerificationToken: newToken })
+    .set({ emailVerificationToken: newToken, emailVerificationSentAt: new Date() })
     .where(eq(usersTable.id, user.id));
 
-  await sendVerificationEmail({
+  const result = await sendVerificationEmail({
     id: user.id,
     name: user.name,
     email: user.email,
     emailVerificationToken: newToken,
   });
+
+  if (result?.error) {
+    res.status(502).json({ error: "Email delivery failed. Please contact support if this persists." });
+    return;
+  }
 
   res.json({ ok: true, message: "Verification email sent" });
 });
@@ -429,7 +466,7 @@ router.patch("/auth/profile", requireAuth, async (req, res): Promise<void> => {
     return;
   }
 
-  const updates: Partial<{ name: string; email: string; emailVerified: boolean; emailVerificationToken: string | null }> = {};
+  const updates: Partial<{ name: string; email: string; emailVerified: boolean; emailVerificationToken: string | null; emailVerificationSentAt: Date | null }> = {};
 
   if (name && name.trim() && name.trim() !== user.name) {
     updates.name = name.trim();
@@ -449,6 +486,7 @@ router.patch("/auth/profile", requireAuth, async (req, res): Promise<void> => {
     updates.email = email.trim().toLowerCase();
     updates.emailVerified = false;
     updates.emailVerificationToken = crypto.randomUUID();
+    updates.emailVerificationSentAt = new Date();
   }
 
   if (Object.keys(updates).length === 0) {

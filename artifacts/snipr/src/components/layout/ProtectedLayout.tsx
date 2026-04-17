@@ -5,11 +5,12 @@ import { useAuth } from "@/hooks/use-auth";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { getGetMeQueryKey } from "@workspace/api-client-react";
-import { Loader2, Mail, RefreshCw } from "lucide-react";
+import { Loader2, Mail, RefreshCw, AlertTriangle } from "lucide-react";
 
-function VerifyEmailGate() {
+function VerifyEmailGate({ deliveryFailed }: { deliveryFailed: boolean }) {
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
+  const [sendError, setSendError] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
   useEffect(() => {
@@ -21,11 +22,19 @@ function VerifyEmailGate() {
 
   async function resend() {
     setSending(true);
+    setSendError(null);
     try {
-      await fetch("/api/auth/resend-verification", { method: "POST", credentials: "include" });
-      setSent(true);
-      setTimeout(() => setSent(false), 5000);
-    } catch {}
+      const res = await fetch("/api/auth/resend-verification", { method: "POST", credentials: "include" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setSendError(data?.error || "Failed to send verification email.");
+      } else {
+        setSent(true);
+        setTimeout(() => setSent(false), 5000);
+      }
+    } catch {
+      setSendError("Network error. Please try again.");
+    }
     finally { setSending(false); }
   }
 
@@ -39,9 +48,17 @@ function VerifyEmailGate() {
           <Mail className="w-7 h-7 text-white" />
         </div>
         <h1 className="text-2xl font-bold text-[#FAFAFA] mb-2 font-[family-name:var(--font-space-grotesk)]">Check your inbox</h1>
-        <p className="text-[#71717A] mb-8 leading-relaxed text-[14px]">
+        <p className="text-[#71717A] mb-4 leading-relaxed text-[14px]">
           We sent a verification link to your email. Please click it to activate your account.
         </p>
+        {deliveryFailed && (
+          <div className="mb-6 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 flex items-start gap-2 text-left">
+            <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+            <div className="text-[12px] leading-relaxed text-amber-200">
+              <strong className="font-semibold">We couldn&apos;t deliver your last verification email.</strong> Check the address is correct, then try resending below. If the problem persists, contact support.
+            </div>
+          </div>
+        )}
         <div className="rounded-xl p-6 mb-6 bg-[#18181B] border border-[#27272A]">
           <p className="text-sm text-[#A1A1AA] mb-4">Didn&apos;t receive the email? Check your spam folder or</p>
           <button
@@ -53,6 +70,9 @@ function VerifyEmailGate() {
             {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : sent ? <Mail className="w-4 h-4" /> : <RefreshCw className="w-4 h-4" />}
             {sending ? "Sending..." : sent ? "Email sent!" : "Resend verification email"}
           </button>
+          {sendError && (
+            <p className="text-[11px] text-red-400 mt-3">{sendError}</p>
+          )}
         </div>
         <a href="/login" className="text-sm text-[#8B5CF6] hover:text-[#A78BFA] hover:underline font-medium transition-colors">
           Sign in with a different account
@@ -90,7 +110,7 @@ export function ProtectedLayout({ children }: { children: ReactNode }) {
   if (error || !user) return null;
 
   if (!user?.emailVerified) {
-    return <VerifyEmailGate />;
+    return <VerifyEmailGate deliveryFailed={(user as { lastVerificationFailed?: boolean })?.lastVerificationFailed ?? false} />;
   }
 
   return (

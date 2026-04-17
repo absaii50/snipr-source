@@ -828,15 +828,20 @@ router.post("/admin/resend-verification/:userId", requireAdmin, async (req, res)
   const newToken = crypto.randomUUID();
   await db
     .update(usersTable)
-    .set({ emailVerificationToken: newToken })
+    .set({ emailVerificationToken: newToken, emailVerificationSentAt: new Date() })
     .where(eq(usersTable.id, userId));
 
-  await sendVerificationEmail({
+  const result = await sendVerificationEmail({
     id: user.id,
     name: user.name,
     email: user.email,
     emailVerificationToken: newToken,
   });
+
+  if (result?.error) {
+    res.status(502).json({ error: "Email delivery failed", detail: result.error });
+    return;
+  }
 
   await logAuditAction("resend_verification", "user", userId, { email: user.email }, req.ip);
   res.json({ ok: true, message: "Verification email sent" });
@@ -1554,11 +1559,21 @@ router.post("/admin/users/bulk", requireAdmin, async (req, res): Promise<void> =
     case "resend_verification":
       for (const uid of userIds) {
         try {
-          const [user] = await db.select({ email: usersTable.email, name: usersTable.name, emailVerified: usersTable.emailVerified })
+          const [user] = await db.select({ id: usersTable.id, email: usersTable.email, name: usersTable.name, emailVerified: usersTable.emailVerified })
             .from(usersTable).where(eq(usersTable.id, uid));
           if (user && !user.emailVerified) {
-            await sendVerificationEmail(uid, user.email, user.name);
-            affected++;
+            const newToken = crypto.randomUUID();
+            await db
+              .update(usersTable)
+              .set({ emailVerificationToken: newToken, emailVerificationSentAt: new Date() })
+              .where(eq(usersTable.id, uid));
+            const result = await sendVerificationEmail({
+              id: user.id,
+              name: user.name,
+              email: user.email,
+              emailVerificationToken: newToken,
+            });
+            if (!result?.error) affected++;
           }
         } catch { /* skip failed sends */ }
       }

@@ -72788,6 +72788,7 @@ var usersTable = pgTable("users", {
   passwordHash: text("password_hash").notNull(),
   emailVerified: boolean("email_verified").notNull().default(false),
   emailVerificationToken: text("email_verification_token"),
+  emailVerificationSentAt: timestamp("email_verification_sent_at", { withTimezone: true }),
   passwordResetToken: text("password_reset_token"),
   passwordResetExpiresAt: timestamp("password_reset_expires_at", { withTimezone: true }),
   suspendedAt: timestamp("suspended_at", { withTimezone: true }),
@@ -77944,6 +77945,9 @@ var logger = (0, import_pino.default)({
 });
 
 // src/lib/email-templates.ts
+function escHtml(str2) {
+  return String(str2).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
 var BRAND = {
   primary: "#728DA7",
   dark: "#0A0A0A",
@@ -78012,7 +78016,7 @@ function getVerificationEmailHtml(name, verifyUrl) {
       Verify your email
     </h1>
     <p style="color:${BRAND.text};font-size:15px;line-height:1.6;margin:0 0 4px;">
-      Hi ${name},
+      Hi ${escHtml(name)},
     </p>
     <p style="color:${BRAND.text};font-size:15px;line-height:1.6;margin:0;">
       Welcome to Snipr! Please verify your email address to unlock all features and keep your account secure.
@@ -78039,7 +78043,7 @@ function getPasswordResetEmailHtml(name, resetUrl) {
       Reset your password
     </h1>
     <p style="color:${BRAND.text};font-size:15px;line-height:1.6;margin:0 0 4px;">
-      Hi ${name},
+      Hi ${escHtml(name)},
     </p>
     <p style="color:${BRAND.text};font-size:15px;line-height:1.6;margin:0;">
       We received a request to reset the password for your Snipr account. Click the button below to set a new password.
@@ -78066,16 +78070,16 @@ function getTeamInviteExistingUserHtml(inviterName, workspaceName, role, dashboa
       You've been invited!
     </h1>
     <p style="color:${BRAND.text};font-size:15px;line-height:1.6;margin:0 0 16px;text-align:center;">
-      <strong>${inviterName}</strong> has invited you to join the workspace <strong>${workspaceName}</strong> as a <strong>${role}</strong>.
+      <strong>${escHtml(inviterName)}</strong> has invited you to join the workspace <strong>${escHtml(workspaceName)}</strong> as a <strong>${escHtml(role)}</strong>.
     </p>
     <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="margin-bottom:8px;">
       <tr>
         <td style="background:${BRAND.light};border-radius:12px;padding:16px;">
           <p style="color:${BRAND.dark};font-weight:600;font-size:14px;margin:0 0 8px;">What this means:</p>
           <p style="color:${BRAND.text};font-size:13px;line-height:1.8;margin:0;">
-            &#8226; You now have access to <strong>${workspaceName}</strong><br>
+            &#8226; You now have access to <strong>${escHtml(workspaceName)}</strong><br>
             &#8226; You can view and manage links in this workspace<br>
-            &#8226; Your role: <strong>${role}</strong>
+            &#8226; Your role: <strong>${escHtml(role)}</strong>
           </p>
         </td>
       </tr>
@@ -78098,7 +78102,7 @@ function getTeamInviteNewUserHtml(inviterName, workspaceName, role, joinUrl) {
       You've been invited to Snipr!
     </h1>
     <p style="color:${BRAND.text};font-size:15px;line-height:1.6;margin:0 0 16px;text-align:center;">
-      <strong>${inviterName}</strong> has invited you to join the workspace <strong>${workspaceName}</strong> as a <strong>${role}</strong>.
+      <strong>${escHtml(inviterName)}</strong> has invited you to join the workspace <strong>${escHtml(workspaceName)}</strong> as a <strong>${escHtml(role)}</strong>.
     </p>
     <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="margin-bottom:8px;">
       <tr>
@@ -78134,7 +78138,7 @@ function getWelcomeEmailHtml(name, dashboardUrl) {
       </div>
     </div>
     <h1 style="color:${BRAND.dark};font-size:24px;font-weight:700;margin:0 0 8px;text-align:center;letter-spacing:-0.5px;">
-      You're all set, ${name}!
+      You're all set, ${escHtml(name)}!
     </h1>
     <p style="color:${BRAND.text};font-size:15px;line-height:1.6;margin:0 0 16px;text-align:center;">
       Your email is verified and your account is ready to go.
@@ -78226,7 +78230,7 @@ async function sendEmail(opts) {
 async function sendVerificationEmail(user) {
   const verifyUrl = `${FRONTEND_URL}/verify-email?token=${user.emailVerificationToken}`;
   const html = getVerificationEmailHtml(user.name, verifyUrl);
-  await sendEmail({
+  return sendEmail({
     to: user.email,
     subject: "Verify your email address - Snipr",
     html,
@@ -78294,7 +78298,13 @@ router2.post("/auth/register", async (req, res) => {
   }
   const passwordHash = await bcryptjs_default.hash(password, 10);
   const emailVerificationToken = crypto6.randomUUID();
-  const [user] = await db.insert(usersTable).values({ name, email: email3.toLowerCase(), passwordHash, emailVerificationToken }).returning();
+  const [user] = await db.insert(usersTable).values({
+    name,
+    email: email3.toLowerCase(),
+    passwordHash,
+    emailVerificationToken,
+    emailVerificationSentAt: /* @__PURE__ */ new Date()
+  }).returning();
   const workspaceSlug = email3.toLowerCase().split("@")[0].replace(/[^a-z0-9]/g, "-") + "-" + Date.now();
   const [workspace] = await db.insert(workspacesTable).values({ name: `${name}'s Workspace`, slug: workspaceSlug, userId: user.id }).returning();
   await db.insert(workspaceMembersTable).values({
@@ -78311,12 +78321,22 @@ router2.post("/auth/register", async (req, res) => {
       eq(workspaceMembersTable.status, "invited")
     )
   );
-  sendVerificationEmail({
-    id: user.id,
-    name: user.name,
-    email: user.email,
-    emailVerificationToken
-  }).catch((err) => logger.error({ err }, "Failed to send verification email"));
+  let emailDeliveryError = null;
+  try {
+    const result = await sendVerificationEmail({
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      emailVerificationToken
+    });
+    if (result?.error) {
+      logger.error({ error: result.error }, "Verification email rejected by provider on signup");
+      emailDeliveryError = "We couldn't deliver your verification email. You can request a new one from your dashboard.";
+    }
+  } catch (err) {
+    logger.error({ err }, "Failed to send verification email on signup");
+    emailDeliveryError = "We couldn't deliver your verification email. You can request a new one from your dashboard.";
+  }
   req.session.userId = user.id;
   req.session.workspaceId = workspace.id;
   req.session.save((err) => {
@@ -78327,7 +78347,8 @@ router2.post("/auth/register", async (req, res) => {
     }
     res.status(201).json({
       user: { id: user.id, name: user.name, email: user.email, emailVerified: user.emailVerified, createdAt: user.createdAt },
-      workspace: { id: workspace.id, name: workspace.name, slug: workspace.slug }
+      workspace: { id: workspace.id, name: workspace.name, slug: workspace.slug },
+      emailDeliveryError
     });
   });
 });
@@ -78383,8 +78404,13 @@ router2.get("/auth/me", requireAuth, async (req, res) => {
     return;
   }
   const [workspace] = await db.select().from(workspacesTable).where(eq(workspacesTable.userId, user.id));
+  let lastVerificationFailed = false;
+  if (!user.emailVerified) {
+    const [lastLog] = await db.select({ status: emailLogsTable.status }).from(emailLogsTable).where(and(eq(emailLogsTable.userId, user.id), eq(emailLogsTable.type, "verification"))).orderBy(desc(emailLogsTable.createdAt)).limit(1);
+    if (lastLog && lastLog.status !== "sent") lastVerificationFailed = true;
+  }
   res.json({
-    user: { id: user.id, name: user.name, email: user.email, emailVerified: user.emailVerified, createdAt: user.createdAt },
+    user: { id: user.id, name: user.name, email: user.email, emailVerified: user.emailVerified, createdAt: user.createdAt, lastVerificationFailed },
     workspace: workspace ? { id: workspace.id, name: workspace.name, slug: workspace.slug } : null
   });
 });
@@ -78522,7 +78548,8 @@ async function handleVerifyEmail(req, res) {
     res.json({ ok: true, message: "Email already verified" });
     return;
   }
-  const tokenAge = Date.now() - new Date(user.updatedAt).getTime();
+  const sentAt = user.emailVerificationSentAt ?? user.createdAt;
+  const tokenAge = Date.now() - new Date(sentAt).getTime();
   const TOKEN_EXPIRY_MS = 24 * 60 * 60 * 1e3;
   if (tokenAge > TOKEN_EXPIRY_MS) {
     res.status(410).json({ error: "Verification link has expired. Please request a new one from the dashboard." });
@@ -78549,13 +78576,17 @@ router2.post("/auth/resend-verification", requireAuth, async (req, res) => {
     return;
   }
   const newToken = crypto6.randomUUID();
-  await db.update(usersTable).set({ emailVerificationToken: newToken }).where(eq(usersTable.id, user.id));
-  await sendVerificationEmail({
+  await db.update(usersTable).set({ emailVerificationToken: newToken, emailVerificationSentAt: /* @__PURE__ */ new Date() }).where(eq(usersTable.id, user.id));
+  const result = await sendVerificationEmail({
     id: user.id,
     name: user.name,
     email: user.email,
     emailVerificationToken: newToken
   });
+  if (result?.error) {
+    res.status(502).json({ error: "Email delivery failed. Please contact support if this persists." });
+    return;
+  }
   res.json({ ok: true, message: "Verification email sent" });
 });
 router2.post("/auth/forgot-password", async (req, res) => {
@@ -78623,6 +78654,7 @@ router2.patch("/auth/profile", requireAuth, async (req, res) => {
     updates.email = email3.trim().toLowerCase();
     updates.emailVerified = false;
     updates.emailVerificationToken = crypto6.randomUUID();
+    updates.emailVerificationSentAt = /* @__PURE__ */ new Date();
   }
   if (Object.keys(updates).length === 0) {
     res.json({ ok: true, message: "No changes" });
@@ -88926,13 +88958,17 @@ router14.post("/admin/resend-verification/:userId", requireAdmin, async (req, re
     return;
   }
   const newToken = crypto8.randomUUID();
-  await db.update(usersTable).set({ emailVerificationToken: newToken }).where(eq(usersTable.id, userId));
-  await sendVerificationEmail({
+  await db.update(usersTable).set({ emailVerificationToken: newToken, emailVerificationSentAt: /* @__PURE__ */ new Date() }).where(eq(usersTable.id, userId));
+  const result = await sendVerificationEmail({
     id: user.id,
     name: user.name,
     email: user.email,
     emailVerificationToken: newToken
   });
+  if (result?.error) {
+    res.status(502).json({ error: "Email delivery failed", detail: result.error });
+    return;
+  }
   await logAuditAction("resend_verification", "user", userId, { email: user.email }, req.ip);
   res.json({ ok: true, message: "Verification email sent" });
 });
@@ -89504,10 +89540,17 @@ router14.post("/admin/users/bulk", requireAdmin, async (req, res) => {
     case "resend_verification":
       for (const uid of userIds) {
         try {
-          const [user] = await db.select({ email: usersTable.email, name: usersTable.name, emailVerified: usersTable.emailVerified }).from(usersTable).where(eq(usersTable.id, uid));
+          const [user] = await db.select({ id: usersTable.id, email: usersTable.email, name: usersTable.name, emailVerified: usersTable.emailVerified }).from(usersTable).where(eq(usersTable.id, uid));
           if (user && !user.emailVerified) {
-            await sendVerificationEmail(uid, user.email, user.name);
-            affected++;
+            const newToken = crypto8.randomUUID();
+            await db.update(usersTable).set({ emailVerificationToken: newToken, emailVerificationSentAt: /* @__PURE__ */ new Date() }).where(eq(usersTable.id, uid));
+            const result = await sendVerificationEmail({
+              id: user.id,
+              name: user.name,
+              email: user.email,
+              emailVerificationToken: newToken
+            });
+            if (!result?.error) affected++;
           }
         } catch {
         }

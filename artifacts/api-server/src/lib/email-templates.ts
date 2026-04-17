@@ -1,5 +1,15 @@
 // Beautiful branded HTML email templates for Snipr
 
+/** Escape user-supplied strings before embedding in HTML email bodies. */
+function escHtml(str: string): string {
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 const BRAND = {
   primary: "#728DA7",
   dark: "#0A0A0A",
@@ -71,7 +81,7 @@ export function getVerificationEmailHtml(name: string, verifyUrl: string): strin
       Verify your email
     </h1>
     <p style="color:${BRAND.text};font-size:15px;line-height:1.6;margin:0 0 4px;">
-      Hi ${name},
+      Hi ${escHtml(name)},
     </p>
     <p style="color:${BRAND.text};font-size:15px;line-height:1.6;margin:0;">
       Welcome to Snipr! Please verify your email address to unlock all features and keep your account secure.
@@ -99,7 +109,7 @@ export function getPasswordResetEmailHtml(name: string, resetUrl: string): strin
       Reset your password
     </h1>
     <p style="color:${BRAND.text};font-size:15px;line-height:1.6;margin:0 0 4px;">
-      Hi ${name},
+      Hi ${escHtml(name)},
     </p>
     <p style="color:${BRAND.text};font-size:15px;line-height:1.6;margin:0;">
       We received a request to reset the password for your Snipr account. Click the button below to set a new password.
@@ -127,16 +137,16 @@ export function getTeamInviteExistingUserHtml(inviterName: string, workspaceName
       You've been invited!
     </h1>
     <p style="color:${BRAND.text};font-size:15px;line-height:1.6;margin:0 0 16px;text-align:center;">
-      <strong>${inviterName}</strong> has invited you to join the workspace <strong>${workspaceName}</strong> as a <strong>${role}</strong>.
+      <strong>${escHtml(inviterName)}</strong> has invited you to join the workspace <strong>${escHtml(workspaceName)}</strong> as a <strong>${escHtml(role)}</strong>.
     </p>
     <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="margin-bottom:8px;">
       <tr>
         <td style="background:${BRAND.light};border-radius:12px;padding:16px;">
           <p style="color:${BRAND.dark};font-weight:600;font-size:14px;margin:0 0 8px;">What this means:</p>
           <p style="color:${BRAND.text};font-size:13px;line-height:1.8;margin:0;">
-            &#8226; You now have access to <strong>${workspaceName}</strong><br>
+            &#8226; You now have access to <strong>${escHtml(workspaceName)}</strong><br>
             &#8226; You can view and manage links in this workspace<br>
-            &#8226; Your role: <strong>${role}</strong>
+            &#8226; Your role: <strong>${escHtml(role)}</strong>
           </p>
         </td>
       </tr>
@@ -160,7 +170,7 @@ export function getTeamInviteNewUserHtml(inviterName: string, workspaceName: str
       You've been invited to Snipr!
     </h1>
     <p style="color:${BRAND.text};font-size:15px;line-height:1.6;margin:0 0 16px;text-align:center;">
-      <strong>${inviterName}</strong> has invited you to join the workspace <strong>${workspaceName}</strong> as a <strong>${role}</strong>.
+      <strong>${escHtml(inviterName)}</strong> has invited you to join the workspace <strong>${escHtml(workspaceName)}</strong> as a <strong>${escHtml(role)}</strong>.
     </p>
     <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="margin-bottom:8px;">
       <tr>
@@ -197,7 +207,7 @@ export function getWelcomeEmailHtml(name: string, dashboardUrl: string): string 
       </div>
     </div>
     <h1 style="color:${BRAND.dark};font-size:24px;font-weight:700;margin:0 0 8px;text-align:center;letter-spacing:-0.5px;">
-      You're all set, ${name}!
+      You're all set, ${escHtml(name)}!
     </h1>
     <p style="color:${BRAND.text};font-size:15px;line-height:1.6;margin:0 0 16px;text-align:center;">
       Your email is verified and your account is ready to go.

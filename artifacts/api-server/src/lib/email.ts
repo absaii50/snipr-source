@@ -91,11 +91,11 @@ export async function sendVerificationEmail(user: {
   name: string;
   email: string;
   emailVerificationToken: string;
-}): Promise<void> {
+}): Promise<{ id?: string; error?: string }> {
   const verifyUrl = `${FRONTEND_URL}/verify-email?token=${user.emailVerificationToken}`;
   const html = getVerificationEmailHtml(user.name, verifyUrl);
 
-  await sendEmail({
+  return sendEmail({
     to: user.email,
     subject: "Verify your email address - Snipr",
     html,
