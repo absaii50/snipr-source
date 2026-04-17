@@ -118,8 +118,8 @@ export default function Team() {
           </div>
         )}
 
-        <div className="overflow-hidden mb-12 bg-[#18181B] border border-[#27272A] rounded-xl">
-          <table className="w-full text-sm text-left">
+        <div className="overflow-x-auto mb-12 bg-[#18181B] border border-[#27272A] rounded-xl">
+          <table className="w-full text-sm text-left min-w-[640px]">
             <thead>
               <tr className="bg-[#18181B] border-b border-[#27272A]">
                 <th className="px-6 py-4 text-[#A1A1AA] font-semibold">User</th>

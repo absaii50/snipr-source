@@ -306,7 +306,8 @@ export default function LinkAnalytics() {
                 <span className="text-[13px] text-[#71717A]">No clicks recorded yet</span>
               </div>
             ) : (
-              <table className="w-full text-left">
+              <div className="overflow-x-auto">
+              <table className="w-full text-left min-w-[640px]">
                 <thead>
                   <tr className="border-b border-[#27272A]">
                     <th className="px-5 py-2.5 text-[11px] font-semibold text-[#71717A] uppercase tracking-[0.06em]">Time</th>
@@ -359,6 +360,7 @@ export default function LinkAnalytics() {
                   })}
                 </tbody>
               </table>
+              </div>
             )}
           </div>
         </div>

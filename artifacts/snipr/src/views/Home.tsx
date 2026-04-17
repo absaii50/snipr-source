@@ -304,21 +304,21 @@ export default function Home() {
             </p>
 
             {/* URL input row */}
-            <form onSubmit={handleShorten} className="relative flex items-stretch max-w-2xl mx-auto bg-white border border-[#CACACA] rounded-2xl shadow-[0_2px_12px_rgba(0,0,0,0.08)] mb-9 h-[58px]">
+            <form onSubmit={handleShorten} className="relative flex flex-col sm:flex-row items-stretch max-w-2xl mx-auto bg-white border border-[#CACACA] rounded-2xl shadow-[0_2px_12px_rgba(0,0,0,0.08)] mb-9 sm:h-[58px] overflow-visible">
               {/* Domain picker — rebrandly-style */}
-              <div ref={domainPickerRef} className="relative flex-shrink-0 border-r border-[#E2E2E2]">
+              <div ref={domainPickerRef} className="relative flex-shrink-0 border-b sm:border-b-0 sm:border-r border-[#E2E2E2]">
                 <button
                   type="button"
                   onClick={() => setDomainPickerOpen((v) => !v)}
                   aria-haspopup="listbox"
                   aria-expanded={domainPickerOpen}
-                  className={`h-full pl-4 pr-3 flex items-center gap-2 text-[13.5px] font-semibold text-[#222] bg-[#F7F7F7] hover:bg-[#F0F0F0] transition-colors rounded-l-2xl tabular-nums ${
+                  className={`w-full sm:w-auto h-[50px] sm:h-full pl-4 pr-3 flex items-center gap-2 text-[13.5px] font-semibold text-[#222] bg-[#F7F7F7] hover:bg-[#F0F0F0] transition-colors rounded-t-2xl sm:rounded-l-2xl sm:rounded-tr-none tabular-nums ${
                     domainPickerOpen ? "bg-[#F0F0F0]" : ""
                   }`}
                 >
                   <Globe className="w-[15px] h-[15px] text-[#728DA7] flex-shrink-0" />
                   <span>{selectedDomain}</span>
-                  <ChevronDown className={`w-[13px] h-[13px] text-[#888] flex-shrink-0 transition-transform ${domainPickerOpen ? "rotate-180" : ""}`} />
+                  <ChevronDown className={`w-[13px] h-[13px] text-[#888] flex-shrink-0 transition-transform ml-auto sm:ml-0 ${domainPickerOpen ? "rotate-180" : ""}`} />
                 </button>
 
                 {domainPickerOpen && (
@@ -354,12 +354,12 @@ export default function Home() {
                 value={urlInput}
                 onChange={(e) => setUrlInput(e.target.value)}
                 placeholder="https://www.example.com/long-url"
-                className="flex-1 min-w-0 h-full px-4 text-[14px] text-[#222] placeholder:text-[#B8B8B8] outline-none bg-transparent"
+                className="flex-1 min-w-0 h-[48px] sm:h-full px-4 text-[14px] text-[#222] placeholder:text-[#B8B8B8] outline-none bg-transparent border-b sm:border-b-0 border-[#E2E2E2]"
                 suppressHydrationWarning
               />
               <button
                 type="submit"
-                className="flex-shrink-0 h-full px-6 bg-[#111111] hover:bg-[#2a2a2a] active:bg-[#000] text-white text-[13.5px] font-bold tracking-[0.01em] transition-colors whitespace-nowrap rounded-r-2xl"
+                className="flex-shrink-0 h-[50px] sm:h-full px-6 bg-[#111111] hover:bg-[#2a2a2a] active:bg-[#000] text-white text-[13.5px] font-bold tracking-[0.01em] transition-colors whitespace-nowrap rounded-b-2xl sm:rounded-b-none sm:rounded-r-2xl"
               >
                 Shorten for Free&nbsp;<span className="opacity-60 font-normal">→</span>
               </button>

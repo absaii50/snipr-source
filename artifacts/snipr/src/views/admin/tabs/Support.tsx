@@ -197,13 +197,13 @@ function FilterChips<T extends string>({ label, value, onChange, options }: {
   options: { value: T; label: string }[];
 }) {
   return (
-    <div className="flex items-center gap-1 bg-white border border-[#E2E8F0] rounded-lg p-1">
-      <span className="text-[10px] font-bold uppercase tracking-[0.08em] text-[#8888A0] px-2">{label}</span>
+    <div className="flex items-center gap-1 bg-white border border-[#E2E8F0] rounded-lg p-1 overflow-x-auto max-w-full">
+      <span className="text-[10px] font-bold uppercase tracking-[0.08em] text-[#8888A0] px-2 shrink-0">{label}</span>
       {options.map((o) => (
         <button
           key={o.value}
           onClick={() => onChange(o.value)}
-          className={`px-2.5 py-1 rounded-md text-[12px] font-medium capitalize transition-colors ${
+          className={`shrink-0 px-2.5 py-1 rounded-md text-[12px] font-medium capitalize transition-colors ${
             value === o.value ? "bg-[#E8EEF4] text-[#4A7A94]" : "text-[#8888A0] hover:text-[#0A0A0A]"
           }`}
         >
@@ -227,7 +227,7 @@ function TicketRow({ ticket, onOpen }: { ticket: AdminTicket; onOpen: () => void
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-1 flex-wrap">
-          <h3 className="text-[14px] font-semibold text-[#0A0A0A] truncate max-w-[340px]">{ticket.subject}</h3>
+          <h3 className="text-[14px] font-semibold text-[#0A0A0A] truncate max-w-[200px] sm:max-w-[340px]">{ticket.subject}</h3>
           <span className={`inline-block text-[10px] font-bold px-2 py-0.5 rounded-full border ${status.bg} ${status.text}`}>
             {status.label}
           </span>
@@ -242,10 +242,10 @@ function TicketRow({ ticket, onOpen }: { ticket: AdminTicket; onOpen: () => void
             </span>
           )}
         </div>
-        <div className="flex items-center gap-2 text-[11px] text-[#8888A0]">
-          <span className="font-medium text-[#3A3A3E]">{ticket.userName}</span>
-          <span>·</span>
-          <span>{ticket.userEmail}</span>
+        <div className="flex items-center gap-2 text-[11px] text-[#8888A0] flex-wrap min-w-0">
+          <span className="font-medium text-[#3A3A3E] truncate max-w-[140px]">{ticket.userName}</span>
+          <span className="hidden sm:inline">·</span>
+          <span className="truncate max-w-[180px] hidden sm:inline">{ticket.userEmail}</span>
           <span>·</span>
           <span className="capitalize">{ticket.userPlan}</span>
           <span>·</span>

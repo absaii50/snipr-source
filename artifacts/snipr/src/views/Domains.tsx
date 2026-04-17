@@ -106,7 +106,7 @@ export default function Domains() {
               </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               {[
                 { step: "1", title: "Enter your domain", desc: "Type your domain or subdomain (e.g. go.company.com)", icon: Globe, color: "from-blue-900/30 to-blue-800/20", iconColor: "text-blue-400" },
                 { step: "2", title: "Add a DNS record", desc: "Add one CNAME or A record at your registrar", icon: Shield, color: "from-amber-900/30 to-amber-800/20", iconColor: "text-amber-400" },
