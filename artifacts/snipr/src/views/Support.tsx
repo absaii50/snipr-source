@@ -40,18 +40,18 @@ const CATEGORIES = [
   { value: "other", label: "Other" },
 ];
 
-const PRIORITY_STYLE: Record<string, { bg: string; text: string; dot: string }> = {
-  urgent: { bg: "bg-red-500/10",    text: "text-red-400",    dot: "bg-red-500" },
-  high:   { bg: "bg-amber-500/10",  text: "text-amber-400",  dot: "bg-amber-500" },
-  normal: { bg: "bg-[#27272A]",     text: "text-[#A1A1AA]",  dot: "bg-[#52525B]" },
-  low:    { bg: "bg-[#27272A]",     text: "text-[#71717A]",  dot: "bg-[#3F3F46]" },
+const PRIORITY_STYLE: Record<string, { bg: string; text: string; border: string; dot: string }> = {
+  urgent: { bg: "bg-[#EF4444]/12",  text: "text-[#FCA5A5]",  border: "border-[#EF4444]/30", dot: "bg-[#EF4444]" },
+  high:   { bg: "bg-[#F59E0B]/12",  text: "text-[#FCD34D]",  border: "border-[#F59E0B]/30", dot: "bg-[#F59E0B]" },
+  normal: { bg: "bg-[#27272A]",     text: "text-[#A1A1AA]",  border: "border-[#3F3F46]",    dot: "bg-[#71717A]" },
+  low:    { bg: "bg-[#27272A]",     text: "text-[#71717A]",  border: "border-[#3F3F46]",    dot: "bg-[#52525B]" },
 };
 
-const STATUS_STYLE: Record<string, { label: string; bg: string; text: string; icon: React.ReactNode }> = {
-  open:     { label: "Open",     bg: "bg-blue-500/10",    text: "text-blue-400",   icon: <AlertCircle className="w-3 h-3" /> },
-  pending:  { label: "Awaiting you", bg: "bg-amber-500/10", text: "text-amber-400",  icon: <Clock className="w-3 h-3" /> },
-  resolved: { label: "Resolved", bg: "bg-emerald-500/10", text: "text-emerald-400", icon: <CheckCircle2 className="w-3 h-3" /> },
-  closed:   { label: "Closed",   bg: "bg-[#27272A]",      text: "text-[#71717A]",  icon: <X className="w-3 h-3" /> },
+const STATUS_STYLE: Record<string, { label: string; bg: string; text: string; border: string; icon: React.ReactNode }> = {
+  open:     { label: "Open",         bg: "bg-[#8B5CF6]/12", text: "text-[#C4B5FD]", border: "border-[#8B5CF6]/30", icon: <AlertCircle className="w-3 h-3" /> },
+  pending:  { label: "Awaiting you", bg: "bg-[#F59E0B]/12", text: "text-[#FCD34D]", border: "border-[#F59E0B]/30", icon: <Clock className="w-3 h-3" /> },
+  resolved: { label: "Resolved",     bg: "bg-[#10B981]/12", text: "text-[#6EE7B7]", border: "border-[#10B981]/30", icon: <CheckCircle2 className="w-3 h-3" /> },
+  closed:   { label: "Closed",       bg: "bg-[#27272A]",    text: "text-[#A1A1AA]", border: "border-[#3F3F46]",    icon: <X className="w-3 h-3" /> },
 };
 
 /* ── Helpers ───────────────────────────────────────────── */
@@ -137,7 +137,7 @@ function SupportInner() {
               key={s}
               onClick={() => setStatusFilter(s)}
               className={`px-3 py-1 rounded-md text-[12px] font-medium capitalize transition-colors ${
-                statusFilter === s ? "bg-[#27272A] text-[#FAFAFA]" : "text-[#71717A] hover:text-[#E4E4E7]"
+                statusFilter === s ? "bg-[#8B5CF6]/15 text-[#C4B5FD] ring-1 ring-inset ring-[#8B5CF6]/30" : "text-[#71717A] hover:text-[#E4E4E7]"
               }`}
             >
               {s === "all" ? "All" : s}
@@ -221,11 +221,11 @@ function TicketRow({ ticket, onOpen }: { ticket: TicketListItem; onOpen: () => v
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-1 flex-wrap">
           <h3 className="text-[14px] font-semibold text-[#FAFAFA] truncate">{ticket.subject}</h3>
-          <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full ${status.bg} ${status.text}`}>
+          <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full border ${status.bg} ${status.text} ${status.border}`}>
             {status.icon}{status.label}
           </span>
           {(ticket.priority === "high" || ticket.priority === "urgent") && (
-            <span className={`inline-flex items-center gap-1 text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${priority.bg} ${priority.text}`}>
+            <span className={`inline-flex items-center gap-1 text-[10px] font-bold uppercase px-2 py-0.5 rounded-full border ${priority.bg} ${priority.text} ${priority.border}`}>
               <span className={`w-1 h-1 rounded-full ${priority.dot}`} /> {ticket.priority}
             </span>
           )}
@@ -239,8 +239,8 @@ function TicketRow({ ticket, onOpen }: { ticket: TicketListItem; onOpen: () => v
         </div>
       </div>
       {awaiting && ticket.status === "pending" && (
-        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-violet-400 bg-violet-500/10 px-2 py-0.5 rounded-full shrink-0">
-          <span className="w-1 h-1 rounded-full bg-violet-400 animate-pulse" /> Reply
+        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-[#C4B5FD] bg-[#8B5CF6]/12 border border-[#8B5CF6]/30 px-2 py-0.5 rounded-full shrink-0">
+          <span className="w-1 h-1 rounded-full bg-[#A78BFA] animate-pulse" /> Reply
         </span>
       )}
     </button>
@@ -442,7 +442,7 @@ function TicketDetailDrawer({ ticketId, onClose, onUpdate }: { ticketId: string;
                 <h2 className="text-[15px] font-semibold text-[#FAFAFA] truncate">{ticket.subject}</h2>
                 <div className="flex items-center gap-2 mt-1 flex-wrap">
                   {status && (
-                    <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full ${status.bg} ${status.text}`}>
+                    <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full border ${status.bg} ${status.text} ${status.border}`}>
                       {status.icon}{status.label}
                     </span>
                   )}
@@ -522,28 +522,30 @@ function Message({ msg }: { msg: TicketDetail["messages"][number] }) {
   return (
     <div className={`flex gap-3 ${isAdmin ? "" : "flex-row-reverse"}`}>
       <div
-        className="w-8 h-8 rounded-full flex items-center justify-center shrink-0"
+        className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 ring-1 ring-inset"
         style={isAdmin
-          ? { background: "linear-gradient(135deg, #8B5CF6, #06B6D4)" }
-          : { background: "#27272A" }}
+          ? { background: "#1C1C20", borderColor: "transparent" }
+          : { background: "linear-gradient(135deg, #8B5CF6, #06B6D4)" }}
       >
-        {isAdmin ? <Headphones className="w-4 h-4 text-white" /> : <User className="w-4 h-4 text-[#A1A1AA]" />}
+        {isAdmin
+          ? <Headphones className="w-4 h-4 text-[#A78BFA]" />
+          : <User className="w-4 h-4 text-white" />}
       </div>
       <div className={`flex-1 min-w-0 ${isAdmin ? "" : "text-right"}`}>
-        <div className={`inline-block max-w-[85%] text-left rounded-2xl px-4 py-3 ${
+        <div className={`inline-block max-w-[85%] text-left rounded-2xl px-4 py-3 border ${
           isAdmin
-            ? "bg-[#18181B] border border-[#27272A] text-[#E4E4E7]"
-            : "bg-gradient-to-br from-[#8B5CF6]/15 to-[#06B6D4]/15 border border-[#8B5CF6]/20 text-[#E4E4E7]"
+            ? "bg-[#18181B] border-[#27272A] text-[#E4E4E7]"
+            : "bg-[#8B5CF6]/12 border-[#8B5CF6]/30 text-[#FAFAFA]"
         }`}>
           <div className="flex items-baseline gap-2 mb-1">
-            <span className="text-[11px] font-semibold text-[#A1A1AA]">
+            <span className={`text-[11px] font-semibold ${isAdmin ? "text-[#A78BFA]" : "text-[#C4B5FD]"}`}>
               {isAdmin ? (msg.senderLabel || "Support Team") : "You"}
             </span>
             <span className="text-[10px] text-[#52525B]">
               {formatDistanceToNow(new Date(msg.createdAt), { addSuffix: true })}
             </span>
           </div>
-          <p className="text-[13px] leading-relaxed whitespace-pre-wrap break-words">{msg.body}</p>
+          <p className="text-[13px] leading-relaxed whitespace-pre-wrap break-words text-[#E4E4E7]">{msg.body}</p>
         </div>
       </div>
     </div>
