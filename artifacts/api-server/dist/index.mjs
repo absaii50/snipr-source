@@ -89540,7 +89540,7 @@ router14.get("/admin/notifications", requireAdmin, async (_req, res) => {
   const last24h = new Date(Date.now() - 24 * 60 * 60 * 1e3);
   const [newSignups, failedEmails, recentAudit] = await Promise.all([
     db.select({ id: usersTable.id, name: usersTable.name, email: usersTable.email, createdAt: usersTable.createdAt }).from(usersTable).where(sql`${usersTable.createdAt} >= ${last24h}`).orderBy(desc(usersTable.createdAt)).limit(10),
-    db.select({ id: emailLogsTable.id, recipient: emailLogsTable.recipient, subject: emailLogsTable.subject, createdAt: emailLogsTable.createdAt }).from(emailLogsTable).where(sql`${emailLogsTable.status} = 'failed' AND ${emailLogsTable.createdAt} >= ${last24h}`).orderBy(desc(emailLogsTable.createdAt)).limit(10),
+    db.select({ id: emailLogsTable.id, recipient: emailLogsTable.to, subject: emailLogsTable.subject, createdAt: emailLogsTable.createdAt }).from(emailLogsTable).where(sql`${emailLogsTable.status} = 'failed' AND ${emailLogsTable.createdAt} >= ${last24h}`).orderBy(desc(emailLogsTable.createdAt)).limit(10),
     db.select({ id: adminAuditLogTable.id, action: adminAuditLogTable.action, targetType: adminAuditLogTable.targetType, createdAt: adminAuditLogTable.createdAt }).from(adminAuditLogTable).where(sql`${adminAuditLogTable.createdAt} >= ${last24h}`).orderBy(desc(adminAuditLogTable.createdAt)).limit(10)
   ]);
   res.json({ newSignups, failedEmails, recentAudit });

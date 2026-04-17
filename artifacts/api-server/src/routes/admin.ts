@@ -1325,7 +1325,7 @@ router.get("/admin/notifications", requireAdmin, async (_req, res): Promise<void
       .where(sql`${usersTable.createdAt} >= ${last24h}`)
       .orderBy(desc(usersTable.createdAt))
       .limit(10),
-    db.select({ id: emailLogsTable.id, recipient: emailLogsTable.recipient, subject: emailLogsTable.subject, createdAt: emailLogsTable.createdAt })
+    db.select({ id: emailLogsTable.id, recipient: emailLogsTable.to, subject: emailLogsTable.subject, createdAt: emailLogsTable.createdAt })
       .from(emailLogsTable)
       .where(sql`${emailLogsTable.status} = 'failed' AND ${emailLogsTable.createdAt} >= ${last24h}`)
       .orderBy(desc(emailLogsTable.createdAt))
