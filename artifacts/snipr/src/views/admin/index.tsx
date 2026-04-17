@@ -15,12 +15,13 @@ import AuditLogTab from "./tabs/AuditLog";
 import SettingsTab from "./tabs/Settings";
 import GuideTab from "./tabs/Guide";
 import EmailTab from "./tabs/Email";
+import SupportTab from "./tabs/Support";
 import { apiFetch } from "./utils";
 import { ToastProvider } from "./Toast";
 
 const VALID_TABS: AdminTab[] = [
   "overview", "users", "links", "domains",
-  "analytics", "plans", "reports", "email", "ai", "audit", "settings", "guide",
+  "analytics", "plans", "reports", "email", "support", "ai", "audit", "settings", "guide",
 ];
 
 function TabContent({ tab }: { tab: AdminTab }) {
@@ -33,6 +34,7 @@ function TabContent({ tab }: { tab: AdminTab }) {
     case "plans":     return <PlansTab />;
     case "reports":   return <ReportsTab />;
     case "email":     return <EmailTab />;
+    case "support":   return <SupportTab />;
     case "ai":        return <AIInsightsTab />;
     case "audit":     return <AuditLogTab />;
     case "settings":  return <SettingsTab />;

@@ -14,9 +14,11 @@ import {
   emailLogsTable,
   adminAuditLogTable,
   workspaceMembersTable,
+  supportTicketsTable,
+  supportMessagesTable,
 } from "@workspace/db";
-import { count, desc, eq, sql, ilike, isNull, isNotNull, and, inArray } from "drizzle-orm";
-import { sendVerificationEmail, sendEmail } from "../lib/email";
+import { asc, count, desc, eq, sql, ilike, isNull, isNotNull, and, inArray, or } from "drizzle-orm";
+import { sendVerificationEmail, sendEmail, notifySupportAdminReply } from "../lib/email";
 
 const router: IRouter = Router();
 
@@ -2213,6 +2215,179 @@ router.post("/admin/change-password", requireAdmin, async (req, res): Promise<vo
     .values({ key: "admin_password_hash", value: hash })
     .onConflictDoUpdate({ target: platformSettingsTable.key, set: { value: hash } });
   await logAuditAction("change_admin_password", "platform", null, {}, req.ip);
+  res.json({ ok: true });
+});
+
+/* ══════════════════════════════════════════════════════════════════════════
+ *  Support System — Admin Endpoints
+ * ═════════════════════════════════════════════════════════════════════════ */
+
+const VALID_SUPPORT_STATUSES = ["open", "pending", "resolved", "closed"] as const;
+const VALID_SUPPORT_PRIORITIES = ["low", "normal", "high", "urgent"] as const;
+
+// GET /admin/support/tickets — list with filters
+router.get("/admin/support/tickets", requireAdmin, async (req, res): Promise<void> => {
+  const { status, priority, search } = req.query as { status?: string; priority?: string; search?: string };
+
+  const conditions: any[] = [];
+  if (status && (VALID_SUPPORT_STATUSES as readonly string[]).includes(status)) {
+    conditions.push(eq(supportTicketsTable.status, status));
+  }
+  if (priority && (VALID_SUPPORT_PRIORITIES as readonly string[]).includes(priority)) {
+    conditions.push(eq(supportTicketsTable.priority, priority));
+  }
+  if (search && typeof search === "string" && search.trim().length > 0) {
+    const pattern = `%${escapeLike(search.trim())}%`;
+    conditions.push(or(
+      ilike(supportTicketsTable.subject, pattern),
+      ilike(usersTable.email, pattern),
+      ilike(usersTable.name, pattern),
+    ));
+  }
+
+  const rows = await db
+    .select({
+      id: supportTicketsTable.id,
+      subject: supportTicketsTable.subject,
+      category: supportTicketsTable.category,
+      priority: supportTicketsTable.priority,
+      status: supportTicketsTable.status,
+      assignedAdmin: supportTicketsTable.assignedAdmin,
+      createdAt: supportTicketsTable.createdAt,
+      updatedAt: supportTicketsTable.updatedAt,
+      lastUserReplyAt: supportTicketsTable.lastUserReplyAt,
+      lastAdminReplyAt: supportTicketsTable.lastAdminReplyAt,
+      userId: supportTicketsTable.userId,
+      userName: usersTable.name,
+      userEmail: usersTable.email,
+      userPlan: usersTable.plan,
+      messageCount: sql<number>`(SELECT count(*) FROM ${supportMessagesTable} WHERE ${supportMessagesTable.ticketId} = ${supportTicketsTable.id})::int`,
+    })
+    .from(supportTicketsTable)
+    .leftJoin(usersTable, eq(usersTable.id, supportTicketsTable.userId))
+    .where(conditions.length > 0 ? and(...conditions) : undefined)
+    .orderBy(desc(supportTicketsTable.updatedAt))
+    .limit(200);
+
+  res.json(rows);
+});
+
+// GET /admin/support/tickets/summary — counts by status/priority for dashboard
+router.get("/admin/support/tickets/summary", requireAdmin, async (_req, res): Promise<void> => {
+  const statusRows = await db
+    .select({ status: supportTicketsTable.status, count: count() })
+    .from(supportTicketsTable)
+    .groupBy(supportTicketsTable.status);
+  const priorityRows = await db
+    .select({ priority: supportTicketsTable.priority, count: count() })
+    .from(supportTicketsTable)
+    .where(sql`${supportTicketsTable.status} IN ('open','pending')`)
+    .groupBy(supportTicketsTable.priority);
+  const totals: Record<string, number> = { open: 0, pending: 0, resolved: 0, closed: 0 };
+  statusRows.forEach((r) => { totals[r.status] = Number(r.count); });
+  const openByPriority: Record<string, number> = { low: 0, normal: 0, high: 0, urgent: 0 };
+  priorityRows.forEach((r) => { openByPriority[r.priority] = Number(r.count); });
+  res.json({ totals, openByPriority });
+});
+
+// GET /admin/support/tickets/:id — ticket + ALL messages (including internal notes)
+router.get("/admin/support/tickets/:id", requireAdmin, async (req, res): Promise<void> => {
+  const { id } = req.params;
+
+  const [ticket] = await db
+    .select({
+      id: supportTicketsTable.id,
+      subject: supportTicketsTable.subject,
+      category: supportTicketsTable.category,
+      priority: supportTicketsTable.priority,
+      status: supportTicketsTable.status,
+      assignedAdmin: supportTicketsTable.assignedAdmin,
+      createdAt: supportTicketsTable.createdAt,
+      updatedAt: supportTicketsTable.updatedAt,
+      userId: supportTicketsTable.userId,
+      userName: usersTable.name,
+      userEmail: usersTable.email,
+      userPlan: usersTable.plan,
+    })
+    .from(supportTicketsTable)
+    .leftJoin(usersTable, eq(usersTable.id, supportTicketsTable.userId))
+    .where(eq(supportTicketsTable.id, id));
+
+  if (!ticket) { res.status(404).json({ error: "Ticket not found" }); return; }
+
+  const messages = await db
+    .select()
+    .from(supportMessagesTable)
+    .where(eq(supportMessagesTable.ticketId, id))
+    .orderBy(asc(supportMessagesTable.createdAt));
+
+  res.json({ ticket, messages });
+});
+
+// POST /admin/support/tickets/:id/messages — admin reply or internal note
+router.post("/admin/support/tickets/:id/messages", requireAdmin, async (req, res): Promise<void> => {
+  const { id } = req.params;
+  const body = typeof req.body?.body === "string" ? req.body.body.trim() : "";
+  const internal = req.body?.internal === true;
+  if (body.length === 0) { res.status(400).json({ error: "Message body required" }); return; }
+
+  const [ticket] = await db.select().from(supportTicketsTable).where(eq(supportTicketsTable.id, id));
+  if (!ticket) { res.status(404).json({ error: "Ticket not found" }); return; }
+
+  const [message] = await db
+    .insert(supportMessagesTable)
+    .values({
+      ticketId: id,
+      senderType: "admin",
+      senderLabel: "Support Team",
+      body: body.slice(0, 8000),
+      isInternalNote: internal ? "true" : "false",
+    })
+    .returning();
+
+  // Public replies move ticket to "pending" (waiting on user)
+  if (!internal) {
+    await db
+      .update(supportTicketsTable)
+      .set({ status: "pending", lastAdminReplyAt: new Date() })
+      .where(eq(supportTicketsTable.id, id));
+
+    // Email the user
+    const [user] = await db
+      .select({ name: usersTable.name, email: usersTable.email })
+      .from(usersTable)
+      .where(eq(usersTable.id, ticket.userId));
+    if (user) {
+      notifySupportAdminReply({ ticketId: id, subject: ticket.subject, body, userName: user.name, userEmail: user.email })
+        .catch((err) => console.error("Failed to send admin-reply email", err));
+    }
+  }
+
+  await logAuditAction("support_reply", "ticket", id, { internal }, req.ip);
+  res.status(201).json(message);
+});
+
+// PATCH /admin/support/tickets/:id — change status, priority, assign
+router.patch("/admin/support/tickets/:id", requireAdmin, async (req, res): Promise<void> => {
+  const { id } = req.params;
+  const updates: Record<string, any> = {};
+
+  if (typeof req.body?.status === "string" && (VALID_SUPPORT_STATUSES as readonly string[]).includes(req.body.status)) {
+    updates.status = req.body.status;
+    if (req.body.status === "resolved") updates.resolvedAt = new Date();
+    if (req.body.status === "closed") updates.closedAt = new Date();
+  }
+  if (typeof req.body?.priority === "string" && (VALID_SUPPORT_PRIORITIES as readonly string[]).includes(req.body.priority)) {
+    updates.priority = req.body.priority;
+  }
+  if (typeof req.body?.assignedAdmin === "string") {
+    updates.assignedAdmin = req.body.assignedAdmin.slice(0, 80);
+  }
+
+  if (Object.keys(updates).length === 0) { res.status(400).json({ error: "No valid updates" }); return; }
+
+  await db.update(supportTicketsTable).set(updates).where(eq(supportTicketsTable.id, id));
+  await logAuditAction("support_update", "ticket", id, updates, req.ip);
   res.json({ ok: true });
 });
 

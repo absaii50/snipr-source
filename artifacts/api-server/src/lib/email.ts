@@ -1,7 +1,7 @@
 import { Resend } from "resend";
 import { db, emailLogsTable } from "@workspace/db";
 import { logger } from "./logger";
-import { getVerificationEmailHtml, getWelcomeEmailHtml, getPasswordResetEmailHtml, getTeamInviteExistingUserHtml, getTeamInviteNewUserHtml } from "./email-templates";
+import { getVerificationEmailHtml, getWelcomeEmailHtml, getPasswordResetEmailHtml, getTeamInviteExistingUserHtml, getTeamInviteNewUserHtml, getSupportNewTicketAdminHtml, getSupportUserReplyAdminHtml, getSupportAdminReplyUserHtml } from "./email-templates";
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
 const FRONTEND_URL = process.env.FRONTEND_URL || "https://snipr.sh";
@@ -173,5 +173,82 @@ export async function sendTeamInviteNewUser(opts: {
     subject: `${opts.inviterName} invited you to join Snipr`,
     html,
     type: "team_invite",
+  });
+}
+
+/* ──────────────────────── Support System emails ──────────────────────── */
+
+const SUPPORT_ADMIN_ADDRESS = process.env.SUPPORT_ADMIN_EMAIL || process.env.FROM_EMAIL?.match(/<([^>]+)>/)?.[1] || "support@snipr.sh";
+
+/** Notify the support team when a user opens a new ticket. */
+export async function notifySupportNewTicket(opts: {
+  ticketId: string;
+  subject: string;
+  body: string;
+  userName: string;
+  userEmail: string;
+  priority: string;
+}): Promise<void> {
+  const ticketUrl = `${FRONTEND_URL}/admin/support?ticket=${opts.ticketId}`;
+  const html = getSupportNewTicketAdminHtml({
+    subject: opts.subject,
+    body: opts.body,
+    userName: opts.userName,
+    userEmail: opts.userEmail,
+    priority: opts.priority,
+    ticketUrl,
+  });
+  await sendEmail({
+    to: SUPPORT_ADMIN_ADDRESS,
+    subject: `[Snipr Support] New ticket: ${opts.subject}`,
+    html,
+    type: "support_new_ticket",
+  });
+}
+
+/** Notify the support team when a user replies on an existing ticket. */
+export async function notifySupportUserReply(opts: {
+  ticketId: string;
+  subject: string;
+  body: string;
+  userName: string;
+  userEmail: string;
+}): Promise<void> {
+  const ticketUrl = `${FRONTEND_URL}/admin/support?ticket=${opts.ticketId}`;
+  const html = getSupportUserReplyAdminHtml({
+    subject: opts.subject,
+    body: opts.body,
+    userName: opts.userName,
+    userEmail: opts.userEmail,
+    ticketUrl,
+  });
+  await sendEmail({
+    to: SUPPORT_ADMIN_ADDRESS,
+    subject: `[Snipr Support] Reply from ${opts.userName}: ${opts.subject}`,
+    html,
+    type: "support_user_reply",
+  });
+}
+
+/** Notify the user when admin replies to their ticket. */
+export async function notifySupportAdminReply(opts: {
+  ticketId: string;
+  subject: string;
+  body: string;
+  userName: string;
+  userEmail: string;
+}): Promise<void> {
+  const ticketUrl = `${FRONTEND_URL}/support/${opts.ticketId}`;
+  const html = getSupportAdminReplyUserHtml({
+    subject: opts.subject,
+    body: opts.body,
+    userName: opts.userName,
+    ticketUrl,
+  });
+  await sendEmail({
+    to: opts.userEmail,
+    subject: `Re: ${opts.subject} — Snipr Support`,
+    html,
+    type: "support_admin_reply",
   });
 }

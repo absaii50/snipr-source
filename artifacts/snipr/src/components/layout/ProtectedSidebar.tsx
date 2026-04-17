@@ -25,6 +25,7 @@ import {
   Megaphone,
   Search,
   Command,
+  LifeBuoy,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { SniprLogo } from "@/components/SniprLogo";
@@ -61,6 +62,12 @@ const NAV_GROUPS = [
       { label: "Integrations", href: "/integrations", icon: Plug },
       { label: "Team",         href: "/team",         icon: Users },
       { label: "Billing",      href: "/billing",      icon: CreditCard },
+    ],
+  },
+  {
+    title: "Help",
+    items: [
+      { label: "Support", href: "/support", icon: LifeBuoy },
     ],
   },
 ];

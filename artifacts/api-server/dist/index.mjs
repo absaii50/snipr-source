@@ -20642,27 +20642,27 @@ var require_router = __commonJS({
     var slice = Array.prototype.slice;
     var flatten = Array.prototype.flat;
     var methods = METHODS.map((method) => method.toLowerCase());
-    module.exports = Router19;
+    module.exports = Router20;
     module.exports.Route = Route;
-    function Router19(options) {
-      if (!(this instanceof Router19)) {
-        return new Router19(options);
+    function Router20(options) {
+      if (!(this instanceof Router20)) {
+        return new Router20(options);
       }
       const opts = options || {};
-      function router19(req, res, next) {
-        router19.handle(req, res, next);
+      function router20(req, res, next) {
+        router20.handle(req, res, next);
       }
-      Object.setPrototypeOf(router19, this);
-      router19.caseSensitive = opts.caseSensitive;
-      router19.mergeParams = opts.mergeParams;
-      router19.params = {};
-      router19.strict = opts.strict;
-      router19.stack = [];
-      return router19;
+      Object.setPrototypeOf(router20, this);
+      router20.caseSensitive = opts.caseSensitive;
+      router20.mergeParams = opts.mergeParams;
+      router20.params = {};
+      router20.strict = opts.strict;
+      router20.stack = [];
+      return router20;
     }
-    Router19.prototype = function() {
+    Router20.prototype = function() {
     };
-    Router19.prototype.param = function param(name, fn) {
+    Router20.prototype.param = function param(name, fn) {
       if (!name) {
         throw new TypeError("argument name is required");
       }
@@ -20682,7 +20682,7 @@ var require_router = __commonJS({
       params.push(fn);
       return this;
     };
-    Router19.prototype.handle = function handle(req, res, callback) {
+    Router20.prototype.handle = function handle(req, res, callback) {
       if (!callback) {
         throw new TypeError("argument callback is required");
       }
@@ -20809,7 +20809,7 @@ var require_router = __commonJS({
         }
       }
     };
-    Router19.prototype.use = function use(handler) {
+    Router20.prototype.use = function use(handler) {
       let offset = 0;
       let path2 = "/";
       if (typeof handler !== "function") {
@@ -20842,7 +20842,7 @@ var require_router = __commonJS({
       }
       return this;
     };
-    Router19.prototype.route = function route(path2) {
+    Router20.prototype.route = function route(path2) {
       const route2 = new Route(path2);
       const layer = new Layer(path2, {
         sensitive: this.caseSensitive,
@@ -20857,7 +20857,7 @@ var require_router = __commonJS({
       return route2;
     };
     methods.concat("all").forEach(function(method) {
-      Router19.prototype[method] = function(path2) {
+      Router20.prototype[method] = function(path2) {
         const route = this.route(path2);
         route[method].apply(route, slice.call(arguments, 1));
         return this;
@@ -21040,13 +21040,13 @@ var require_application = __commonJS({
     var compileTrust = require_utils3().compileTrust;
     var resolve = __require("node:path").resolve;
     var once = require_once();
-    var Router19 = require_router();
+    var Router20 = require_router();
     var slice = Array.prototype.slice;
     var flatten = Array.prototype.flat;
     var app2 = exports = module.exports = {};
     var trustProxyDefaultSymbol = "@@symbol:trust_proxy_default";
     app2.init = function init() {
-      var router19 = null;
+      var router20 = null;
       this.cache = /* @__PURE__ */ Object.create(null);
       this.engines = /* @__PURE__ */ Object.create(null);
       this.settings = /* @__PURE__ */ Object.create(null);
@@ -21055,13 +21055,13 @@ var require_application = __commonJS({
         configurable: true,
         enumerable: true,
         get: function getrouter() {
-          if (router19 === null) {
-            router19 = new Router19({
+          if (router20 === null) {
+            router20 = new Router20({
               caseSensitive: this.enabled("case sensitive routing"),
               strict: this.enabled("strict routing")
             });
           }
-          return router19;
+          return router20;
         }
       });
     };
@@ -21132,15 +21132,15 @@ var require_application = __commonJS({
       if (fns.length === 0) {
         throw new TypeError("app.use() requires a middleware function");
       }
-      var router19 = this.router;
+      var router20 = this.router;
       fns.forEach(function(fn2) {
         if (!fn2 || !fn2.handle || !fn2.set) {
-          return router19.use(path2, fn2);
+          return router20.use(path2, fn2);
         }
         debug(".use app under %s", path2);
         fn2.mountpath = path2;
         fn2.parent = this;
-        router19.use(path2, function mounted_app(req, res, next) {
+        router20.use(path2, function mounted_app(req, res, next) {
           var orig = req.app;
           fn2.handle(req, res, function(err) {
             Object.setPrototypeOf(req, orig.request);
@@ -23667,7 +23667,7 @@ var require_express = __commonJS({
     var EventEmitter2 = __require("node:events").EventEmitter;
     var mixin = require_merge_descriptors();
     var proto = require_application();
-    var Router19 = require_router();
+    var Router20 = require_router();
     var req = require_request();
     var res = require_response();
     exports = module.exports = createApplication;
@@ -23689,8 +23689,8 @@ var require_express = __commonJS({
     exports.application = proto;
     exports.request = req;
     exports.response = res;
-    exports.Route = Router19.Route;
-    exports.Router = Router19;
+    exports.Route = Router20.Route;
+    exports.Router = Router20;
     exports.json = bodyParser.json;
     exports.raw = bodyParser.raw;
     exports.static = require_serve_static();
@@ -47116,7 +47116,7 @@ var init_ua_parser = __esm({
 });
 
 // src/app.ts
-var import_express19 = __toESM(require_express2(), 1);
+var import_express20 = __toESM(require_express2(), 1);
 var import_cors = __toESM(require_lib3(), 1);
 var import_pino_http = __toESM(require_logger(), 1);
 var import_express_session = __toESM(require_express_session(), 1);
@@ -48030,7 +48030,7 @@ var rate_limit_default = rateLimit;
 import pg4 from "pg";
 
 // src/routes/index.ts
-var import_express17 = __toESM(require_express2(), 1);
+var import_express18 = __toESM(require_express2(), 1);
 
 // src/routes/health.ts
 var import_express = __toESM(require_express2(), 1);
@@ -61377,6 +61377,8 @@ __export(schema_exports, {
   insertLinkSchema: () => insertLinkSchema,
   insertMessageSchema: () => insertMessageSchema,
   insertPixelSchema: () => insertPixelSchema,
+  insertSupportMessageSchema: () => insertSupportMessageSchema,
+  insertSupportTicketSchema: () => insertSupportTicketSchema,
   insertTagSchema: () => insertTagSchema,
   insertUserSchema: () => insertUserSchema,
   insertWorkspaceSchema: () => insertWorkspaceSchema,
@@ -61388,6 +61390,8 @@ __export(schema_exports, {
   pixelsTable: () => pixelsTable,
   platformSettingsTable: () => platformSettingsTable,
   sessionTable: () => sessionTable,
+  supportMessagesTable: () => supportMessagesTable,
+  supportTicketsTable: () => supportTicketsTable,
   tagsTable: () => tagsTable,
   usersTable: () => usersTable,
   workspaceMembersTable: () => workspaceMembersTable,
@@ -73142,6 +73146,56 @@ var adminAuditLogTable = pgTable("admin_audit_log", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
 });
 
+// ../../lib/db/src/schema/support.ts
+var supportTicketsTable = pgTable("support_tickets", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
+  workspaceId: uuid("workspace_id").references(() => workspacesTable.id, { onDelete: "set null" }),
+  subject: text("subject").notNull(),
+  category: text("category").notNull().default("other"),
+  // bug | billing | feature | technical | other
+  priority: text("priority").notNull().default("normal"),
+  // low | normal | high | urgent
+  status: text("status").notNull().default("open"),
+  // open | pending | resolved | closed
+  assignedAdmin: text("assigned_admin"),
+  // free-text admin identifier
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => /* @__PURE__ */ new Date()),
+  lastUserReplyAt: timestamp("last_user_reply_at", { withTimezone: true }),
+  lastAdminReplyAt: timestamp("last_admin_reply_at", { withTimezone: true }),
+  resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+  closedAt: timestamp("closed_at", { withTimezone: true })
+}, (t) => [
+  index("support_tickets_user_idx").on(t.userId),
+  index("support_tickets_status_idx").on(t.status),
+  index("support_tickets_created_idx").on(t.createdAt)
+]);
+var supportMessagesTable = pgTable("support_messages", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  ticketId: uuid("ticket_id").notNull().references(() => supportTicketsTable.id, { onDelete: "cascade" }),
+  senderType: text("sender_type").notNull(),
+  // user | admin
+  senderUserId: uuid("sender_user_id").references(() => usersTable.id, { onDelete: "set null" }),
+  senderLabel: text("sender_label"),
+  // admin display name when senderType=admin
+  body: text("body").notNull(),
+  isInternalNote: text("is_internal_note").notNull().default("false"),
+  // "true" = admin-only note
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
+}, (t) => [
+  index("support_messages_ticket_idx").on(t.ticketId, t.createdAt)
+]);
+var insertSupportTicketSchema = createInsertSchema(supportTicketsTable).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true
+});
+var insertSupportMessageSchema = createInsertSchema(supportMessagesTable).omit({
+  id: true,
+  createdAt: true
+});
+
 // ../../lib/db/src/index.ts
 var { Pool: Pool2 } = pg3;
 if (!process.env.DATABASE_URL) {
@@ -78159,6 +78213,75 @@ function getWelcomeEmailHtml(name, dashboardUrl) {
     ${button("Go to Dashboard", dashboardUrl)}
   `);
 }
+function supportMessageBlock(body) {
+  return escHtml(body).replace(/\r?\n/g, "<br>");
+}
+function priorityBadge(priority) {
+  const colors = {
+    urgent: { bg: "#FEE2E2", fg: "#B91C1C" },
+    high: { bg: "#FEF3C7", fg: "#B45309" },
+    normal: { bg: "#E0E7FF", fg: "#3730A3" },
+    low: { bg: "#F3F4F6", fg: "#4B5563" }
+  };
+  const c = colors[priority] ?? colors.normal;
+  return `<span style="display:inline-block;background:${c.bg};color:${c.fg};font-size:10px;font-weight:700;letter-spacing:0.06em;padding:3px 8px;border-radius:999px;text-transform:uppercase;">${escHtml(priority)}</span>`;
+}
+function getSupportNewTicketAdminHtml(opts) {
+  return layout(`
+    <h1 style="color:${BRAND.dark};font-size:22px;font-weight:700;margin:0 0 4px;letter-spacing:-0.3px;">
+      New support ticket
+    </h1>
+    <p style="color:${BRAND.muted};font-size:13px;margin:0 0 20px;">
+      ${priorityBadge(opts.priority)}
+    </p>
+    <div style="background:${BRAND.light};border-radius:12px;padding:16px;margin-bottom:16px;">
+      <p style="color:${BRAND.muted};font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;margin:0 0 6px;">From</p>
+      <p style="color:${BRAND.dark};font-size:14px;font-weight:600;margin:0;">${escHtml(opts.userName)}</p>
+      <p style="color:${BRAND.text};font-size:13px;margin:2px 0 0;">${escHtml(opts.userEmail)}</p>
+    </div>
+    <div style="background:${BRAND.light};border-radius:12px;padding:16px;margin-bottom:16px;">
+      <p style="color:${BRAND.muted};font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;margin:0 0 6px;">Subject</p>
+      <p style="color:${BRAND.dark};font-size:15px;font-weight:600;margin:0;">${escHtml(opts.subject)}</p>
+    </div>
+    <div style="background:${BRAND.light};border-radius:12px;padding:16px;margin-bottom:16px;">
+      <p style="color:${BRAND.muted};font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;margin:0 0 8px;">Message</p>
+      <p style="color:${BRAND.text};font-size:14px;line-height:1.7;margin:0;">${supportMessageBlock(opts.body)}</p>
+    </div>
+    ${button("Open Ticket in Admin", opts.ticketUrl)}
+  `);
+}
+function getSupportUserReplyAdminHtml(opts) {
+  return layout(`
+    <h1 style="color:${BRAND.dark};font-size:22px;font-weight:700;margin:0 0 16px;letter-spacing:-0.3px;">
+      New reply from ${escHtml(opts.userName)}
+    </h1>
+    <p style="color:${BRAND.text};font-size:14px;margin:0 0 16px;">
+      Ticket: <strong>${escHtml(opts.subject)}</strong>
+    </p>
+    <div style="background:${BRAND.light};border-radius:12px;padding:16px;margin-bottom:16px;">
+      <p style="color:${BRAND.text};font-size:14px;line-height:1.7;margin:0;">${supportMessageBlock(opts.body)}</p>
+    </div>
+    ${button("Reply in Admin", opts.ticketUrl)}
+  `);
+}
+function getSupportAdminReplyUserHtml(opts) {
+  return layout(`
+    <h1 style="color:${BRAND.dark};font-size:22px;font-weight:700;margin:0 0 8px;letter-spacing:-0.3px;">
+      Hi ${escHtml(opts.userName)},
+    </h1>
+    <p style="color:${BRAND.text};font-size:15px;line-height:1.6;margin:0 0 16px;">
+      Our support team has replied to your ticket <strong>${escHtml(opts.subject)}</strong>.
+    </p>
+    <div style="background:${BRAND.light};border-radius:12px;padding:16px;margin-bottom:16px;border-left:3px solid ${BRAND.primary};">
+      <p style="color:${BRAND.muted};font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;margin:0 0 8px;">Support Team</p>
+      <p style="color:${BRAND.text};font-size:14px;line-height:1.7;margin:0;">${supportMessageBlock(opts.body)}</p>
+    </div>
+    ${button("View & Reply", opts.ticketUrl)}
+    <p style="color:${BRAND.muted};font-size:12px;line-height:1.5;margin:20px 0 0;">
+      You can reply directly from your Snipr dashboard. Replies are kept private between you and the Snipr support team.
+    </p>
+  `);
+}
 
 // src/lib/email.ts
 var RESEND_API_KEY = process.env.RESEND_API_KEY;
@@ -78279,6 +78402,55 @@ async function sendTeamInviteNewUser(opts) {
     subject: `${opts.inviterName} invited you to join Snipr`,
     html,
     type: "team_invite"
+  });
+}
+var SUPPORT_ADMIN_ADDRESS = process.env.SUPPORT_ADMIN_EMAIL || process.env.FROM_EMAIL?.match(/<([^>]+)>/)?.[1] || "support@snipr.sh";
+async function notifySupportNewTicket(opts) {
+  const ticketUrl = `${FRONTEND_URL}/admin/support?ticket=${opts.ticketId}`;
+  const html = getSupportNewTicketAdminHtml({
+    subject: opts.subject,
+    body: opts.body,
+    userName: opts.userName,
+    userEmail: opts.userEmail,
+    priority: opts.priority,
+    ticketUrl
+  });
+  await sendEmail({
+    to: SUPPORT_ADMIN_ADDRESS,
+    subject: `[Snipr Support] New ticket: ${opts.subject}`,
+    html,
+    type: "support_new_ticket"
+  });
+}
+async function notifySupportUserReply(opts) {
+  const ticketUrl = `${FRONTEND_URL}/admin/support?ticket=${opts.ticketId}`;
+  const html = getSupportUserReplyAdminHtml({
+    subject: opts.subject,
+    body: opts.body,
+    userName: opts.userName,
+    userEmail: opts.userEmail,
+    ticketUrl
+  });
+  await sendEmail({
+    to: SUPPORT_ADMIN_ADDRESS,
+    subject: `[Snipr Support] Reply from ${opts.userName}: ${opts.subject}`,
+    html,
+    type: "support_user_reply"
+  });
+}
+async function notifySupportAdminReply(opts) {
+  const ticketUrl = `${FRONTEND_URL}/support/${opts.ticketId}`;
+  const html = getSupportAdminReplyUserHtml({
+    subject: opts.subject,
+    body: opts.body,
+    userName: opts.userName,
+    ticketUrl
+  });
+  await sendEmail({
+    to: opts.userEmail,
+    subject: `Re: ${opts.subject} \u2014 Snipr Support`,
+    html,
+    type: "support_admin_reply"
   });
 }
 
@@ -90097,6 +90269,132 @@ router14.post("/admin/change-password", requireAdmin, async (req, res) => {
   const hash2 = await bcryptjs_default.hash(password, 12);
   await db.insert(platformSettingsTable).values({ key: "admin_password_hash", value: hash2 }).onConflictDoUpdate({ target: platformSettingsTable.key, set: { value: hash2 } });
   await logAuditAction("change_admin_password", "platform", null, {}, req.ip);
+  res.json({ ok: true });
+});
+var VALID_SUPPORT_STATUSES = ["open", "pending", "resolved", "closed"];
+var VALID_SUPPORT_PRIORITIES = ["low", "normal", "high", "urgent"];
+router14.get("/admin/support/tickets", requireAdmin, async (req, res) => {
+  const { status, priority, search } = req.query;
+  const conditions = [];
+  if (status && VALID_SUPPORT_STATUSES.includes(status)) {
+    conditions.push(eq(supportTicketsTable.status, status));
+  }
+  if (priority && VALID_SUPPORT_PRIORITIES.includes(priority)) {
+    conditions.push(eq(supportTicketsTable.priority, priority));
+  }
+  if (search && typeof search === "string" && search.trim().length > 0) {
+    const pattern = `%${escapeLike(search.trim())}%`;
+    conditions.push(or(
+      ilike(supportTicketsTable.subject, pattern),
+      ilike(usersTable.email, pattern),
+      ilike(usersTable.name, pattern)
+    ));
+  }
+  const rows = await db.select({
+    id: supportTicketsTable.id,
+    subject: supportTicketsTable.subject,
+    category: supportTicketsTable.category,
+    priority: supportTicketsTable.priority,
+    status: supportTicketsTable.status,
+    assignedAdmin: supportTicketsTable.assignedAdmin,
+    createdAt: supportTicketsTable.createdAt,
+    updatedAt: supportTicketsTable.updatedAt,
+    lastUserReplyAt: supportTicketsTable.lastUserReplyAt,
+    lastAdminReplyAt: supportTicketsTable.lastAdminReplyAt,
+    userId: supportTicketsTable.userId,
+    userName: usersTable.name,
+    userEmail: usersTable.email,
+    userPlan: usersTable.plan,
+    messageCount: sql`(SELECT count(*) FROM ${supportMessagesTable} WHERE ${supportMessagesTable.ticketId} = ${supportTicketsTable.id})::int`
+  }).from(supportTicketsTable).leftJoin(usersTable, eq(usersTable.id, supportTicketsTable.userId)).where(conditions.length > 0 ? and(...conditions) : void 0).orderBy(desc(supportTicketsTable.updatedAt)).limit(200);
+  res.json(rows);
+});
+router14.get("/admin/support/tickets/summary", requireAdmin, async (_req, res) => {
+  const statusRows = await db.select({ status: supportTicketsTable.status, count: count() }).from(supportTicketsTable).groupBy(supportTicketsTable.status);
+  const priorityRows = await db.select({ priority: supportTicketsTable.priority, count: count() }).from(supportTicketsTable).where(sql`${supportTicketsTable.status} IN ('open','pending')`).groupBy(supportTicketsTable.priority);
+  const totals = { open: 0, pending: 0, resolved: 0, closed: 0 };
+  statusRows.forEach((r) => {
+    totals[r.status] = Number(r.count);
+  });
+  const openByPriority = { low: 0, normal: 0, high: 0, urgent: 0 };
+  priorityRows.forEach((r) => {
+    openByPriority[r.priority] = Number(r.count);
+  });
+  res.json({ totals, openByPriority });
+});
+router14.get("/admin/support/tickets/:id", requireAdmin, async (req, res) => {
+  const { id } = req.params;
+  const [ticket] = await db.select({
+    id: supportTicketsTable.id,
+    subject: supportTicketsTable.subject,
+    category: supportTicketsTable.category,
+    priority: supportTicketsTable.priority,
+    status: supportTicketsTable.status,
+    assignedAdmin: supportTicketsTable.assignedAdmin,
+    createdAt: supportTicketsTable.createdAt,
+    updatedAt: supportTicketsTable.updatedAt,
+    userId: supportTicketsTable.userId,
+    userName: usersTable.name,
+    userEmail: usersTable.email,
+    userPlan: usersTable.plan
+  }).from(supportTicketsTable).leftJoin(usersTable, eq(usersTable.id, supportTicketsTable.userId)).where(eq(supportTicketsTable.id, id));
+  if (!ticket) {
+    res.status(404).json({ error: "Ticket not found" });
+    return;
+  }
+  const messages2 = await db.select().from(supportMessagesTable).where(eq(supportMessagesTable.ticketId, id)).orderBy(asc(supportMessagesTable.createdAt));
+  res.json({ ticket, messages: messages2 });
+});
+router14.post("/admin/support/tickets/:id/messages", requireAdmin, async (req, res) => {
+  const { id } = req.params;
+  const body = typeof req.body?.body === "string" ? req.body.body.trim() : "";
+  const internal = req.body?.internal === true;
+  if (body.length === 0) {
+    res.status(400).json({ error: "Message body required" });
+    return;
+  }
+  const [ticket] = await db.select().from(supportTicketsTable).where(eq(supportTicketsTable.id, id));
+  if (!ticket) {
+    res.status(404).json({ error: "Ticket not found" });
+    return;
+  }
+  const [message] = await db.insert(supportMessagesTable).values({
+    ticketId: id,
+    senderType: "admin",
+    senderLabel: "Support Team",
+    body: body.slice(0, 8e3),
+    isInternalNote: internal ? "true" : "false"
+  }).returning();
+  if (!internal) {
+    await db.update(supportTicketsTable).set({ status: "pending", lastAdminReplyAt: /* @__PURE__ */ new Date() }).where(eq(supportTicketsTable.id, id));
+    const [user] = await db.select({ name: usersTable.name, email: usersTable.email }).from(usersTable).where(eq(usersTable.id, ticket.userId));
+    if (user) {
+      notifySupportAdminReply({ ticketId: id, subject: ticket.subject, body, userName: user.name, userEmail: user.email }).catch((err) => console.error("Failed to send admin-reply email", err));
+    }
+  }
+  await logAuditAction("support_reply", "ticket", id, { internal }, req.ip);
+  res.status(201).json(message);
+});
+router14.patch("/admin/support/tickets/:id", requireAdmin, async (req, res) => {
+  const { id } = req.params;
+  const updates = {};
+  if (typeof req.body?.status === "string" && VALID_SUPPORT_STATUSES.includes(req.body.status)) {
+    updates.status = req.body.status;
+    if (req.body.status === "resolved") updates.resolvedAt = /* @__PURE__ */ new Date();
+    if (req.body.status === "closed") updates.closedAt = /* @__PURE__ */ new Date();
+  }
+  if (typeof req.body?.priority === "string" && VALID_SUPPORT_PRIORITIES.includes(req.body.priority)) {
+    updates.priority = req.body.priority;
+  }
+  if (typeof req.body?.assignedAdmin === "string") {
+    updates.assignedAdmin = req.body.assignedAdmin.slice(0, 80);
+  }
+  if (Object.keys(updates).length === 0) {
+    res.status(400).json({ error: "No valid updates" });
+    return;
+  }
+  await db.update(supportTicketsTable).set(updates).where(eq(supportTicketsTable.id, id));
+  await logAuditAction("support_update", "ticket", id, updates, req.ip);
   res.json({ ok: true });
 });
 var admin_default = router14;
@@ -105721,28 +106019,169 @@ router16.get("/billing/plans", async (_req, res) => {
 });
 var billing_default = router16;
 
-// src/routes/index.ts
+// src/routes/support.ts
+var import_express17 = __toESM(require_express2(), 1);
 var router17 = (0, import_express17.Router)();
-router17.use(health_default);
-router17.use(admin_default);
-router17.use(billing_default);
-router17.use(auth_default);
-router17.use(links_default);
-router17.use(analytics_default);
-router17.use(domains_default);
-router17.use(pixels_default);
-router17.use(tags_default);
-router17.use(folders_default);
-router17.use(link_rules_default);
-router17.use(conversions_default);
-router17.use(team_default);
-router17.use(ai_default);
-router17.use(integrations_default);
-router17.use(realtime_default);
-var routes_default = router17;
+var VALID_CATEGORIES = ["bug", "billing", "feature", "technical", "other"];
+var VALID_PRIORITIES = ["low", "normal", "high", "urgent"];
+function sanitizeString(v, max) {
+  if (typeof v !== "string") return null;
+  const trimmed = v.trim();
+  if (trimmed.length === 0) return null;
+  return trimmed.slice(0, max);
+}
+router17.get("/support/tickets", requireAuth, async (req, res) => {
+  const userId = req.session.userId;
+  const { status } = req.query;
+  const conditions = [eq(supportTicketsTable.userId, userId)];
+  if (status && typeof status === "string") {
+    conditions.push(eq(supportTicketsTable.status, status));
+  }
+  const rows = await db.select({
+    id: supportTicketsTable.id,
+    subject: supportTicketsTable.subject,
+    category: supportTicketsTable.category,
+    priority: supportTicketsTable.priority,
+    status: supportTicketsTable.status,
+    createdAt: supportTicketsTable.createdAt,
+    updatedAt: supportTicketsTable.updatedAt,
+    lastAdminReplyAt: supportTicketsTable.lastAdminReplyAt,
+    lastUserReplyAt: supportTicketsTable.lastUserReplyAt,
+    messageCount: sql`(SELECT count(*) FROM ${supportMessagesTable} WHERE ${supportMessagesTable.ticketId} = ${supportTicketsTable.id})::int`
+  }).from(supportTicketsTable).where(and(...conditions)).orderBy(desc(supportTicketsTable.updatedAt));
+  res.json(rows);
+});
+router17.get("/support/tickets/:id", requireAuth, async (req, res) => {
+  const userId = req.session.userId;
+  const ticketId = req.params.id;
+  const [ticket] = await db.select().from(supportTicketsTable).where(and(eq(supportTicketsTable.id, ticketId), eq(supportTicketsTable.userId, userId)));
+  if (!ticket) {
+    res.status(404).json({ error: "Ticket not found" });
+    return;
+  }
+  const messages2 = await db.select({
+    id: supportMessagesTable.id,
+    senderType: supportMessagesTable.senderType,
+    senderLabel: supportMessagesTable.senderLabel,
+    body: supportMessagesTable.body,
+    createdAt: supportMessagesTable.createdAt
+  }).from(supportMessagesTable).where(and(
+    eq(supportMessagesTable.ticketId, ticketId),
+    // Users never see admin internal notes
+    eq(supportMessagesTable.isInternalNote, "false")
+  )).orderBy(asc(supportMessagesTable.createdAt));
+  res.json({ ticket, messages: messages2 });
+});
+router17.post("/support/tickets", requireAuth, async (req, res) => {
+  const userId = req.session.userId;
+  const workspaceId = req.session.workspaceId ?? null;
+  const subject = sanitizeString(req.body?.subject, 200);
+  const body = sanitizeString(req.body?.body, 8e3);
+  const rawCategory = typeof req.body?.category === "string" ? req.body.category : "other";
+  const rawPriority = typeof req.body?.priority === "string" ? req.body.priority : "normal";
+  if (!subject) {
+    res.status(400).json({ error: "Subject is required" });
+    return;
+  }
+  if (!body) {
+    res.status(400).json({ error: "Message body is required" });
+    return;
+  }
+  const category = VALID_CATEGORIES.includes(rawCategory) ? rawCategory : "other";
+  const priority = VALID_PRIORITIES.includes(rawPriority) ? rawPriority : "normal";
+  const [ticket] = await db.insert(supportTicketsTable).values({
+    userId,
+    workspaceId,
+    subject,
+    category,
+    priority,
+    status: "open",
+    lastUserReplyAt: /* @__PURE__ */ new Date()
+  }).returning();
+  await db.insert(supportMessagesTable).values({
+    ticketId: ticket.id,
+    senderType: "user",
+    senderUserId: userId,
+    body
+  });
+  const [user] = await db.select({ name: usersTable.name, email: usersTable.email }).from(usersTable).where(eq(usersTable.id, userId));
+  if (user) {
+    notifySupportNewTicket({ ticketId: ticket.id, subject, body, userName: user.name, userEmail: user.email, priority }).catch((err) => logger.error({ err }, "Failed to send new-ticket notification"));
+  }
+  res.status(201).json(ticket);
+});
+router17.post("/support/tickets/:id/messages", requireAuth, async (req, res) => {
+  const userId = req.session.userId;
+  const ticketId = req.params.id;
+  const body = sanitizeString(req.body?.body, 8e3);
+  if (!body) {
+    res.status(400).json({ error: "Message body is required" });
+    return;
+  }
+  const [ticket] = await db.select().from(supportTicketsTable).where(and(eq(supportTicketsTable.id, ticketId), eq(supportTicketsTable.userId, userId)));
+  if (!ticket) {
+    res.status(404).json({ error: "Ticket not found" });
+    return;
+  }
+  if (ticket.status === "closed") {
+    res.status(400).json({ error: "This ticket is closed. Open a new one if you need help." });
+    return;
+  }
+  const [message] = await db.insert(supportMessagesTable).values({ ticketId, senderType: "user", senderUserId: userId, body }).returning();
+  const nextStatus = ticket.status === "resolved" ? "open" : ticket.status;
+  await db.update(supportTicketsTable).set({ status: nextStatus, lastUserReplyAt: /* @__PURE__ */ new Date() }).where(eq(supportTicketsTable.id, ticketId));
+  const [user] = await db.select({ name: usersTable.name, email: usersTable.email }).from(usersTable).where(eq(usersTable.id, userId));
+  if (user) {
+    notifySupportUserReply({ ticketId, subject: ticket.subject, body, userName: user.name, userEmail: user.email }).catch((err) => logger.error({ err }, "Failed to send user-reply notification"));
+  }
+  res.status(201).json(message);
+});
+router17.patch("/support/tickets/:id", requireAuth, async (req, res) => {
+  const userId = req.session.userId;
+  const ticketId = req.params.id;
+  const action = req.body?.action;
+  const [ticket] = await db.select().from(supportTicketsTable).where(and(eq(supportTicketsTable.id, ticketId), eq(supportTicketsTable.userId, userId)));
+  if (!ticket) {
+    res.status(404).json({ error: "Ticket not found" });
+    return;
+  }
+  if (action === "close") {
+    await db.update(supportTicketsTable).set({ status: "closed", closedAt: /* @__PURE__ */ new Date() }).where(eq(supportTicketsTable.id, ticketId));
+    res.json({ ok: true });
+    return;
+  }
+  if (action === "reopen" && ticket.status === "closed") {
+    await db.update(supportTicketsTable).set({ status: "open", closedAt: null }).where(eq(supportTicketsTable.id, ticketId));
+    res.json({ ok: true });
+    return;
+  }
+  res.status(400).json({ error: "Invalid action" });
+});
+var support_default = router17;
+
+// src/routes/index.ts
+var router18 = (0, import_express18.Router)();
+router18.use(health_default);
+router18.use(admin_default);
+router18.use(billing_default);
+router18.use(auth_default);
+router18.use(links_default);
+router18.use(analytics_default);
+router18.use(domains_default);
+router18.use(pixels_default);
+router18.use(tags_default);
+router18.use(folders_default);
+router18.use(link_rules_default);
+router18.use(conversions_default);
+router18.use(team_default);
+router18.use(ai_default);
+router18.use(integrations_default);
+router18.use(realtime_default);
+router18.use(support_default);
+var routes_default = router18;
 
 // src/routes/redirect.ts
-var import_express18 = __toESM(require_express2(), 1);
+var import_express19 = __toESM(require_express2(), 1);
 
 // src/lib/click-tracker.ts
 init_ua_parser();
@@ -106625,7 +107064,7 @@ function isBot(req) {
 }
 
 // src/routes/redirect.ts
-var router18 = (0, import_express18.Router)();
+var router19 = (0, import_express19.Router)();
 var _domainCache = /* @__PURE__ */ new Map();
 var DOMAIN_CACHE_TTL = 5 * 60 * 1e3;
 async function lookupDomainCached(host, subdomain, parentDomain) {
@@ -106914,7 +107353,7 @@ p{font-size:14px;color:#6b7280;line-height:1.6}
 </body>
 </html>`;
 }
-router18.use(async (req, res, next) => {
+router19.use(async (req, res, next) => {
   if (req.method !== "GET" && req.method !== "HEAD" && req.method !== "POST") return next();
   const rawHost = req.headers["x-forwarded-host"] || (req.headers.host ?? "");
   const host = rawHost.split(":")[0].toLowerCase().trim();
@@ -107010,7 +107449,7 @@ router18.use(async (req, res, next) => {
   }
   res.status(200).send(`<!DOCTYPE html><html><head><meta charset="utf-8"><meta http-equiv="refresh" content="0;url=${escapeHtml3(finalDestination)}"><script>window.location.replace("${escapeJsString(finalDestination)}")</script><title>Redirecting\u2026</title></head><body></body></html>`);
 });
-router18.get("/r/:slug", async (req, res) => {
+router19.get("/r/:slug", async (req, res) => {
   const rawSlug = req.params.slug;
   const slug = Array.isArray(rawSlug) ? rawSlug[0] : rawSlug;
   const link = await getLinkBySlug(slug);
@@ -107154,7 +107593,7 @@ router18.get("/r/:slug", async (req, res) => {
   }
   res.status(200).send(`<!DOCTYPE html><html><head><meta charset="utf-8"><meta http-equiv="refresh" content="0;url=${escapeHtml3(destination)}"><script>window.location.replace("${escapeJsString(destination)}")</script><title>Redirecting\u2026</title></head><body></body></html>`);
 });
-router18.post("/r/:slug", async (req, res) => {
+router19.post("/r/:slug", async (req, res) => {
   const rawSlug = req.params.slug;
   const slug = Array.isArray(rawSlug) ? rawSlug[0] : rawSlug;
   const link = await getLinkBySlug(slug);
@@ -107180,7 +107619,7 @@ router18.post("/r/:slug", async (req, res) => {
     res.redirect(302, `/r/${slug}`);
   });
 });
-var redirect_default = router18;
+var redirect_default = router19;
 
 // src/lib/webhookHandlers.ts
 var WebhookHandlers = class _WebhookHandlers {
@@ -107331,7 +107770,7 @@ if (!sessionSecret && process.env.NODE_ENV === "production") {
 }
 var PgSession2 = connectPgSimple(import_express_session.default);
 var pgPool = new pg4.Pool({ connectionString: process.env.DATABASE_URL });
-var app = (0, import_express19.default)();
+var app = (0, import_express20.default)();
 app.set("trust proxy", 1);
 app.use(
   (0, import_pino_http.default)({
@@ -107358,7 +107797,7 @@ app.use((0, import_compression.default)({
 }));
 app.post(
   "/api/stripe/webhook",
-  import_express19.default.raw({ type: "application/json" }),
+  import_express20.default.raw({ type: "application/json" }),
   async (req, res) => {
     const signature = req.headers["stripe-signature"];
     if (!signature) {
@@ -107397,13 +107836,13 @@ app.use((0, import_cors.default)({
   credentials: true
 }));
 app.use(
-  import_express19.default.json({
+  import_express20.default.json({
     verify: (req, _res, buf) => {
       req.rawBody = buf;
     }
   })
 );
-app.use(import_express19.default.urlencoded({ extended: true }));
+app.use(import_express20.default.urlencoded({ extended: true }));
 app.use(
   (0, import_express_session.default)({
     store: new PgSession2({

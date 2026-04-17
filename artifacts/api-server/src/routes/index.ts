@@ -15,6 +15,7 @@ import integrationsRouter from "./integrations";
 import adminRouter from "./admin";
 import realtimeRouter from "./realtime";
 import billingRouter from "./billing";
+import supportRouter from "./support";
 
 const router: IRouter = Router();
 
@@ -34,5 +35,6 @@ router.use(teamRouter);
 router.use(aiRouter);
 router.use(integrationsRouter);
 router.use(realtimeRouter);
+router.use(supportRouter);
 
 export default router;

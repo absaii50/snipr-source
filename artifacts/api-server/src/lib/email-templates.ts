@@ -228,3 +228,86 @@ export function getWelcomeEmailHtml(name: string, dashboardUrl: string): string 
     ${button("Go to Dashboard", dashboardUrl)}
   `);
 }
+
+/* ────────────────────── Support System templates ────────────────────── */
+
+function supportMessageBlock(body: string): string {
+  // Preserve line breaks, escape HTML.
+  return escHtml(body).replace(/\r?\n/g, "<br>");
+}
+
+function priorityBadge(priority: string): string {
+  const colors: Record<string, { bg: string; fg: string }> = {
+    urgent: { bg: "#FEE2E2", fg: "#B91C1C" },
+    high:   { bg: "#FEF3C7", fg: "#B45309" },
+    normal: { bg: "#E0E7FF", fg: "#3730A3" },
+    low:    { bg: "#F3F4F6", fg: "#4B5563" },
+  };
+  const c = colors[priority] ?? colors.normal;
+  return `<span style="display:inline-block;background:${c.bg};color:${c.fg};font-size:10px;font-weight:700;letter-spacing:0.06em;padding:3px 8px;border-radius:999px;text-transform:uppercase;">${escHtml(priority)}</span>`;
+}
+
+export function getSupportNewTicketAdminHtml(opts: {
+  subject: string; body: string; userName: string; userEmail: string; priority: string; ticketUrl: string;
+}): string {
+  return layout(`
+    <h1 style="color:${BRAND.dark};font-size:22px;font-weight:700;margin:0 0 4px;letter-spacing:-0.3px;">
+      New support ticket
+    </h1>
+    <p style="color:${BRAND.muted};font-size:13px;margin:0 0 20px;">
+      ${priorityBadge(opts.priority)}
+    </p>
+    <div style="background:${BRAND.light};border-radius:12px;padding:16px;margin-bottom:16px;">
+      <p style="color:${BRAND.muted};font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;margin:0 0 6px;">From</p>
+      <p style="color:${BRAND.dark};font-size:14px;font-weight:600;margin:0;">${escHtml(opts.userName)}</p>
+      <p style="color:${BRAND.text};font-size:13px;margin:2px 0 0;">${escHtml(opts.userEmail)}</p>
+    </div>
+    <div style="background:${BRAND.light};border-radius:12px;padding:16px;margin-bottom:16px;">
+      <p style="color:${BRAND.muted};font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;margin:0 0 6px;">Subject</p>
+      <p style="color:${BRAND.dark};font-size:15px;font-weight:600;margin:0;">${escHtml(opts.subject)}</p>
+    </div>
+    <div style="background:${BRAND.light};border-radius:12px;padding:16px;margin-bottom:16px;">
+      <p style="color:${BRAND.muted};font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;margin:0 0 8px;">Message</p>
+      <p style="color:${BRAND.text};font-size:14px;line-height:1.7;margin:0;">${supportMessageBlock(opts.body)}</p>
+    </div>
+    ${button("Open Ticket in Admin", opts.ticketUrl)}
+  `);
+}
+
+export function getSupportUserReplyAdminHtml(opts: {
+  subject: string; body: string; userName: string; userEmail: string; ticketUrl: string;
+}): string {
+  return layout(`
+    <h1 style="color:${BRAND.dark};font-size:22px;font-weight:700;margin:0 0 16px;letter-spacing:-0.3px;">
+      New reply from ${escHtml(opts.userName)}
+    </h1>
+    <p style="color:${BRAND.text};font-size:14px;margin:0 0 16px;">
+      Ticket: <strong>${escHtml(opts.subject)}</strong>
+    </p>
+    <div style="background:${BRAND.light};border-radius:12px;padding:16px;margin-bottom:16px;">
+      <p style="color:${BRAND.text};font-size:14px;line-height:1.7;margin:0;">${supportMessageBlock(opts.body)}</p>
+    </div>
+    ${button("Reply in Admin", opts.ticketUrl)}
+  `);
+}
+
+export function getSupportAdminReplyUserHtml(opts: {
+  subject: string; body: string; userName: string; ticketUrl: string;
+}): string {
+  return layout(`
+    <h1 style="color:${BRAND.dark};font-size:22px;font-weight:700;margin:0 0 8px;letter-spacing:-0.3px;">
+      Hi ${escHtml(opts.userName)},
+    </h1>
+    <p style="color:${BRAND.text};font-size:15px;line-height:1.6;margin:0 0 16px;">
+      Our support team has replied to your ticket <strong>${escHtml(opts.subject)}</strong>.
+    </p>
+    <div style="background:${BRAND.light};border-radius:12px;padding:16px;margin-bottom:16px;border-left:3px solid ${BRAND.primary};">
+      <p style="color:${BRAND.muted};font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;margin:0 0 8px;">Support Team</p>
+      <p style="color:${BRAND.text};font-size:14px;line-height:1.7;margin:0;">${supportMessageBlock(opts.body)}</p>
+    </div>
+    ${button("View & Reply", opts.ticketUrl)}
+    <p style="color:${BRAND.muted};font-size:12px;line-height:1.5;margin:20px 0 0;">
+      You can reply directly from your Snipr dashboard. Replies are kept private between you and the Snipr support team.
+    </p>
+  `);
+}

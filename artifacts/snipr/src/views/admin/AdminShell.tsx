@@ -4,6 +4,7 @@ import {
   LayoutDashboard, Users, Link2, Globe, BarChart3,
   CreditCard, FileText, Sparkles, Settings, LogOut, ShieldCheck,
   ChevronRight, Menu, X, BookOpen, Mail, ScrollText, Bell, Search,
+  LifeBuoy,
 } from "lucide-react";
 import { apiFetch } from "./utils";
 import CommandPalette from "./CommandPalette";
@@ -11,7 +12,7 @@ import NotificationsDropdown from "./NotificationsDropdown";
 
 export type AdminTab =
   | "overview" | "users" | "links" | "domains"
-  | "analytics" | "plans" | "reports" | "email" | "ai" | "audit" | "settings" | "guide";
+  | "analytics" | "plans" | "reports" | "email" | "support" | "ai" | "audit" | "settings" | "guide";
 
 const NAV: { id: AdminTab; label: string; icon: React.ElementType; divider?: boolean }[] = [
   { id: "overview",  label: "Overview",    icon: LayoutDashboard },
@@ -22,6 +23,7 @@ const NAV: { id: AdminTab; label: string; icon: React.ElementType; divider?: boo
   { id: "plans",     label: "Plans",       icon: CreditCard },
   { id: "reports",   label: "Reports",     icon: FileText },
   { id: "email",     label: "Email",       icon: Mail },
+  { id: "support",   label: "Support",     icon: LifeBuoy },
   { id: "ai",        label: "AI Insights", icon: Sparkles },
   { id: "audit",     label: "Audit Log",   icon: ScrollText },
   { id: "settings",  label: "Settings",    icon: Settings },
@@ -37,6 +39,7 @@ const TAB_TITLES: Record<AdminTab, { title: string; sub: string }> = {
   plans:     { title: "Plans & Subscriptions", sub: "User plan distribution overview" },
   reports:   { title: "Reports & Logs",      sub: "Recent platform activity" },
   email:     { title: "Email",              sub: "Email logs, verification, and delivery" },
+  support:   { title: "Support Tickets",     sub: "Manage customer support conversations" },
   ai:        { title: "AI Insights",         sub: "Intelligent platform summaries" },
   audit:     { title: "Audit Log",           sub: "Track all admin actions and changes" },
   settings:  { title: "Settings",            sub: "Platform configuration and controls" },
