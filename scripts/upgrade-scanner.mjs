@@ -22,7 +22,7 @@ import { Resend } from "/var/www/snipr/node_modules/.pnpm/resend@6.9.4/node_modu
 const CLICK_THRESHOLD = 10_000;
 const COOLDOWN_DAYS   = 30;             // don't email the same user more than once per 30d
 const LOOKBACK_HOURS  = 24 * 30;        // 30-day rolling window
-const ELIGIBLE_PLANS  = ["free", "starter"];
+const ELIGIBLE_PLANS  = ["free"];       // Only nudge free-plan users — paid users already have higher allowances.
 const DRY_RUN         = process.argv.includes("--dry");
 
 /* ───────────── Env ───────────── */
@@ -53,8 +53,8 @@ const layout  = (content) => `<!DOCTYPE html>
   <tr><td align="center" style="padding-top:24px;"><p style="color:${BRAND.muted};font-size:12px;margin:0;line-height:1.5;">Snipr &mdash; AI-Powered Link Intelligence<br><a href="https://snipr.sh" style="color:${BRAND.primary};text-decoration:none;">snipr.sh</a></p></td></tr>
 </table></td></tr></table></body></html>`;
 
-function renderMonthlyCapEmail({ userName, monthlyClicks, uniqueVisitors, peakPerMinute, linkSlugs, currentPlan }) {
-  const planLabel = currentPlan === "free" ? "Free" : "Starter";
+function renderMonthlyCapEmail({ userName, monthlyClicks, uniqueVisitors, peakPerMinute, linkSlugs }) {
+  const planLabel = "Free";
   const billingUrl = `${FRONTEND_URL}/billing`;
   const supportUrl = `${FRONTEND_URL}/support`;
 
@@ -162,10 +162,8 @@ for (const u of candidates) {
     uniqueVisitors: u.uniques_30d,
     peakPerMinute,
     linkSlugs,
-    currentPlan: u.plan,
   });
-  const planLabel = u.plan === "free" ? "Free" : "Starter";
-  const subject = `You've hit your Snipr ${planLabel}-plan monthly limit — time to upgrade`;
+  const subject = `You've hit your Snipr Free-plan monthly limit — time to upgrade`;
 
   if (DRY_RUN) {
     console.log(`  [DRY] ${u.email}  plan=${u.plan}  clicks_30d=${u.clicks_30d}  uniques=${u.uniques_30d}  peak/min=${peakPerMinute}`);
