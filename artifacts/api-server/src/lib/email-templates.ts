@@ -311,3 +311,89 @@ export function getSupportAdminReplyUserHtml(opts: {
     </p>
   `);
 }
+
+/* ────────────────── Abuse / Suspicious Activity Warning ────────────────── */
+
+export function getAbuseWarningEmailHtml(opts: {
+  userName: string;
+  reminderNumber: number;               // 1 or 2
+  deadlineHours: number;                // hours until enforcement
+  detectedClicks: number;
+  uniqueVisitors: number;
+  peakPerMinute: number;
+  linkSlugs: string[];
+  dashboardUrl: string;
+  supportUrl: string;
+}): string {
+  const isFirst = opts.reminderNumber === 1;
+  const headline = isFirst
+    ? "We've detected unusual traffic on your Snipr links"
+    : "Reminder: Unusual traffic still active on your Snipr links";
+  const intro = isFirst
+    ? "This is an automated safety notice from Snipr. Our systems flagged traffic patterns on your account that strongly resemble automated (bot) clicks rather than real human visits."
+    : "We sent you a notice 24 hours ago about unusual traffic on your account, but the pattern is still active. This is our second and final notice before we take automatic protective action.";
+
+  return layout(`
+    <div style="display:inline-block;background:#FEF2F2;color:#B91C1C;font-size:10px;font-weight:700;letter-spacing:0.08em;padding:4px 10px;border-radius:999px;text-transform:uppercase;margin-bottom:12px;">
+      ${isFirst ? "Notice" : "Final Reminder"}
+    </div>
+    <h1 style="color:${BRAND.dark};font-size:22px;font-weight:700;margin:0 0 8px;letter-spacing:-0.3px;line-height:1.3;">
+      ${escHtml(headline)}
+    </h1>
+    <p style="color:${BRAND.text};font-size:15px;line-height:1.6;margin:0 0 4px;">
+      Hi ${escHtml(opts.userName)},
+    </p>
+    <p style="color:${BRAND.text};font-size:14px;line-height:1.7;margin:0 0 16px;">
+      ${escHtml(intro)}
+    </p>
+
+    <div style="background:${BRAND.light};border-radius:12px;padding:16px;margin-bottom:16px;border-left:3px solid #DC2626;">
+      <p style="color:${BRAND.muted};font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;margin:0 0 10px;">What we observed (last 24h)</p>
+      <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;">
+        <tr>
+          <td style="padding:4px 0;color:${BRAND.text};font-size:13px;">Total clicks recorded</td>
+          <td style="padding:4px 0;color:${BRAND.dark};font-size:13px;font-weight:700;text-align:right;">${opts.detectedClicks.toLocaleString()}</td>
+        </tr>
+        <tr>
+          <td style="padding:4px 0;color:${BRAND.text};font-size:13px;">Unique visitors</td>
+          <td style="padding:4px 0;color:${BRAND.dark};font-size:13px;font-weight:700;text-align:right;">${opts.uniqueVisitors.toLocaleString()}</td>
+        </tr>
+        <tr>
+          <td style="padding:4px 0;color:${BRAND.text};font-size:13px;">Peak clicks per minute</td>
+          <td style="padding:4px 0;color:${BRAND.dark};font-size:13px;font-weight:700;text-align:right;">${opts.peakPerMinute.toLocaleString()}</td>
+        </tr>
+        <tr>
+          <td style="padding:4px 0;color:${BRAND.text};font-size:13px;">Links affected</td>
+          <td style="padding:4px 0;color:${BRAND.dark};font-size:13px;font-weight:700;text-align:right;">${opts.linkSlugs.map((s) => `<code style="background:#fff;border:1px solid #E4E4EC;border-radius:4px;padding:1px 6px;font-family:monospace;font-size:12px;">/${escHtml(s)}</code>`).join(" ")}</td>
+        </tr>
+      </table>
+    </div>
+
+    <p style="color:${BRAND.text};font-size:14px;line-height:1.7;margin:0 0 8px;font-weight:600;">Why this matters</p>
+    <p style="color:${BRAND.text};font-size:14px;line-height:1.7;margin:0 0 16px;">
+      Using short links to funnel automated traffic — for example, to inflate streaming plays, ad impressions, or referral numbers — is prohibited under Snipr's Acceptable Use Policy and can damage the reputation of our shared domains (snipr.sh, snipr.is, snipr.page, snipr.my) for everyone.
+    </p>
+
+    <div style="background:#FFFBEB;border:1px solid #FDE68A;border-radius:12px;padding:16px;margin-bottom:16px;">
+      <p style="color:#92400E;font-size:13px;font-weight:700;margin:0 0 6px;">What happens next</p>
+      <p style="color:#78350F;font-size:13px;line-height:1.6;margin:0;">
+        ${isFirst
+          ? `If the bot-like traffic continues over the next ${opts.deadlineHours} hours, the affected links will be automatically flagged and shown in red on your dashboard — and redirects may be rate-limited. You can avoid this by stopping the automated traffic or replying to explain the legitimate reason for it.`
+          : `In approximately ${opts.deadlineHours} hours, the affected links will be flagged and shown in red on your dashboard, and we may throttle their redirects. Reply to this email or open a support ticket now if you believe this is a mistake.`}
+      </p>
+    </div>
+
+    <p style="color:${BRAND.text};font-size:14px;line-height:1.7;margin:0 0 8px;font-weight:600;">What you can do</p>
+    <ul style="color:${BRAND.text};font-size:14px;line-height:1.8;margin:0 0 16px;padding-left:22px;">
+      <li>Stop any traffic-inflation, bot, or click-exchange services pointing at your links.</li>
+      <li>Review your links in the dashboard and remove any that aren't for legitimate sharing.</li>
+      <li>If this is a genuine use case (e.g., a real campaign), open a support ticket so we can verify.</li>
+    </ul>
+
+    ${button("Open My Dashboard", opts.dashboardUrl)}
+
+    <p style="color:${BRAND.muted};font-size:12px;line-height:1.6;margin:20px 0 0;text-align:center;">
+      Have questions? <a href="${opts.supportUrl}" style="color:${BRAND.primary};text-decoration:none;">Open a support ticket</a> and our team will review with you personally.
+    </p>
+  `);
+}

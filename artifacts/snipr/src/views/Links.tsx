@@ -15,6 +15,7 @@ import {
   CheckSquare, Square, XCircle, FolderInput, FolderOpen, Tag, X,
   LayoutList, LayoutGrid, ArrowUpRight, MoreHorizontal,
   BarChart3, Filter, Activity, Zap, Sparkles, Link2,
+  AlertTriangle,
 } from "lucide-react";
 
 type FilterType = "all" | "active" | "disabled";
@@ -534,10 +535,15 @@ function LinkListRow({
   const folder = linkFolderId ? folderMap[linkFolderId] : null;
   const shortDomain = getShortDomain(shortUrl);
   const displayShortUrl = shortDomain ? `${shortDomain}/${link.slug}` : `/r/${link.slug}`;
+  const isFlagged = !!(link as any).flaggedAt;
+  const flaggedReason = (link as any).flaggedReason as string | null | undefined;
 
   return (
-    <div className={`group transition-all duration-150 ${isSelected ? "bg-[#8B5CF6]/5" : "hover:bg-[#27272A]/30"}`}
-      style={isSelected ? { boxShadow: "inset 3px 0 0 #8B5CF6" } : undefined}>
+    <div className={`group transition-all duration-150 ${
+      isFlagged ? "bg-[#DC2626]/5 hover:bg-[#DC2626]/10" :
+      isSelected ? "bg-[#8B5CF6]/5" : "hover:bg-[#27272A]/30"
+    }`}
+      style={isSelected ? { boxShadow: "inset 3px 0 0 #8B5CF6" } : isFlagged ? { boxShadow: "inset 3px 0 0 #DC2626" } : undefined}>
       <div className="flex items-center gap-4 px-5 py-3.5">
         <button onClick={onSelect} className="text-[#3F3F46] hover:text-[#8B5CF6] transition-colors shrink-0 hidden sm:block">
           {isSelected ? <CheckSquare className="w-4 h-4 text-[#8B5CF6]" /> : <Square className="w-4 h-4" />}
@@ -556,6 +562,14 @@ function LinkListRow({
               {isCopied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
             </button>
             {!link.enabled && <span className="shrink-0 text-[10px] font-bold text-[#FCA5A5] bg-[#FCA5A5]/10 px-1.5 py-0.5 rounded-md leading-none uppercase tracking-wider">off</span>}
+            {isFlagged && (
+              <span
+                className="shrink-0 inline-flex items-center gap-1 text-[10px] font-bold text-[#FCA5A5] bg-[#DC2626]/15 border border-[#DC2626]/40 px-1.5 py-0.5 rounded-md leading-none uppercase tracking-wider"
+                title={flaggedReason || "This link was flagged for unusual traffic. Please contact support."}
+              >
+                <AlertTriangle className="w-2.5 h-2.5" /> flagged
+              </span>
+            )}
           </div>
           <div className="flex items-center gap-1.5">
             <ArrowUpRight className="w-3 h-3 text-[#3F3F46] shrink-0" />
@@ -634,11 +648,26 @@ function LinkGridCard({
   const clickPercent = maxClicks > 0 ? (clicks / maxClicks) * 100 : 0;
   const shortDomain = getShortDomain(shortUrl);
   const displayShortUrl = shortDomain ? `${shortDomain}/${link.slug}` : `/r/${link.slug}`;
+  const isFlagged = !!(link as any).flaggedAt;
+  const flaggedReason = (link as any).flaggedReason as string | null | undefined;
 
   return (
-    <div className={`relative overflow-hidden rounded-xl p-4 transition-all duration-200 group ${isSelected ? "ring-1 ring-[#8B5CF6]/40" : ""}`}
-      style={{ background: isSelected ? "rgba(139,92,246,0.05)" : "#18181B", border: isSelected ? "1px solid rgba(139,92,246,0.3)" : "1px solid #27272A" }}>
-      <div className="absolute top-0 left-0 right-0 h-[2px]" style={{ background: link.enabled ? "linear-gradient(90deg, #8B5CF6, #06B6D4)" : "#3F3F46" }} />
+    <div className={`relative overflow-hidden rounded-xl p-4 transition-all duration-200 group ${
+      isFlagged ? "ring-1 ring-[#DC2626]/40" : isSelected ? "ring-1 ring-[#8B5CF6]/40" : ""
+    }`}
+      style={{
+        background: isFlagged ? "rgba(220,38,38,0.06)" : isSelected ? "rgba(139,92,246,0.05)" : "#18181B",
+        border: isFlagged ? "1px solid rgba(220,38,38,0.35)" : isSelected ? "1px solid rgba(139,92,246,0.3)" : "1px solid #27272A",
+      }}>
+      <div className="absolute top-0 left-0 right-0 h-[2px]" style={{ background: isFlagged ? "#DC2626" : link.enabled ? "linear-gradient(90deg, #8B5CF6, #06B6D4)" : "#3F3F46" }} />
+      {isFlagged && (
+        <span
+          className="absolute top-2 left-3 inline-flex items-center gap-1 text-[9px] font-bold text-[#FCA5A5] bg-[#DC2626]/20 border border-[#DC2626]/50 px-1.5 py-0.5 rounded-md leading-none uppercase tracking-wider z-10"
+          title={flaggedReason || "This link was flagged for unusual traffic. Please contact support."}
+        >
+          <AlertTriangle className="w-2.5 h-2.5" /> Flagged
+        </span>
+      )}
 
       <button onClick={onSelect} className="absolute top-3 right-3 text-[#3F3F46] hover:text-[#8B5CF6] transition-colors opacity-0 group-hover:opacity-100">
         {isSelected ? <CheckSquare className="w-4 h-4 text-[#8B5CF6]" /> : <Square className="w-4 h-4" />}

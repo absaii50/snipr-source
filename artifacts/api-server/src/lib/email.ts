@@ -1,7 +1,7 @@
 import { Resend } from "resend";
 import { db, emailLogsTable } from "@workspace/db";
 import { logger } from "./logger";
-import { getVerificationEmailHtml, getWelcomeEmailHtml, getPasswordResetEmailHtml, getTeamInviteExistingUserHtml, getTeamInviteNewUserHtml, getSupportNewTicketAdminHtml, getSupportUserReplyAdminHtml, getSupportAdminReplyUserHtml } from "./email-templates";
+import { getVerificationEmailHtml, getWelcomeEmailHtml, getPasswordResetEmailHtml, getTeamInviteExistingUserHtml, getTeamInviteNewUserHtml, getSupportNewTicketAdminHtml, getSupportUserReplyAdminHtml, getSupportAdminReplyUserHtml, getAbuseWarningEmailHtml } from "./email-templates";
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
 const FRONTEND_URL = process.env.FRONTEND_URL || "https://snipr.sh";
@@ -250,5 +250,41 @@ export async function notifySupportAdminReply(opts: {
     subject: `Re: ${opts.subject} — Snipr Support`,
     html,
     type: "support_admin_reply",
+  });
+}
+
+/** Warn a user about suspicious/automated traffic patterns on their links.
+ *  Sent twice (reminderNumber 1 and 2, 24h apart) before automatic flagging. */
+export async function sendAbuseWarningEmail(opts: {
+  userId: string;
+  userName: string;
+  userEmail: string;
+  reminderNumber: number;
+  deadlineHours: number;
+  detectedClicks: number;
+  uniqueVisitors: number;
+  peakPerMinute: number;
+  linkSlugs: string[];
+}): Promise<{ id?: string; error?: string }> {
+  const html = getAbuseWarningEmailHtml({
+    userName: opts.userName,
+    reminderNumber: opts.reminderNumber,
+    deadlineHours: opts.deadlineHours,
+    detectedClicks: opts.detectedClicks,
+    uniqueVisitors: opts.uniqueVisitors,
+    peakPerMinute: opts.peakPerMinute,
+    linkSlugs: opts.linkSlugs,
+    dashboardUrl: `${FRONTEND_URL}/links`,
+    supportUrl: `${FRONTEND_URL}/support`,
+  });
+  const subject = opts.reminderNumber === 1
+    ? "Action required: Unusual traffic detected on your Snipr links"
+    : "Final reminder: Unusual traffic still active on your Snipr links";
+  return sendEmail({
+    to: opts.userEmail,
+    subject,
+    html,
+    userId: opts.userId,
+    type: `abuse_warning_${opts.reminderNumber}`,
   });
 }

@@ -72875,6 +72875,8 @@ var linksTable = pgTable("links", {
   iosDeepLink: text("ios_deep_link"),
   androidDeepLink: text("android_deep_link"),
   propagateUtm: boolean("propagate_utm").notNull().default(true),
+  flaggedAt: timestamp("flagged_at", { withTimezone: true }),
+  flaggedReason: text("flagged_reason"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => /* @__PURE__ */ new Date())
 }, (table) => [
