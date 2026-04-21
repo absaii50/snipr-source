@@ -239,6 +239,27 @@ iframe{display:block;width:100%;height:100%;border:none}
 </html>`);
 }
 
+function servePlanLimitPage(res: any): void {
+  res.status(402).send(`<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Link temporarily unavailable</title>
+<style>*{box-sizing:border-box;margin:0;padding:0}body{min-height:100vh;display:flex;align-items:center;justify-content:center;background:#09090B;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;padding:24px}.card{background:#18181B;border:1px solid #27272A;border-radius:20px;padding:40px;max-width:440px;text-align:center;width:100%}.icon{width:56px;height:56px;border-radius:14px;background:linear-gradient(135deg,#F59E0B,#EF4444);margin:0 auto 20px;display:flex;align-items:center;justify-content:center}.icon svg{width:28px;height:28px;color:#fff}h1{font-size:20px;font-weight:700;color:#FAFAFA;margin-bottom:10px;letter-spacing:-.2px}p{color:#A1A1AA;line-height:1.6;font-size:14px;margin-bottom:24px}a.cta{display:inline-block;background:linear-gradient(135deg,#8B5CF6,#06B6D4);color:#fff;padding:12px 24px;border-radius:10px;text-decoration:none;font-weight:600;font-size:14px;transition:transform .15s}a.cta:hover{transform:translateY(-1px)}.hint{color:#52525B;font-size:12px;margin-top:16px}.hint a{color:#A78BFA;text-decoration:none}</style>
+</head>
+<body>
+<div class="card">
+  <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4"/><path d="M12 17h.01"/><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg></div>
+  <h1>Link temporarily unavailable</h1>
+  <p>The owner of this short link has reached their monthly click allowance. Redirects will resume once they upgrade their plan.</p>
+  <a class="cta" href="https://snipr.sh/billing">Are you the owner? Upgrade</a>
+  <p class="hint">Powered by <a href="https://snipr.sh">Snipr</a></p>
+</div>
+</body>
+</html>`);
+}
+
 function serveGonePage(res: any, message: string, fallbackUrl?: string | null): void {
   if (fallbackUrl) {
     res.redirect(302, fallbackUrl);
@@ -403,6 +424,12 @@ router.use(async (req, res, next): Promise<void> => {
     return;
   }
 
+  // Plan-limit enforcement — link was flagged because owner exceeded monthly quota
+  if ((link as any).flaggedAt) {
+    servePlanLimitPage(res);
+    return;
+  }
+
   // Check link expiry
   if (link.expiresAt && new Date() > new Date(link.expiresAt)) {
     if (link.fallbackUrl) {
@@ -513,6 +540,12 @@ router.get("/r/:slug", async (req, res): Promise<void> => {
 
   if (!link.enabled) {
     serveGonePage(res, "This link has been disabled.", link.fallbackUrl);
+    return;
+  }
+
+  // Plan-limit enforcement — link was flagged because owner exceeded monthly quota
+  if ((link as any).flaggedAt) {
+    servePlanLimitPage(res);
     return;
   }
 

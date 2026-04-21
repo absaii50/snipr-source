@@ -114,6 +114,7 @@ const PLAN_LADDER = {
 /* ───────────── Config ───────────── */
 const COOLDOWN_DAYS = 30;
 const LOOKBACK_HOURS = 24 * 30;
+const ENFORCEMENT_DELAY_DAYS = 3;   // flag links this many days after the email if user still over cap
 const DRY_RUN = process.argv.includes("--dry");
 
 /* ───────────── Env ───────────── */
@@ -278,5 +279,97 @@ for (const [planKey, tier] of Object.entries(PLAN_LADDER)) {
   }
 }
 
+/* ───────────── Pass 2: Enforcement — flag links 3 days after email ───────────── */
+let flaggedCount = 0;
+for (const [planKey, tier] of Object.entries(PLAN_LADDER)) {
+  // Users who got the email >= 3 days ago, still on this plan, still over cap
+  const { rows: offenders } = await pg.query(
+    `WITH last_email AS (
+       SELECT DISTINCT ON (el.user_id) el.user_id, el.created_at AS emailed_at
+       FROM email_logs el
+       WHERE el.type = 'upgrade_monthly_cap'
+         AND el.status = 'sent'
+         AND el.user_id IS NOT NULL
+       ORDER BY el.user_id, el.created_at DESC
+     )
+     SELECT u.id, u.email, le.emailed_at,
+       (SELECT COUNT(*)::bigint
+        FROM click_events ce
+        JOIN links l ON l.id = ce.link_id
+        JOIN workspaces w ON w.id = l.workspace_id
+        WHERE w.user_id = u.id AND ce.timestamp > NOW() - INTERVAL '30 days'
+       ) AS clicks_30d
+     FROM users u
+     JOIN last_email le ON le.user_id = u.id
+     WHERE u.plan = $1
+       AND u.suspended_at IS NULL
+       AND le.emailed_at <= NOW() - ($2 || ' days')::interval`,
+    [planKey, String(ENFORCEMENT_DELAY_DAYS)]
+  );
+
+  for (const offender of offenders) {
+    if (Number(offender.clicks_30d) < tier.monthlyClicks) continue; // they're under cap, skip
+
+    if (DRY_RUN) {
+      console.log(`    [DRY ENFORCE] ${offender.email}  plan=${planKey}  clicks=${Number(offender.clicks_30d).toLocaleString()}  emailed_at=${offender.emailed_at.toISOString()}`);
+      continue;
+    }
+    const reason = `Monthly click limit reached. ${tier.label} plan allows ${tier.monthlyClicks.toLocaleString()} clicks/month. Upgrade to ${tier.nextLabel} to restore access.`;
+    const { rowCount } = await pg.query(
+      `UPDATE links SET flagged_at = NOW(), flagged_reason = $1
+       WHERE workspace_id IN (SELECT id FROM workspaces WHERE user_id = $2)
+         AND flagged_at IS NULL
+         AND enabled = true`,
+      [reason, offender.id]
+    );
+    if (rowCount > 0) {
+      flaggedCount += rowCount;
+      console.log(`    ENFORCE: flagged ${rowCount} link(s) for ${offender.email} (plan=${planKey}, ${Number(offender.clicks_30d).toLocaleString()} clicks)`);
+    }
+  }
+}
+
+/* ───────────── Pass 3: Unflag — users who upgraded or dropped under cap ───────────── */
+let unflaggedCount = 0;
+const { rows: flaggedUsers } = await pg.query(
+  `SELECT DISTINCT w.user_id, u.plan, u.email
+   FROM links l
+   JOIN workspaces w ON w.id = l.workspace_id
+   JOIN users u ON u.id = w.user_id
+   WHERE l.flagged_at IS NOT NULL
+     AND u.suspended_at IS NULL`
+);
+for (const u of flaggedUsers) {
+  const tier = PLAN_LADDER[u.plan];
+  // Enterprise = unlimited. If they're on a plan not in the ladder (e.g. enterprise), always unflag.
+  const cap = tier?.monthlyClicks ?? Infinity;
+
+  const { rows: [{ count }] } = await pg.query(
+    `SELECT COUNT(*)::bigint AS count
+     FROM click_events ce
+     JOIN links l ON l.id = ce.link_id
+     JOIN workspaces w ON w.id = l.workspace_id
+     WHERE w.user_id = $1 AND ce.timestamp > NOW() - INTERVAL '30 days'`,
+    [u.user_id]
+  );
+
+  if (Number(count) < cap) {
+    if (DRY_RUN) {
+      console.log(`    [DRY UNFLAG] ${u.email}  plan=${u.plan}  clicks=${Number(count).toLocaleString()} < cap=${cap === Infinity ? "∞" : cap.toLocaleString()}`);
+      continue;
+    }
+    const { rowCount } = await pg.query(
+      `UPDATE links SET flagged_at = NULL, flagged_reason = NULL
+       WHERE workspace_id IN (SELECT id FROM workspaces WHERE user_id = $1)
+         AND flagged_at IS NOT NULL`,
+      [u.user_id]
+    );
+    if (rowCount > 0) {
+      unflaggedCount += rowCount;
+      console.log(`    UNFLAG: restored ${rowCount} link(s) for ${u.email} (plan=${u.plan}, ${Number(count).toLocaleString()} < cap)`);
+    }
+  }
+}
+
 await pg.end();
-console.log(`[${new Date().toISOString()}] upgrade-scanner done  total_found=${totalFound}`);
+console.log(`[${new Date().toISOString()}] upgrade-scanner done  emailed=${totalFound}  flagged=${flaggedCount}  unflagged=${unflaggedCount}`);
