@@ -117,7 +117,26 @@ async function fetchUserContext({ signal }: { signal: AbortSignal }): Promise<Us
   try { const r = await fetch("/api/auth/context", { credentials: "include", signal }); return r.ok ? r.json() : null; }
   catch { return null; }
 }
-async function fetchSubscription({ signal }: { signal: AbortSignal }): Promise<{ plan: string } | null> {
+interface PlanUsage {
+  clicks30d: number;
+  cap: number | null;
+  percent: number;
+  overCap: boolean;
+  isFlagged: boolean;
+  flaggedLinksCount: number;
+  bannerState: "ok" | "warning" | "over_cap" | "flagged";
+  hoursUntilEnforcement: number | null;
+  nextPlanHint: string | null;
+}
+interface Subscription {
+  plan: string;
+  status?: string | null;
+  subscriptionId?: string | null;
+  renewsAt?: string | null;
+  expiresAt?: string | null;
+  usage?: PlanUsage;
+}
+async function fetchSubscription({ signal }: { signal: AbortSignal }): Promise<Subscription | null> {
   try { const r = await fetch("/api/billing/subscription", { credentials: "include", signal }); return r.ok ? r.json() : null; }
   catch { return null; }
 }
@@ -850,18 +869,6 @@ function SkeletonRows({ n }: { n: number }) {
 }
 
 /* ─────────────── Plan Usage Banner ─────────────── */
-interface PlanUsage {
-  clicks30d: number;
-  cap: number | null;
-  percent: number;
-  overCap: boolean;
-  isFlagged: boolean;
-  flaggedLinksCount: number;
-  bannerState: "ok" | "warning" | "over_cap" | "flagged";
-  hoursUntilEnforcement: number | null;
-  nextPlanHint: string | null;
-}
-
 function PlanUsageBanner({ usage }: { usage: PlanUsage | undefined }) {
   if (!usage || usage.bannerState === "ok") return null;
 
