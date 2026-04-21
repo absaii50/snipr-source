@@ -1,6 +1,6 @@
 import { Router, type IRouter, type Request, type Response } from "express";
-import { eq } from "drizzle-orm";
-import { db, usersTable } from "@workspace/db";
+import { eq, sql } from "drizzle-orm";
+import { db, usersTable, linksTable, workspacesTable, clickEventsTable } from "@workspace/db";
 import { requireAuth } from "../lib/auth";
 import { stripeService } from "../lib/stripeService";
 import { stripeStorage } from "../lib/stripeStorage";
@@ -11,6 +11,16 @@ const router: IRouter = Router();
 
 const VALID_PLANS = ["starter", "growth", "pro", "business", "enterprise"] as const;
 type PlanName = typeof VALID_PLANS[number];
+
+/** Monthly click cap per plan. null = unlimited (enterprise). */
+const PLAN_CLICK_CAPS: Record<string, number | null> = {
+  free: 10_000,
+  starter: 1_000_000,
+  growth: 5_000_000,
+  pro: 25_000_000,
+  business: 100_000_000,
+  enterprise: null,
+};
 
 function isValidPlan(plan: string): plan is PlanName {
   return VALID_PLANS.includes(plan as PlanName);
@@ -142,12 +152,81 @@ router.get("/billing/subscription", requireAuth, async (req: Request, res: Respo
     }
   }
 
+  // Usage + flag state for the dashboard banner
+  const cap = PLAN_CLICK_CAPS[user.plan] ?? null;
+  const [{ clicks30d, flaggedCount }] = await db
+    .select({
+      clicks30d: sql<number>`(
+        SELECT COUNT(*)::int
+        FROM ${clickEventsTable} ce
+        JOIN ${linksTable} l ON l.id = ce.link_id
+        JOIN ${workspacesTable} w ON w.id = l.workspace_id
+        WHERE w.user_id = ${user.id}
+          AND ce.timestamp > NOW() - INTERVAL '30 days'
+      )`,
+      flaggedCount: sql<number>`(
+        SELECT COUNT(*)::int
+        FROM ${linksTable} l
+        JOIN ${workspacesTable} w ON w.id = l.workspace_id
+        WHERE w.user_id = ${user.id}
+          AND l.flagged_at IS NOT NULL
+      )`,
+    })
+    .from(usersTable)
+    .where(eq(usersTable.id, user.id));
+
+  // When did we last send this user an upgrade email? Drives the banner countdown.
+  const lastEmailResult = await db.execute(sql`
+    SELECT created_at
+    FROM email_logs
+    WHERE user_id = ${user.id}
+      AND (type = 'upgrade_monthly_cap' OR type LIKE 'abuse_warning%')
+      AND status = 'sent'
+    ORDER BY created_at DESC
+    LIMIT 1
+  `);
+  const lastEmailRow = (lastEmailResult.rows?.[0] ?? lastEmailResult[0] ?? null) as { created_at: Date | string } | null;
+
+  const used = Number(clicks30d ?? 0);
+  const percent = cap ? Math.round((used / cap) * 100) : 0;
+  const isFlagged = Number(flaggedCount ?? 0) > 0;
+  const overCap = cap !== null && used >= cap;
+
+  let bannerState: "ok" | "warning" | "over_cap" | "flagged" = "ok";
+  if (isFlagged) bannerState = "flagged";
+  else if (overCap) bannerState = "over_cap";
+  else if (percent >= 80) bannerState = "warning";
+
+  let hoursUntilEnforcement: number | null = null;
+  if (bannerState === "over_cap" && lastEmailRow?.created_at) {
+    const emailedAt = new Date(lastEmailRow.created_at).getTime();
+    const enforceAt = emailedAt + 3 * 24 * 60 * 60 * 1000;
+    const remaining = Math.max(0, Math.round((enforceAt - Date.now()) / (1000 * 60 * 60)));
+    hoursUntilEnforcement = remaining;
+  }
+
   res.json({
     plan: user.plan,
     status: user.stripeSubscriptionStatus ?? null,
     subscriptionId: user.stripeSubscriptionId ?? null,
     renewsAt: renewsAt ?? user.planRenewsAt ?? null,
     expiresAt: expiresAt ?? user.planExpiresAt ?? null,
+    usage: {
+      clicks30d: used,
+      cap,
+      percent,
+      overCap,
+      isFlagged,
+      flaggedLinksCount: Number(flaggedCount ?? 0),
+      bannerState,
+      hoursUntilEnforcement,
+      nextPlanHint:
+        user.plan === "free" ? "starter" :
+        user.plan === "starter" ? "growth" :
+        user.plan === "growth" ? "pro" :
+        user.plan === "pro" ? "business" :
+        user.plan === "business" ? "enterprise" : null,
+    },
   });
 });
 

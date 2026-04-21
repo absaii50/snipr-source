@@ -114,7 +114,8 @@ const PLAN_LADDER = {
 /* ───────────── Config ───────────── */
 const COOLDOWN_DAYS = 30;
 const LOOKBACK_HOURS = 24 * 30;
-const ENFORCEMENT_DELAY_DAYS = 3;   // flag links this many days after the email if user still over cap
+const REMINDER_AFTER_HOURS = 48;    // send reminder email (email #2) this many hours after email #1
+const ENFORCEMENT_DELAY_DAYS = 3;   // flag links this many days after email #1 if user still over cap
 const DRY_RUN = process.argv.includes("--dry");
 
 /* ───────────── Env ───────────── */
@@ -279,6 +280,110 @@ for (const [planKey, tier] of Object.entries(PLAN_LADDER)) {
   }
 }
 
+/* ───────────── Pass 1b: Send reminder email (email #2) at 48h ───────────── */
+function renderReminderEmail({ userName, currentPlanLabel, nextPlanLabel, nextPlanPrice, monthlyClicks, currentCap, hoursUntilThrottle }) {
+  const billingUrl = `${FRONTEND_URL}/billing`;
+  const dashboardUrl = `${FRONTEND_URL}/links`;
+  const supportUrl = `${FRONTEND_URL}/support`;
+  return layout(`
+    <div style="display:inline-block;background:#FEF2F2;color:#B91C1C;font-size:10px;font-weight:700;letter-spacing:0.08em;padding:4px 10px;border-radius:999px;text-transform:uppercase;margin-bottom:12px;">⚠ Final Notice</div>
+    <h1 style="color:${BRAND.dark};font-size:22px;font-weight:700;margin:0 0 8px;letter-spacing:-0.3px;line-height:1.3;">Your links will be throttled in ${hoursUntilThrottle} hours</h1>
+    <p style="color:${BRAND.text};font-size:15px;line-height:1.6;margin:0 0 4px;">Hi ${escHtml(userName)},</p>
+    <p style="color:${BRAND.text};font-size:14px;line-height:1.7;margin:0 0 16px;">Two days ago we let you know you'd exceeded your ${escHtml(currentPlanLabel)}-plan monthly click allowance. Your account is still over the limit, and your links will be automatically throttled in approximately <strong>${hoursUntilThrottle} hours</strong> unless you upgrade.</p>
+    <div style="background:#FEF2F2;border:1px solid #FCA5A5;border-radius:12px;padding:16px;margin-bottom:16px;">
+      <p style="color:#B91C1C;font-size:13px;font-weight:700;margin:0 0 8px;">Here's what will happen if you don't upgrade</p>
+      <ul style="color:#78350F;font-size:13px;line-height:1.7;margin:0;padding-left:20px;">
+        <li>Anyone clicking your short links will see a "Link temporarily unavailable" page</li>
+        <li>Redirects will stop working until you upgrade</li>
+        <li>Your link analytics and click history stay intact — nothing is lost</li>
+        <li>The moment you upgrade, everything resumes automatically</li>
+      </ul>
+    </div>
+    <div style="background:${BRAND.light};border-radius:12px;padding:16px;margin-bottom:16px;border-left:3px solid ${BRAND.primary};">
+      <p style="color:${BRAND.muted};font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;margin:0 0 10px;">Your current usage</p>
+      <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;">
+        <tr><td style="padding:4px 0;color:${BRAND.text};font-size:13px;">Clicks used (last 30 days)</td><td style="padding:4px 0;color:${BRAND.dark};font-size:13px;font-weight:700;text-align:right;">${monthlyClicks.toLocaleString()}</td></tr>
+        <tr><td style="padding:4px 0;color:${BRAND.text};font-size:13px;">${escHtml(currentPlanLabel)} plan allowance</td><td style="padding:4px 0;color:${BRAND.dark};font-size:13px;font-weight:700;text-align:right;">${currentCap.toLocaleString()}</td></tr>
+        <tr><td style="padding:4px 0;color:#B91C1C;font-size:13px;font-weight:700;">Over by</td><td style="padding:4px 0;color:#B91C1C;font-size:13px;font-weight:700;text-align:right;">${(monthlyClicks - currentCap).toLocaleString()}</td></tr>
+      </table>
+    </div>
+    ${button(`Upgrade to ${escHtml(nextPlanLabel)} — ${escHtml(nextPlanPrice)}`, billingUrl)}
+    <p style="color:${BRAND.muted};font-size:12px;line-height:1.6;margin:20px 0 0;text-align:center;">Questions? <a href="${supportUrl}" style="color:${BRAND.primary};text-decoration:none;">Open a support ticket</a> — we can help you pick the right plan before the deadline.</p>
+  `);
+}
+
+let reminderCount = 0;
+for (const [planKey, tier] of Object.entries(PLAN_LADDER)) {
+  const { rows: reminderCandidates } = await pg.query(
+    `WITH first_email AS (
+       -- Most recent upgrade email per user
+       SELECT DISTINCT ON (el.user_id) el.user_id, el.created_at AS emailed_at
+       FROM email_logs el
+       WHERE (el.type = 'upgrade_monthly_cap' OR el.type LIKE 'abuse_warning%')
+         AND el.status = 'sent'
+         AND el.user_id IS NOT NULL
+       ORDER BY el.user_id, el.created_at DESC
+     ),
+     already_reminded AS (
+       SELECT user_id FROM email_logs
+       WHERE type = 'upgrade_monthly_cap_reminder'
+         AND status = 'sent'
+         AND user_id IS NOT NULL
+         AND created_at > NOW() - INTERVAL '7 days'
+     )
+     SELECT u.id, u.name, u.email, u.plan, fe.emailed_at,
+       (SELECT COUNT(*)::bigint FROM click_events ce
+        JOIN links l ON l.id = ce.link_id
+        JOIN workspaces w ON w.id = l.workspace_id
+        WHERE w.user_id = u.id AND ce.timestamp > NOW() - INTERVAL '30 days'
+       ) AS clicks_30d
+     FROM users u
+     JOIN first_email fe ON fe.user_id = u.id
+     WHERE u.plan = $1
+       AND u.suspended_at IS NULL
+       AND fe.emailed_at <= NOW() - ($2 || ' hours')::interval
+       AND fe.emailed_at > NOW() - ($3 || ' days')::interval
+       AND u.id NOT IN (SELECT user_id FROM already_reminded)`,
+    [planKey, String(REMINDER_AFTER_HOURS), String(ENFORCEMENT_DELAY_DAYS)]
+  );
+
+  for (const u of reminderCandidates) {
+    const clicks30d = Number(u.clicks_30d);
+    if (clicks30d < tier.monthlyClicks) continue;  // no longer over cap, skip
+
+    const hoursUntil = Math.max(1, Math.round(ENFORCEMENT_DELAY_DAYS * 24 - (Date.now() - new Date(u.emailed_at).getTime()) / (1000 * 60 * 60)));
+    const html = renderReminderEmail({
+      userName: u.name || u.email.split("@")[0],
+      currentPlanLabel: tier.label,
+      nextPlanLabel: tier.nextLabel,
+      nextPlanPrice: tier.nextPrice,
+      monthlyClicks: clicks30d,
+      currentCap: tier.monthlyClicks,
+      hoursUntilThrottle: hoursUntil,
+    });
+    const subject = `Final notice: Your Snipr links will be throttled in ${hoursUntil} hours — upgrade to ${tier.nextLabel}`;
+
+    if (DRY_RUN) {
+      console.log(`    [DRY REMINDER] ${u.email}  plan=${planKey}  clicks=${clicks30d.toLocaleString()}  hours_until_throttle=${hoursUntil}`);
+      continue;
+    }
+
+    let status = "sent", resendId = null, errMsg = null;
+    try {
+      const { data, error } = await resend.emails.send({ from: FROM_EMAIL, to: u.email, subject, html });
+      if (error) { status = "failed"; errMsg = error.message; }
+      else       { resendId = data?.id ?? null; }
+    } catch (e) { status = "failed"; errMsg = String(e?.message ?? e); }
+
+    await pg.query(
+      `INSERT INTO email_logs (user_id, "to", subject, type, resend_id, status, error) VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+      [u.id, u.email, subject, "upgrade_monthly_cap_reminder", resendId, status, errMsg]
+    );
+    reminderCount++;
+    console.log(`    REMINDER: ${u.email}  plan=${planKey}  ${hoursUntil}h until throttle  →  ${status}${errMsg ? "  error=" + errMsg : ""}`);
+  }
+}
+
 /* ───────────── Pass 2: Enforcement — flag links 3 days after email ───────────── */
 let flaggedCount = 0;
 for (const [planKey, tier] of Object.entries(PLAN_LADDER)) {
@@ -374,4 +479,4 @@ for (const u of flaggedUsers) {
 }
 
 await pg.end();
-console.log(`[${new Date().toISOString()}] upgrade-scanner done  emailed=${totalFound}  flagged=${flaggedCount}  unflagged=${unflaggedCount}`);
+console.log(`[${new Date().toISOString()}] upgrade-scanner done  emailed=${totalFound}  reminders=${reminderCount}  flagged=${flaggedCount}  unflagged=${unflaggedCount}`);

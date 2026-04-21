@@ -272,6 +272,9 @@ export default function Dashboard() {
 
         <div className="px-4 sm:px-6 lg:px-8 pt-14 lg:pt-6 pb-20 max-w-[1280px] mx-auto w-full space-y-6">
 
+          {/* ── PLAN USAGE BANNER (warning / over_cap / flagged) ── */}
+          <PlanUsageBanner usage={subscription?.usage} />
+
           {/* ── HEADER ── */}
           <header className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 pt-2">
             <div>
@@ -842,6 +845,96 @@ function SkeletonRows({ n }: { n: number }) {
           <div className="w-10 h-5 rounded-md bg-[#27272A]" />
         </div>
       ))}
+    </div>
+  );
+}
+
+/* ─────────────── Plan Usage Banner ─────────────── */
+interface PlanUsage {
+  clicks30d: number;
+  cap: number | null;
+  percent: number;
+  overCap: boolean;
+  isFlagged: boolean;
+  flaggedLinksCount: number;
+  bannerState: "ok" | "warning" | "over_cap" | "flagged";
+  hoursUntilEnforcement: number | null;
+  nextPlanHint: string | null;
+}
+
+function PlanUsageBanner({ usage }: { usage: PlanUsage | undefined }) {
+  if (!usage || usage.bannerState === "ok") return null;
+
+  const themes = {
+    warning: {
+      bg: "rgba(245,158,11,0.08)",
+      border: "rgba(245,158,11,0.35)",
+      iconBg: "rgba(245,158,11,0.15)",
+      iconColor: "#F59E0B",
+      titleColor: "#FBBF24",
+      bodyColor: "#FCD34D",
+    },
+    over_cap: {
+      bg: "rgba(239,68,68,0.08)",
+      border: "rgba(239,68,68,0.35)",
+      iconBg: "rgba(239,68,68,0.15)",
+      iconColor: "#EF4444",
+      titleColor: "#FCA5A5",
+      bodyColor: "#FECACA",
+    },
+    flagged: {
+      bg: "rgba(220,38,38,0.12)",
+      border: "rgba(220,38,38,0.5)",
+      iconBg: "rgba(220,38,38,0.2)",
+      iconColor: "#DC2626",
+      titleColor: "#FCA5A5",
+      bodyColor: "#FECACA",
+    },
+    ok: { bg: "", border: "", iconBg: "", iconColor: "", titleColor: "", bodyColor: "" },
+  } as const;
+  const t = themes[usage.bannerState];
+
+  const title =
+    usage.bannerState === "warning" ? "You're approaching your monthly click limit" :
+    usage.bannerState === "over_cap" ? "You've exceeded your monthly click limit" :
+    "Your links are currently unavailable";
+
+  const body =
+    usage.bannerState === "warning"
+      ? `You've used ${fmtNum(usage.clicks30d)} of your ${fmtNum(usage.cap ?? 0)} monthly clicks (${usage.percent}%). Upgrade now to avoid any interruption.`
+      : usage.bannerState === "over_cap"
+        ? usage.hoursUntilEnforcement !== null && usage.hoursUntilEnforcement > 0
+          ? `You've used ${fmtNum(usage.clicks30d)} of your ${fmtNum(usage.cap ?? 0)} allowance. Your links will be throttled in approximately ${usage.hoursUntilEnforcement} hour${usage.hoursUntilEnforcement === 1 ? "" : "s"} unless you upgrade.`
+          : `You've used ${fmtNum(usage.clicks30d)} of your ${fmtNum(usage.cap ?? 0)} allowance. Your links may be throttled at any time — upgrade to keep them running.`
+        : `${usage.flaggedLinksCount} of your links are currently showing a "temporarily unavailable" page to visitors. Upgrade your plan to restore access immediately.`;
+
+  return (
+    <div
+      className="rounded-xl border p-4 flex flex-col sm:flex-row sm:items-center gap-3"
+      style={{ background: t.bg, borderColor: t.border }}
+    >
+      <div
+        className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+        style={{ background: t.iconBg }}
+      >
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={t.iconColor} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+          <path d="M12 9v4"/>
+          <path d="M12 17h.01"/>
+        </svg>
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-[14px] font-semibold leading-tight" style={{ color: t.titleColor }}>{title}</p>
+        <p className="text-[12px] mt-1 leading-relaxed" style={{ color: t.bodyColor }}>{body}</p>
+      </div>
+      <Link href="/billing" className="shrink-0">
+        <button
+          className="px-4 py-2 rounded-lg text-[13px] font-semibold text-white transition-all hover:-translate-y-0.5"
+          style={{ background: "linear-gradient(135deg, #8B5CF6, #06B6D4)", boxShadow: "0 4px 14px rgba(139,92,246,0.25)" }}
+        >
+          {usage.nextPlanHint ? `Upgrade to ${usage.nextPlanHint.charAt(0).toUpperCase() + usage.nextPlanHint.slice(1)}` : "Upgrade Plan"}
+        </button>
+      </Link>
     </div>
   );
 }

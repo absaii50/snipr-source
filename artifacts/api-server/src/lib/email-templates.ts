@@ -399,3 +399,52 @@ export function getAbuseWarningEmailHtml(opts: {
     </p>
   `);
 }
+
+/* ──────────────── Grace-period ending reminder (email #2) ──────────────── */
+
+export function getUpgradeReminderEmailHtml(opts: {
+  userName: string;
+  currentPlanLabel: string;
+  nextPlanLabel: string;
+  nextPlanPrice: string;
+  monthlyClicks: number;
+  currentCap: number;
+  hoursUntilThrottle: number;
+  dashboardUrl: string;
+  billingUrl: string;
+  supportUrl: string;
+}): string {
+  return layout(`
+    <div style="display:inline-block;background:#FEF2F2;color:#B91C1C;font-size:10px;font-weight:700;letter-spacing:0.08em;padding:4px 10px;border-radius:999px;text-transform:uppercase;margin-bottom:12px;">⚠ Final Notice</div>
+    <h1 style="color:${BRAND.dark};font-size:22px;font-weight:700;margin:0 0 8px;letter-spacing:-0.3px;line-height:1.3;">Your links will be throttled in ${opts.hoursUntilThrottle} hours</h1>
+    <p style="color:${BRAND.text};font-size:15px;line-height:1.6;margin:0 0 4px;">Hi ${escHtml(opts.userName)},</p>
+    <p style="color:${BRAND.text};font-size:14px;line-height:1.7;margin:0 0 16px;">
+      Two days ago we let you know you'd exceeded your ${escHtml(opts.currentPlanLabel)}-plan monthly click allowance. Your account is still over the limit, and your links will be automatically throttled in approximately <strong>${opts.hoursUntilThrottle} hours</strong> unless you upgrade.
+    </p>
+
+    <div style="background:#FEF2F2;border:1px solid #FCA5A5;border-radius:12px;padding:16px;margin-bottom:16px;">
+      <p style="color:#B91C1C;font-size:13px;font-weight:700;margin:0 0 8px;">Here's what will happen if you don't upgrade</p>
+      <ul style="color:#78350F;font-size:13px;line-height:1.7;margin:0;padding-left:20px;">
+        <li>Anyone clicking your short links will see a "Link temporarily unavailable" page</li>
+        <li>Redirects will stop working until you upgrade</li>
+        <li>Your link analytics and click history stay intact — nothing is lost</li>
+        <li>The moment you upgrade, everything resumes automatically</li>
+      </ul>
+    </div>
+
+    <div style="background:${BRAND.light};border-radius:12px;padding:16px;margin-bottom:16px;border-left:3px solid ${BRAND.primary};">
+      <p style="color:${BRAND.muted};font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;margin:0 0 10px;">Your current usage</p>
+      <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;">
+        <tr><td style="padding:4px 0;color:${BRAND.text};font-size:13px;">Clicks used (last 30 days)</td><td style="padding:4px 0;color:${BRAND.dark};font-size:13px;font-weight:700;text-align:right;">${opts.monthlyClicks.toLocaleString()}</td></tr>
+        <tr><td style="padding:4px 0;color:${BRAND.text};font-size:13px;">${escHtml(opts.currentPlanLabel)} plan allowance</td><td style="padding:4px 0;color:${BRAND.dark};font-size:13px;font-weight:700;text-align:right;">${opts.currentCap.toLocaleString()}</td></tr>
+        <tr><td style="padding:4px 0;color:#B91C1C;font-size:13px;font-weight:700;">Over by</td><td style="padding:4px 0;color:#B91C1C;font-size:13px;font-weight:700;text-align:right;">${(opts.monthlyClicks - opts.currentCap).toLocaleString()}</td></tr>
+      </table>
+    </div>
+
+    ${button(`Upgrade to ${escHtml(opts.nextPlanLabel)} — ${escHtml(opts.nextPlanPrice)}`, opts.billingUrl)}
+
+    <p style="color:${BRAND.muted};font-size:12px;line-height:1.6;margin:20px 0 0;text-align:center;">
+      Questions? <a href="${opts.supportUrl}" style="color:${BRAND.primary};text-decoration:none;">Open a support ticket</a> — we can help you pick the right plan before the deadline.
+    </p>
+  `);
+}

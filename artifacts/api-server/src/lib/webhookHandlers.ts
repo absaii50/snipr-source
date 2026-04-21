@@ -1,7 +1,74 @@
-import { eq } from "drizzle-orm";
-import { db, usersTable } from "@workspace/db";
+import { eq, and, isNotNull, inArray, sql } from "drizzle-orm";
+import { db, usersTable, linksTable, workspacesTable, clickEventsTable } from "@workspace/db";
 import { getStripeClient, getWebhookSecret } from "./stripeClient";
 import { logger } from "./logger";
+
+const PLAN_CLICK_CAPS: Record<string, number | null> = {
+  free: 10_000,
+  starter: 1_000_000,
+  growth: 5_000_000,
+  pro: 25_000_000,
+  business: 100_000_000,
+  enterprise: null,
+};
+
+/**
+ * Immediately unflag a user's links if their current 30-day click count is now
+ * under their (possibly new) plan's cap. Called right after a Stripe plan update.
+ * Returns the number of links unflagged.
+ */
+async function unflagLinksIfUnderCap(userId: string, plan: string): Promise<number> {
+  const cap = PLAN_CLICK_CAPS[plan];
+  if (cap === undefined) return 0;
+  const isUnlimited = cap === null;
+
+  if (!isUnlimited) {
+    const [row] = await db
+      .select({
+        clicks: sql<number>`(
+          SELECT COUNT(*)::int
+          FROM ${clickEventsTable} ce
+          JOIN ${linksTable} l ON l.id = ce.link_id
+          JOIN ${workspacesTable} w ON w.id = l.workspace_id
+          WHERE w.user_id = ${userId}
+            AND ce.timestamp > NOW() - INTERVAL '30 days'
+        )`,
+      })
+      .from(usersTable)
+      .where(eq(usersTable.id, userId));
+    if (Number(row?.clicks ?? 0) >= (cap as number)) return 0;
+  }
+
+  const workspaceRows = await db
+    .select({ id: workspacesTable.id })
+    .from(workspacesTable)
+    .where(eq(workspacesTable.userId, userId));
+  const workspaceIds = workspaceRows.map((w) => w.id);
+  if (workspaceIds.length === 0) return 0;
+
+  const updated = await db
+    .update(linksTable)
+    .set({ flaggedAt: null, flaggedReason: null })
+    .where(and(
+      inArray(linksTable.workspaceId, workspaceIds),
+      isNotNull(linksTable.flaggedAt),
+    ))
+    .returning({ slug: linksTable.slug, domainId: linksTable.domainId });
+
+  // Invalidate the redirect cache so the new state is visible immediately.
+  if (updated.length > 0) {
+    try {
+      const { invalidateLinkCache } = await import("./link-cache");
+      for (const l of updated) {
+        invalidateLinkCache(l.slug, l.domainId);
+        invalidateLinkCache(l.slug, null); // also invalidate the default-domain key used for /r/:slug
+      }
+    } catch (err) {
+      logger.warn({ err }, "Failed to invalidate link cache after unflag");
+    }
+  }
+  return updated.length;
+}
 
 export class WebhookHandlers {
   static async processWebhook(payload: Buffer, signature: string): Promise<void> {
@@ -99,6 +166,14 @@ export class WebhookHandlers {
         planRenewsAt: sub.current_period_end ? new Date(sub.current_period_end * 1000) : null,
       }).where(eq(usersTable.id, invUser.id));
 
+      // Immediately unflag links now that they've paid — no need to wait for the 6h scanner.
+      try {
+        const unflagged = await unflagLinksIfUnderCap(invUser.id, plan);
+        if (unflagged > 0) logger.info({ userId: invUser.id, plan, unflagged }, "Auto-unflagged links after payment");
+      } catch (err) {
+        logger.error({ err, userId: invUser.id }, "Failed to auto-unflag after payment — scanner will catch up");
+      }
+
       logger.info({ userId: invUser.id, plan, reason }, "Plan activated via invoice.payment_succeeded");
       return;
     }
@@ -165,6 +240,16 @@ export class WebhookHandlers {
           .update(usersTable)
           .set(updates)
           .where(eq(usersTable.id, user.id));
+
+        // When subscription becomes active/trialing, try to unflag links immediately.
+        if ((status === "active" || status === "trialing") && plan) {
+          try {
+            const unflagged = await unflagLinksIfUnderCap(user.id, plan);
+            if (unflagged > 0) logger.info({ userId: user.id, plan, unflagged }, "Auto-unflagged links on subscription update");
+          } catch (err) {
+            logger.error({ err, userId: user.id }, "Failed to auto-unflag after subscription update");
+          }
+        }
 
         logger.info({ userId: user.id, plan, status }, "Subscription updated");
         break;
