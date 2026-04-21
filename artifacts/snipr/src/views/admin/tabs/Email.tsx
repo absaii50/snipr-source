@@ -111,7 +111,7 @@ export default function EmailTab() {
       if (search.trim()) params.set("search", search.trim());
       if (fromDate) params.set("from", fromDate);
       if (toDate) params.set("to", toDate);
-      const data = await apiFetch<{ logs: EmailLog[]; total: number }>(`/admin/email-logs?${params}`);
+      const data = await apiFetch(`/admin/email-logs?${params}`);
       setLogs(data.logs);
       setTotal(data.total);
     } catch {
@@ -434,7 +434,7 @@ function EmailDetailDrawer({ logId, onClose, onResent }: { logId: string; onClos
   const [resending, setResending] = useState(false);
 
   useEffect(() => {
-    apiFetch<EmailLogDetail>(`/admin/email-logs/${logId}`)
+    apiFetch(`/admin/email-logs/${logId}`)
       .then(setLog)
       .catch(() => toast("Failed to load email details", "error"))
       .finally(() => setLoading(false));
