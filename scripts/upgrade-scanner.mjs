@@ -285,9 +285,11 @@ for (const [planKey, tier] of Object.entries(PLAN_LADDER)) {
   // Users who got the email >= 3 days ago, still on this plan, still over cap
   const { rows: offenders } = await pg.query(
     `WITH last_email AS (
+       -- Include legacy abuse_warning_* emails so users warned under the old system
+       -- also get enforced after the 3-day grace period, not after a 30-day cooldown.
        SELECT DISTINCT ON (el.user_id) el.user_id, el.created_at AS emailed_at
        FROM email_logs el
-       WHERE el.type = 'upgrade_monthly_cap'
+       WHERE (el.type = 'upgrade_monthly_cap' OR el.type LIKE 'abuse_warning%')
          AND el.status = 'sent'
          AND el.user_id IS NOT NULL
        ORDER BY el.user_id, el.created_at DESC
