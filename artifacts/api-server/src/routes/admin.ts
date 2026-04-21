@@ -707,33 +707,97 @@ router.delete("/admin/domains/:id", requireAdmin, async (req, res): Promise<void
 });
 
 /* ── Email Management ─────────────────────────────────────────────── */
-router.get("/admin/email-stats", requireAdmin, async (req, res): Promise<void> => {
-  const [[totalEmails], [todayEmails], [failedEmails], [totalUsers], [verifiedUsers]] = await Promise.all([
+router.get("/admin/email-stats", requireAdmin, async (_req, res): Promise<void> => {
+  const [
+    [totalEmails],
+    [todayEmails],
+    [last7dEmails],
+    [sentEmails],
+    [failedEmails],
+    [skippedEmails],
+    [totalUsers],
+    [verifiedUsers],
+    byType,
+    byStatus,
+    timeline,
+  ] = await Promise.all([
     db.select({ count: count() }).from(emailLogsTable),
     db.select({ count: count() }).from(emailLogsTable).where(sql`${emailLogsTable.createdAt} >= NOW() - INTERVAL '1 day'`),
+    db.select({ count: count() }).from(emailLogsTable).where(sql`${emailLogsTable.createdAt} >= NOW() - INTERVAL '7 days'`),
+    db.select({ count: count() }).from(emailLogsTable).where(eq(emailLogsTable.status, "sent")),
     db.select({ count: count() }).from(emailLogsTable).where(eq(emailLogsTable.status, "failed")),
+    db.select({ count: count() }).from(emailLogsTable).where(eq(emailLogsTable.status, "skipped")),
     db.select({ count: count() }).from(usersTable),
     db.select({ count: count() }).from(usersTable).where(eq(usersTable.emailVerified, true)),
+    // By type (last 30 days)
+    db.select({ type: emailLogsTable.type, count: count() })
+      .from(emailLogsTable)
+      .where(sql`${emailLogsTable.createdAt} >= NOW() - INTERVAL '30 days'`)
+      .groupBy(emailLogsTable.type)
+      .orderBy(desc(count())),
+    // By status (last 30 days)
+    db.select({ status: emailLogsTable.status, count: count() })
+      .from(emailLogsTable)
+      .where(sql`${emailLogsTable.createdAt} >= NOW() - INTERVAL '30 days'`)
+      .groupBy(emailLogsTable.status),
+    // Daily timeline (last 7 days)
+    db.execute(sql`
+      SELECT date_trunc('day', created_at)::date AS day,
+             COUNT(*)::int AS total,
+             COUNT(*) FILTER (WHERE status = 'sent')::int AS sent,
+             COUNT(*) FILTER (WHERE status = 'failed')::int AS failed
+      FROM email_logs
+      WHERE created_at >= NOW() - INTERVAL '7 days'
+      GROUP BY 1 ORDER BY 1
+    `),
   ]);
+
+  const deliveryRate = (sentEmails.count + failedEmails.count) > 0
+    ? Math.round((Number(sentEmails.count) / (Number(sentEmails.count) + Number(failedEmails.count))) * 100)
+    : 100;
 
   res.json({
     totalEmails: totalEmails.count,
     todayEmails: todayEmails.count,
+    last7dEmails: last7dEmails.count,
+    sentEmails: sentEmails.count,
     failedEmails: failedEmails.count,
+    skippedEmails: skippedEmails.count,
+    deliveryRate,
     totalUsers: totalUsers.count,
     verifiedUsers: verifiedUsers.count,
     verificationRate: totalUsers.count > 0 ? Math.round((verifiedUsers.count / totalUsers.count) * 100) : 0,
+    byType,
+    byStatus,
+    timeline: (timeline.rows ?? timeline) as Array<{ day: string; total: number; sent: number; failed: number }>,
   });
 });
 
 router.get("/admin/email-logs", requireAdmin, async (req, res): Promise<void> => {
-  const page = parseInt(req.query.page as string) || 1;
-  const limit = Math.min(parseInt(req.query.limit as string) || 50, 100);
+  const page = Math.max(1, parseInt(req.query.page as string) || 1);
+  const limit = Math.min(parseInt(req.query.limit as string) || 50, 200);
   const offset = (page - 1) * limit;
-  const typeFilter = req.query.type as string;
-  const search = req.query.search as string;
+  const typeFilter = req.query.type as string | undefined;
+  const statusFilter = req.query.status as string | undefined;
+  const search = (req.query.search as string | undefined)?.trim();
+  const from = req.query.from as string | undefined;
+  const to = req.query.to as string | undefined;
 
-  let query = db
+  const conditions: any[] = [];
+  if (typeFilter && typeFilter !== "all") conditions.push(eq(emailLogsTable.type, typeFilter));
+  if (statusFilter && statusFilter !== "all") conditions.push(eq(emailLogsTable.status, statusFilter));
+  if (search) {
+    const pattern = `%${escapeLike(search)}%`;
+    conditions.push(or(
+      ilike(emailLogsTable.to, pattern),
+      ilike(emailLogsTable.subject, pattern),
+    ));
+  }
+  if (from) conditions.push(sql`${emailLogsTable.createdAt} >= ${from}::timestamptz`);
+  if (to) conditions.push(sql`${emailLogsTable.createdAt} <= ${to}::timestamptz`);
+  const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+
+  const logs = await db
     .select({
       id: emailLogsTable.id,
       to: emailLogsTable.to,
@@ -744,29 +808,129 @@ router.get("/admin/email-logs", requireAdmin, async (req, res): Promise<void> =>
       error: emailLogsTable.error,
       createdAt: emailLogsTable.createdAt,
       userId: emailLogsTable.userId,
+      userName: usersTable.name,
+      userEmail: usersTable.email,
     })
     .from(emailLogsTable)
+    .leftJoin(usersTable, eq(usersTable.id, emailLogsTable.userId))
+    .where(whereClause)
     .orderBy(desc(emailLogsTable.createdAt))
     .limit(limit)
     .offset(offset);
 
-  const conditions = [];
-  if (typeFilter && typeFilter !== "all") {
-    conditions.push(eq(emailLogsTable.type, typeFilter));
+  const [{ total }] = await db
+    .select({ total: count() })
+    .from(emailLogsTable)
+    .where(whereClause);
+
+  res.json({ logs, total: Number(total), page, limit });
+});
+
+/* ───────── Email detail + actions ───────── */
+router.get("/admin/email-logs/:id", requireAdmin, async (req, res): Promise<void> => {
+  const [log] = await db
+    .select({
+      id: emailLogsTable.id,
+      to: emailLogsTable.to,
+      subject: emailLogsTable.subject,
+      type: emailLogsTable.type,
+      status: emailLogsTable.status,
+      resendId: emailLogsTable.resendId,
+      error: emailLogsTable.error,
+      createdAt: emailLogsTable.createdAt,
+      userId: emailLogsTable.userId,
+      userName: usersTable.name,
+      userEmail: usersTable.email,
+      userPlan: usersTable.plan,
+    })
+    .from(emailLogsTable)
+    .leftJoin(usersTable, eq(usersTable.id, emailLogsTable.userId))
+    .where(eq(emailLogsTable.id, req.params.id));
+  if (!log) { res.status(404).json({ error: "Email log not found" }); return; }
+  res.json(log);
+});
+
+/** Resend a verification email — only works for `verification` type logs. */
+router.post("/admin/email-logs/:id/resend", requireAdmin, async (req, res): Promise<void> => {
+  const [log] = await db
+    .select()
+    .from(emailLogsTable)
+    .where(eq(emailLogsTable.id, req.params.id));
+  if (!log) { res.status(404).json({ error: "Email log not found" }); return; }
+  if (log.type !== "verification") {
+    res.status(400).json({ error: `Only 'verification' emails can be resent from this view. (type: ${log.type})` });
+    return;
   }
+  if (!log.userId) { res.status(400).json({ error: "Original log has no user reference" }); return; }
+
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.id, log.userId));
+  if (!user) { res.status(404).json({ error: "User not found" }); return; }
+  if (user.emailVerified) { res.json({ ok: true, message: "User is already verified" }); return; }
+
+  const newToken = crypto.randomUUID();
+  await db.update(usersTable)
+    .set({ emailVerificationToken: newToken, emailVerificationSentAt: new Date() })
+    .where(eq(usersTable.id, user.id));
+
+  const result = await sendVerificationEmail({ id: user.id, name: user.name, email: user.email, emailVerificationToken: newToken });
+  if (result?.error) { res.status(502).json({ error: "Send failed", detail: result.error }); return; }
+
+  await logAuditAction("resend_email", "email_log", log.id, { type: log.type, to: log.to }, req.ip);
+  res.json({ ok: true });
+});
+
+/** CSV export of the current filter window. */
+router.get("/admin/email-logs/export", requireAdmin, async (req, res): Promise<void> => {
+  const typeFilter = req.query.type as string | undefined;
+  const statusFilter = req.query.status as string | undefined;
+  const search = (req.query.search as string | undefined)?.trim();
+  const from = req.query.from as string | undefined;
+  const to = req.query.to as string | undefined;
+
+  const conditions: any[] = [];
+  if (typeFilter && typeFilter !== "all") conditions.push(eq(emailLogsTable.type, typeFilter));
+  if (statusFilter && statusFilter !== "all") conditions.push(eq(emailLogsTable.status, statusFilter));
   if (search) {
-    conditions.push(ilike(emailLogsTable.to, `%${escapeLike(search)}%`));
+    const pattern = `%${escapeLike(search)}%`;
+    conditions.push(or(ilike(emailLogsTable.to, pattern), ilike(emailLogsTable.subject, pattern)));
   }
-  if (conditions.length > 0) {
-    query = query.where(and(...conditions)) as any;
-  }
+  if (from) conditions.push(sql`${emailLogsTable.createdAt} >= ${from}::timestamptz`);
+  if (to) conditions.push(sql`${emailLogsTable.createdAt} <= ${to}::timestamptz`);
+  const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
-  const logs = await query;
-  const [[{ total }]] = await Promise.all([
-    db.select({ total: count() }).from(emailLogsTable),
-  ]);
+  const logs = await db
+    .select({
+      id: emailLogsTable.id,
+      to: emailLogsTable.to,
+      subject: emailLogsTable.subject,
+      type: emailLogsTable.type,
+      status: emailLogsTable.status,
+      resendId: emailLogsTable.resendId,
+      error: emailLogsTable.error,
+      createdAt: emailLogsTable.createdAt,
+      userEmail: usersTable.email,
+    })
+    .from(emailLogsTable)
+    .leftJoin(usersTable, eq(usersTable.id, emailLogsTable.userId))
+    .where(whereClause)
+    .orderBy(desc(emailLogsTable.createdAt))
+    .limit(10_000);
 
-  res.json({ logs, total, page, limit });
+  const esc = (v: unknown) => {
+    const s = v == null ? "" : String(v);
+    return /[,"\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  };
+  const header = ["id", "createdAt", "type", "status", "to", "user_email", "subject", "resend_id", "error"].join(",");
+  const rows = logs.map((l) => [
+    l.id, l.createdAt?.toISOString() ?? "", l.type, l.status, l.to, l.userEmail ?? "",
+    l.subject, l.resendId ?? "", l.error ?? "",
+  ].map(esc).join(","));
+  const csv = [header, ...rows].join("\n");
+
+  const filename = `snipr-email-logs-${new Date().toISOString().slice(0, 10)}.csv`;
+  res.setHeader("Content-Type", "text/csv; charset=utf-8");
+  res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+  res.send(csv);
 });
 
 router.post("/admin/force-verify/:userId", requireAdmin, async (req, res): Promise<void> => {
