@@ -278,8 +278,8 @@ export async function sendAbuseWarningEmail(opts: {
     supportUrl: `${FRONTEND_URL}/support`,
   });
   const subject = opts.reminderNumber === 1
-    ? "Action required: Unusual traffic detected on your Snipr links"
-    : "Final reminder: Unusual traffic still active on your Snipr links";
+    ? "Your Snipr links are pulling serious traffic — time to upgrade your plan"
+    : "Final reminder: Upgrade your Snipr plan to keep your links running at full speed";
   return sendEmail({
     to: opts.userEmail,
     subject,

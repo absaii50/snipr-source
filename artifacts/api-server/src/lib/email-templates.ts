@@ -312,12 +312,12 @@ export function getSupportAdminReplyUserHtml(opts: {
   `);
 }
 
-/* ────────────────── Abuse / Suspicious Activity Warning ────────────────── */
+/* ────────────────── Plan Upgrade Prompt (high-traffic user) ────────────────── */
 
 export function getAbuseWarningEmailHtml(opts: {
   userName: string;
   reminderNumber: number;               // 1 or 2
-  deadlineHours: number;                // hours until enforcement
+  deadlineHours: number;                // hours until enforcement on Free tier
   detectedClicks: number;
   uniqueVisitors: number;
   peakPerMinute: number;
@@ -327,15 +327,16 @@ export function getAbuseWarningEmailHtml(opts: {
 }): string {
   const isFirst = opts.reminderNumber === 1;
   const headline = isFirst
-    ? "We've detected unusual traffic on your Snipr links"
-    : "Reminder: Unusual traffic still active on your Snipr links";
+    ? "Your links are getting serious traffic — time to upgrade"
+    : "Reminder: Your free plan limit is almost up";
   const intro = isFirst
-    ? "This is an automated safety notice from Snipr. Our systems flagged traffic patterns on your account that strongly resemble automated (bot) clicks rather than real human visits."
-    : "We sent you a notice 24 hours ago about unusual traffic on your account, but the pattern is still active. This is our second and final notice before we take automatic protective action.";
+    ? "Thanks for using Snipr — your short links are pulling in impressive volume. To keep them running at full speed, your account needs to move from the Free plan to one of our paid tiers."
+    : "We reached out 24 hours ago about upgrading your plan. Your links are still running well over the Free-tier allowance, so this is a final friendly reminder before automatic limits kick in.";
+  const billingUrl = `${opts.dashboardUrl.replace(/\/links\/?$/, "")}/billing`;
 
   return layout(`
-    <div style="display:inline-block;background:#FEF2F2;color:#B91C1C;font-size:10px;font-weight:700;letter-spacing:0.08em;padding:4px 10px;border-radius:999px;text-transform:uppercase;margin-bottom:12px;">
-      ${isFirst ? "Notice" : "Final Reminder"}
+    <div style="display:inline-block;background:#F3E8FF;color:#6B21A8;font-size:10px;font-weight:700;letter-spacing:0.08em;padding:4px 10px;border-radius:999px;text-transform:uppercase;margin-bottom:12px;">
+      ${isFirst ? "Upgrade Suggestion" : "Final Reminder"}
     </div>
     <h1 style="color:${BRAND.dark};font-size:22px;font-weight:700;margin:0 0 8px;letter-spacing:-0.3px;line-height:1.3;">
       ${escHtml(headline)}
@@ -347,11 +348,11 @@ export function getAbuseWarningEmailHtml(opts: {
       ${escHtml(intro)}
     </p>
 
-    <div style="background:${BRAND.light};border-radius:12px;padding:16px;margin-bottom:16px;border-left:3px solid #DC2626;">
-      <p style="color:${BRAND.muted};font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;margin:0 0 10px;">What we observed (last 24h)</p>
+    <div style="background:${BRAND.light};border-radius:12px;padding:16px;margin-bottom:16px;border-left:3px solid ${BRAND.primary};">
+      <p style="color:${BRAND.muted};font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;margin:0 0 10px;">Your activity in the last 24 hours</p>
       <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;">
         <tr>
-          <td style="padding:4px 0;color:${BRAND.text};font-size:13px;">Total clicks recorded</td>
+          <td style="padding:4px 0;color:${BRAND.text};font-size:13px;">Total clicks</td>
           <td style="padding:4px 0;color:${BRAND.dark};font-size:13px;font-weight:700;text-align:right;">${opts.detectedClicks.toLocaleString()}</td>
         </tr>
         <tr>
@@ -359,41 +360,42 @@ export function getAbuseWarningEmailHtml(opts: {
           <td style="padding:4px 0;color:${BRAND.dark};font-size:13px;font-weight:700;text-align:right;">${opts.uniqueVisitors.toLocaleString()}</td>
         </tr>
         <tr>
-          <td style="padding:4px 0;color:${BRAND.text};font-size:13px;">Peak clicks per minute</td>
-          <td style="padding:4px 0;color:${BRAND.dark};font-size:13px;font-weight:700;text-align:right;">${opts.peakPerMinute.toLocaleString()}</td>
+          <td style="padding:4px 0;color:${BRAND.text};font-size:13px;">Peak throughput</td>
+          <td style="padding:4px 0;color:${BRAND.dark};font-size:13px;font-weight:700;text-align:right;">${opts.peakPerMinute.toLocaleString()} / min</td>
         </tr>
         <tr>
-          <td style="padding:4px 0;color:${BRAND.text};font-size:13px;">Links affected</td>
+          <td style="padding:4px 0;color:${BRAND.text};font-size:13px;">Current plan</td>
+          <td style="padding:4px 0;color:${BRAND.dark};font-size:13px;font-weight:700;text-align:right;">Free</td>
+        </tr>
+        <tr>
+          <td style="padding:4px 0;color:${BRAND.text};font-size:13px;">Active links</td>
           <td style="padding:4px 0;color:${BRAND.dark};font-size:13px;font-weight:700;text-align:right;">${opts.linkSlugs.map((s) => `<code style="background:#fff;border:1px solid #E4E4EC;border-radius:4px;padding:1px 6px;font-family:monospace;font-size:12px;">/${escHtml(s)}</code>`).join(" ")}</td>
         </tr>
       </table>
     </div>
 
-    <p style="color:${BRAND.text};font-size:14px;line-height:1.7;margin:0 0 8px;font-weight:600;">Why this matters</p>
-    <p style="color:${BRAND.text};font-size:14px;line-height:1.7;margin:0 0 16px;">
-      Using short links to funnel automated traffic — for example, to inflate streaming plays, ad impressions, or referral numbers — is prohibited under Snipr's Acceptable Use Policy and can damage the reputation of our shared domains (snipr.sh, snipr.is, snipr.page, snipr.my) for everyone.
-    </p>
+    <p style="color:${BRAND.text};font-size:14px;line-height:1.7;margin:0 0 8px;font-weight:600;">What you unlock with a paid plan</p>
+    <ul style="color:${BRAND.text};font-size:14px;line-height:1.8;margin:0 0 16px;padding-left:22px;">
+      <li>Unmetered redirect speed — no rate limits, no throttling</li>
+      <li>Unlimited links with full-fidelity analytics and UTM tracking</li>
+      <li>Custom domains (bring your own, or pick from our portfolio)</li>
+      <li>Smart routing rules, QR codes, A/B splits, and pixel integrations</li>
+      <li>Priority support and 30+ days of click history retention</li>
+    </ul>
 
     <div style="background:#FFFBEB;border:1px solid #FDE68A;border-radius:12px;padding:16px;margin-bottom:16px;">
-      <p style="color:#92400E;font-size:13px;font-weight:700;margin:0 0 6px;">What happens next</p>
+      <p style="color:#92400E;font-size:13px;font-weight:700;margin:0 0 6px;">What happens if you stay on Free</p>
       <p style="color:#78350F;font-size:13px;line-height:1.6;margin:0;">
         ${isFirst
-          ? `If the bot-like traffic continues over the next ${opts.deadlineHours} hours, the affected links will be automatically flagged and shown in red on your dashboard — and redirects may be rate-limited. You can avoid this by stopping the automated traffic or replying to explain the legitimate reason for it.`
-          : `In approximately ${opts.deadlineHours} hours, the affected links will be flagged and shown in red on your dashboard, and we may throttle their redirects. Reply to this email or open a support ticket now if you believe this is a mistake.`}
+          ? `If you remain on the Free plan past the next ${opts.deadlineHours} hours, your links will be flagged on your dashboard and we'll start throttling redirect speed to match the Free tier allowance. You can avoid this by upgrading below — it takes about a minute.`
+          : `In approximately ${opts.deadlineHours} hours, your links will be shown with a red flag on your dashboard and redirect throughput will be reduced. Upgrading now keeps everything running exactly as it is today.`}
       </p>
     </div>
 
-    <p style="color:${BRAND.text};font-size:14px;line-height:1.7;margin:0 0 8px;font-weight:600;">What you can do</p>
-    <ul style="color:${BRAND.text};font-size:14px;line-height:1.8;margin:0 0 16px;padding-left:22px;">
-      <li>Stop any traffic-inflation, bot, or click-exchange services pointing at your links.</li>
-      <li>Review your links in the dashboard and remove any that aren't for legitimate sharing.</li>
-      <li>If this is a genuine use case (e.g., a real campaign), open a support ticket so we can verify.</li>
-    </ul>
-
-    ${button("Open My Dashboard", opts.dashboardUrl)}
+    ${button("Upgrade My Plan", billingUrl)}
 
     <p style="color:${BRAND.muted};font-size:12px;line-height:1.6;margin:20px 0 0;text-align:center;">
-      Have questions? <a href="${opts.supportUrl}" style="color:${BRAND.primary};text-decoration:none;">Open a support ticket</a> and our team will review with you personally.
+      Not sure which plan fits? <a href="${opts.supportUrl}" style="color:${BRAND.primary};text-decoration:none;">Open a support ticket</a> and our team will help you pick the right tier.
     </p>
   `);
 }
