@@ -13,6 +13,24 @@ import {
   GetLinkQrParams,
 } from "@workspace/api-zod";
 import { requireAuth } from "../lib/auth";
+import { logger } from "../lib/logger";
+
+/** Wraps a 4xx response with a structured log line so admins can grep
+ *  the journal to find why specific users hit validation errors. */
+function rejectLink(req: any, res: any, status: number, payload: { error: string; message?: string; field?: string }, context?: Record<string, unknown>): void {
+  logger.warn({
+    userId: req.session?.userId ?? null,
+    workspaceId: req.session?.workspaceId ?? null,
+    path: req.path,
+    method: req.method,
+    status,
+    error: payload.error,
+    message: payload.message,
+    field: payload.field,
+    ...context,
+  }, "link mutation rejected");
+  res.status(status).json(payload);
+}
 import { invalidateLinkCache } from "../lib/link-cache";
 
 const router: IRouter = Router();
@@ -55,7 +73,12 @@ router.get("/links", requireAuth, async (req, res): Promise<void> => {
 router.post("/links", requireAuth, async (req, res): Promise<void> => {
   const parsed = CreateLinkBody.safeParse(req.body);
   if (!parsed.success) {
-    res.status(422).json({ error: "Validation error", message: parsed.error.message });
+    // Surface the first Zod issue in a friendly way so the toast shows e.g.
+    // "destinationUrl: must be a valid URL" instead of the raw Zod dump.
+    const issue = parsed.error.issues?.[0];
+    const field = issue?.path?.join(".") || "input";
+    const friendly = issue ? `${field}: ${issue.message}` : "Invalid input";
+    rejectLink(req, res, 422, { error: "Validation error", message: friendly, field }, { issues: parsed.error.issues });
     return;
   }
 
@@ -264,7 +287,7 @@ router.post("/links", requireAuth, async (req, res): Promise<void> => {
     .where(and(eq(linksTable.slug, slug), eq(linksTable.domainId, domainId)));
 
   if (existingLink) {
-    res.status(409).json({ error: "Slug already taken", message: `The slug "${slug}" is already in use on this domain.` });
+    rejectLink(req, res, 409, { error: "Slug already taken", message: `The slug "${slug}" is already in use on this domain.`, field: "slug" }, { slug, domainId });
     return;
   }
 
@@ -297,7 +320,7 @@ router.post("/links", requireAuth, async (req, res): Promise<void> => {
       const pgError = error as any;
       if (pgError.code === "23505" && pgError.constraint?.includes("unique")) {
         const domainInfo = domainId ? " on this domain" : "";
-        res.status(409).json({ error: "Slug already taken", message: `The slug "${slug}" is already in use${domainInfo}.` });
+        rejectLink(req, res, 409, { error: "Slug already taken", message: `The slug "${slug}" is already in use${domainInfo}.`, field: "slug" }, { slug, domainId, pgConstraint: pgError.constraint });
         return;
       }
     }

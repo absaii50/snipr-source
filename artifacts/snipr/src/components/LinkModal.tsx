@@ -66,6 +66,49 @@ interface LinkModalProps {
   initialSlug?: string;
 }
 
+/** Pulls a human-readable error message out of whatever shape the API client throws.
+ *  Handles: Error instances, Axios errors, fetch Response objects, plain { error, message }
+ *  objects, and orval-generated thrown payloads. Falls back to null. */
+function extractApiErrorMessage(err: unknown): string | null {
+  if (err == null) return null;
+
+  // Plain string
+  if (typeof err === "string") return err;
+
+  const e = err as Record<string, any>;
+
+  // Axios-style: err.response.data.{message,error}
+  const dataMsg = e?.response?.data?.message;
+  if (typeof dataMsg === "string" && dataMsg.length > 0) return dataMsg;
+  const dataErr = e?.response?.data?.error;
+  if (typeof dataErr === "string" && dataErr.length > 0) return dataErr;
+
+  // orval/openapi-fetch: err.body.{message,error}
+  const bodyMsg = e?.body?.message;
+  if (typeof bodyMsg === "string" && bodyMsg.length > 0) return bodyMsg;
+  const bodyErr = e?.body?.error;
+  if (typeof bodyErr === "string" && bodyErr.length > 0) return bodyErr;
+
+  // orval (alternate): err.data.{message,error}
+  const dDataMsg = e?.data?.message;
+  if (typeof dDataMsg === "string" && dDataMsg.length > 0) return dDataMsg;
+  const dDataErr = e?.data?.error;
+  if (typeof dDataErr === "string" && dDataErr.length > 0) return dDataErr;
+
+  // Plain rejection object: { error, message }
+  if (typeof e?.message === "string" && e.message.length > 0) return e.message;
+  if (typeof e?.error === "string" && e.error.length > 0) return e.error;
+
+  // Last resort: stringify if it looks like a useful payload
+  try {
+    if (typeof err === "object" && Object.keys(e).length > 0) {
+      return JSON.stringify(err).slice(0, 300);
+    }
+  } catch { /* ignore */ }
+
+  return null;
+}
+
 export function LinkModal({ isOpen, onClose, link, initialSlug }: LinkModalProps) {
   const isEdit = !!link;
   const queryClient = useQueryClient();
@@ -201,8 +244,15 @@ export function LinkModal({ isOpen, onClose, link, initialSlug }: LinkModalProps
         setCreatedLink({ shortUrl, id: newLink.id });
       }
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : "An unexpected error occurred";
-      toast({ title: isEdit ? "Failed to update link" : "Failed to create link", description: message, variant: "destructive" });
+      // The API may throw any of: Error, fetch Response, Axios error, plain {error,message}.
+      // Walk every shape we know to surface the actual server reason so users see
+      // "Slug already taken" instead of "An unexpected error occurred".
+      const message = extractApiErrorMessage(error) ?? "An unexpected error occurred";
+      toast({
+        title: isEdit ? "Failed to update link" : "Failed to create link",
+        description: message,
+        variant: "destructive",
+      });
     }
   };
 
