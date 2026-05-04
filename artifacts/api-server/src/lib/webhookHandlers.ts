@@ -95,6 +95,7 @@ export class WebhookHandlers {
       "customer.subscription.created",
       "customer.subscription.updated",
       "customer.subscription.deleted",
+      "customer.subscription.trial_will_end",
       "checkout.session.completed",
       "invoice.payment_succeeded",
       "invoice.payment_failed",
@@ -267,6 +268,27 @@ export class WebhookHandlers {
           .where(eq(usersTable.id, user.id));
 
         logger.info({ userId: user.id }, "Subscription deleted — reverted to free");
+        break;
+      }
+
+      case "customer.subscription.trial_will_end": {
+        // Stripe fires this 3 days before the trial ends. Email the user.
+        const trialEndIso = subscription.trial_end
+          ? new Date(subscription.trial_end * 1000).toISOString()
+          : null;
+        try {
+          const { sendTrialEndingEmail } = await import("./email");
+          await sendTrialEndingEmail({
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            trialEndsAt: trialEndIso,
+            planLabel: (user.plan ?? "starter").charAt(0).toUpperCase() + (user.plan ?? "starter").slice(1),
+          });
+          logger.info({ userId: user.id, trialEnd: trialEndIso }, "Trial-ending email sent");
+        } catch (err) {
+          logger.error({ err, userId: user.id }, "Failed to send trial-ending email");
+        }
         break;
       }
     }

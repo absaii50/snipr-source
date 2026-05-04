@@ -126,15 +126,19 @@ router.get("/billing/portal", requireAuth, async (req: Request, res: Response): 
 });
 
 router.get("/billing/subscription", requireAuth, async (req: Request, res: Response): Promise<void> => {
-  const [user] = await db
+  const [rawUser] = await db
     .select()
     .from(usersTable)
     .where(eq(usersTable.id, req.session.userId!));
 
-  if (!user) {
+  if (!rawUser) {
     res.status(404).json({ error: "User not found." });
     return;
   }
+
+  const { expireTrialIfDue, trialStatus } = await import("../lib/trial");
+  const user = await expireTrialIfDue(rawUser);
+  const trial = trialStatus(user);
 
   let renewsAt: string | null = null;
   let expiresAt: string | null = null;
@@ -211,6 +215,7 @@ router.get("/billing/subscription", requireAuth, async (req: Request, res: Respo
     subscriptionId: user.stripeSubscriptionId ?? null,
     renewsAt: renewsAt ?? user.planRenewsAt ?? null,
     expiresAt: expiresAt ?? user.planExpiresAt ?? null,
+    trial,
     usage: {
       clicks30d: used,
       cap,
@@ -405,15 +410,24 @@ router.post("/billing/create-subscription-intent", requireAuth, async (req: Requ
       }
     }
 
-    // No reusable subscription — create a new one
+    // No reusable subscription — create a new one.
+    // First-time subscribers (no prior Stripe subscription) get a 7-day free trial.
+    // Returning users (who previously subscribed) skip the trial.
+    const isFirstTimeSubscriber = !user.stripeSubscriptionId;
     if (!subscription) {
-      subscription = await stripe.subscriptions.create({
+      const subParams: any = {
         customer: customerId,
         items: [{ price: priceId }],
         payment_behavior: "default_incomplete",
         payment_settings: { save_default_payment_method: "on_subscription" },
         expand: ["latest_invoice.confirmation_secret"],
-      });
+      };
+      if (isFirstTimeSubscriber) {
+        subParams.trial_period_days = 7;
+        // Send the trial-ending notification 3 days before charge
+        subParams.trial_settings = { end_behavior: { missing_payment_method: "cancel" } };
+      }
+      subscription = await stripe.subscriptions.create(subParams);
     }
 
     // Resolve client_secret — Stripe v21 (API 2025-04-30.basil)

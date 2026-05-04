@@ -39,27 +39,6 @@ export default function Pricing() {
     disabled: boolean;
   }[] = [
     {
-      name: "Free",
-      plan: null,
-      monthlyPrice: "$0",
-      annualPrice: "$0",
-      annualMonthly: "$0",
-      clicks: "10K clicks/mo",
-      description: "For getting started",
-      features: [
-        "10K clicks/month",
-        "Basic short links",
-        "Custom slugs",
-        "QR code export",
-        "Basic click analytics",
-        "snipr.sh domain",
-      ],
-      cta: "Get Started Free",
-      action: () => { window.location.href = user ? "/dashboard" : "/signup"; },
-      highlighted: false,
-      disabled: false,
-    },
-    {
       name: "Starter",
       plan: "starter",
       monthlyPrice: "$4",
@@ -75,9 +54,9 @@ export default function Pricing() {
         "Password-protected links",
         "Folders & tags",
       ],
-      cta: loadingPlan === "starter" ? "Redirecting…" : "Get Starter",
+      cta: loadingPlan === "starter" ? "Redirecting…" : "Start 7-day free trial",
       action: () => startCheckout("starter"),
-      highlighted: false,
+      highlighted: true,
       disabled: loadingPlan === "starter",
     },
     {
@@ -98,7 +77,7 @@ export default function Pricing() {
       ],
       cta: loadingPlan === "growth" ? "Redirecting…" : "Get Growth",
       action: () => startCheckout("growth"),
-      highlighted: true,
+      highlighted: false,
       disabled: loadingPlan === "growth",
     },
     {

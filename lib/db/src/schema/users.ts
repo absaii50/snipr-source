@@ -17,6 +17,9 @@ export const usersTable = pgTable("users", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 
   plan: text("plan").notNull().default("free"),
+  // 7-day Starter trial granted on email verification. NULL once trial ends or user pays.
+  trialEndsAt: timestamp("trial_ends_at", { withTimezone: true }),
+  trialPlan: text("trial_plan"),  // which plan they're trialing (e.g. 'starter')
   lsCustomerId: text("ls_customer_id"),
   lsSubscriptionId: text("ls_subscription_id"),
   lsVariantId: text("ls_variant_id"),
