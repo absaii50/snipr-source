@@ -22,7 +22,13 @@ async function topN(
   fromDate: Date,
   toDate: Date,
   linkId?: string,
-  limit = 10
+  limit = 10,
+  /**
+   * Label to use when the column value is NULL. If undefined, NULL rows are
+   * dropped (sensible for unknown country/browser/etc.). For `referrer`, pass
+   * "Direct" so no-referrer traffic still shows in the top list.
+   */
+  nullLabel?: string
 ): Promise<{ label: string; count: number }[]> {
   const linkFilter = linkId
     ? and(eq(linksTable.workspaceId, workspaceId), eq(linksTable.id, linkId))
@@ -47,8 +53,14 @@ async function topN(
     .limit(limit);
 
   return rows
-    .filter((r) => r.label !== null)
-    .map((r) => ({ label: r.label as string, count: Number(r.count) }));
+    .map((r) => {
+      if (r.label === null || r.label === "") {
+        if (nullLabel === undefined) return null;
+        return { label: nullLabel, count: Number(r.count) };
+      }
+      return { label: r.label as string, count: Number(r.count) };
+    })
+    .filter((r): r is { label: string; count: number } => r !== null);
 }
 
 async function topLinks(workspaceId: string, fromDate: Date, toDate: Date, limit = 10) {
@@ -110,7 +122,7 @@ router.get("/analytics/workspace", requireAuth, async (req, res): Promise<void> 
   const [tLinks, tCountries, tReferrers, tBrowsers, tDevices, tOs, tCities, tUtmSources, tUtmMediums, tUtmCampaigns] = await Promise.all([
     topLinks(workspaceId, fromDate, toDate),
     topN(workspaceId, clickEventsTable.country, fromDate, toDate, linkId),
-    topN(workspaceId, clickEventsTable.referrer, fromDate, toDate, linkId),
+    topN(workspaceId, clickEventsTable.referrer, fromDate, toDate, linkId, 10, "Direct"),
     topN(workspaceId, clickEventsTable.browser, fromDate, toDate, linkId),
     topN(workspaceId, clickEventsTable.device, fromDate, toDate, linkId),
     topN(workspaceId, clickEventsTable.os, fromDate, toDate, linkId),
@@ -259,7 +271,7 @@ router.get("/analytics/links/:id", requireAuth, async (req, res): Promise<void> 
 
   const [tCountries, tReferrers, tBrowsers, tDevices, tOs, tCities] = await Promise.all([
     topN(workspaceId, clickEventsTable.country, fromDate, toDate, id),
-    topN(workspaceId, clickEventsTable.referrer, fromDate, toDate, id),
+    topN(workspaceId, clickEventsTable.referrer, fromDate, toDate, id, 10, "Direct"),
     topN(workspaceId, clickEventsTable.browser, fromDate, toDate, id),
     topN(workspaceId, clickEventsTable.device, fromDate, toDate, id),
     topN(workspaceId, clickEventsTable.os, fromDate, toDate, id),
