@@ -8,13 +8,13 @@
 
 export interface Domain {
   id: string;
-  workspaceId: string;
+  /** Platform domains have no workspaceId (workspaceId can be null on shared/platform domains). */
+  workspaceId?: string | null;
   domain: string;
   verified: boolean;
-  isPlatformDomain: boolean;
-  isParentDomain?: boolean;
-  supportsSubdomains?: boolean;
-  purpose?: string;
+  /** Platform-shared domains are visible to every user. */
+  isPlatformDomain?: boolean | null;
+  supportsSubdomains?: boolean | null;
   createdAt: Date;
   updatedAt: Date;
 }

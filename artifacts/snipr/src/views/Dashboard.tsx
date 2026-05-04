@@ -213,11 +213,11 @@ export default function Dashboard() {
   const monthParams = { from: monthFrom, to: monthTo };
   const { data: monthStats } = useGetWorkspaceAnalytics(monthParams, { query: { queryKey: getGetWorkspaceAnalyticsQueryKey(monthParams), staleTime: ST5 } });
 
-  const tsParams2 = { from, to, interval } as const;
-  const tsResult   = useGetWorkspaceTimeseries(tsParams2 as any, { query: { queryKey: getGetWorkspaceTimeseriesQueryKey(tsParams2 as any), staleTime: ST5 } });
+  const tsParams2 = { from, to, interval };
+  const tsResult   = useGetWorkspaceTimeseries(tsParams2, { query: { queryKey: getGetWorkspaceTimeseriesQueryKey(tsParams2), staleTime: ST5 } });
   const timeseries = useMemo(() => {
     if (!tsResult.data) return [];
-    return (tsResult.data as TimeseriesPoint[]).map((pt) => ({ ...pt, day: fmtDay(pt.time, interval, period) }));
+    return tsResult.data.map((pt: TimeseriesPoint) => ({ ...pt, day: fmtDay(pt.time, interval, period) }));
   }, [tsResult.data, interval, period]);
 
   const totalLinks  = links?.length ?? 0;

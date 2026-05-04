@@ -10,6 +10,7 @@ export type LinkRuleType = (typeof LinkRuleType)[keyof typeof LinkRuleType];
 
 export const LinkRuleType = {
   geo: "geo",
+  city: "city",
   device: "device",
   ab: "ab",
   rotator: "rotator",

@@ -62,6 +62,8 @@ export interface AuthResponse {
 export interface Link {
   id: string;
   workspaceId: string;
+  /** When set, the link belongs to a custom or platform domain. null = use the default redirect host. */
+  domainId?: string | null;
   slug: string;
   destinationUrl: string;
   title?: string | null;
@@ -70,9 +72,15 @@ export interface Link {
   folderId?: string | null;
   clickLimit?: number | null;
   fallbackUrl?: string | null;
-  domainId?: string | null;
-  isCloaked?: boolean;
   hasPassword: boolean;
+  /** When non-null the link's redirect is paused (plan-cap or abuse-detection). */
+  flaggedAt?: string | null;
+  flaggedReason?: string | null;
+  propagateUtm?: boolean | null;
+  isCloaked?: boolean | null;
+  hideReferrer?: boolean | null;
+  iosDeepLink?: string | null;
+  androidDeepLink?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -111,6 +119,7 @@ export type LinkRuleType = (typeof LinkRuleType)[keyof typeof LinkRuleType];
 
 export const LinkRuleType = {
   geo: "geo",
+  city: "city",
   device: "device",
   ab: "ab",
   rotator: "rotator",
@@ -138,10 +147,10 @@ export type CreateLinkRuleRequestType =
 
 export const CreateLinkRuleRequestType = {
   geo: "geo",
+  city: "city",
   device: "device",
   ab: "ab",
   rotator: "rotator",
-  city: "city",
 } as const;
 
 export type CreateLinkRuleRequestConditions = { [key: string]: unknown };
@@ -156,13 +165,13 @@ export interface CreateLinkRuleRequest {
 
 export interface Domain {
   id: string;
-  workspaceId: string;
+  /** Platform domains have no workspaceId (workspaceId can be null on shared/platform domains). */
+  workspaceId?: string | null;
   domain: string;
   verified: boolean;
-  isPlatformDomain: boolean;
-  isParentDomain?: boolean;
-  supportsSubdomains?: boolean;
-  purpose?: string;
+  /** Platform-shared domains are visible to every user. */
+  isPlatformDomain?: boolean | null;
+  supportsSubdomains?: boolean | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -265,16 +274,29 @@ export interface TimeseriesPoint {
   uniqueClicks: number;
 }
 
+export interface HourOfDayPoint {
+  hour: number;
+  count: number;
+}
+
 export interface WorkspaceAnalytics {
   totalClicks: number;
   uniqueClicks: number;
   totalLinks: number;
   enabledLinks: number;
+  qrClicks: number;
+  directClicks: number;
   topLinks: TopEntry[];
   topCountries: TopEntry[];
   topReferrers: TopEntry[];
   topBrowsers: TopEntry[];
   topDevices: TopEntry[];
+  topOs: TopEntry[];
+  topCities: TopEntry[];
+  topUtmSources: TopEntry[];
+  topUtmMediums: TopEntry[];
+  topUtmCampaigns: TopEntry[];
+  hourOfDay: HourOfDayPoint[];
 }
 
 export interface LinkAnalytics {
@@ -286,6 +308,7 @@ export interface LinkAnalytics {
   topReferrers: TopEntry[];
   topBrowsers: TopEntry[];
   topDevices: TopEntry[];
+  topCities: TopEntry[];
   topOs: TopEntry[];
 }
 
@@ -303,6 +326,23 @@ export interface ClickEvent {
   utmSource?: string | null;
   utmMedium?: string | null;
   utmCampaign?: string | null;
+}
+
+export type WorkspaceClickEvent = ClickEvent & {
+  slug: string;
+  domainId?: string | null;
+  destinationUrl: string;
+};
+
+export interface WorkspaceEventsResponse {
+  events: WorkspaceClickEvent[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export interface StatsTodayResponse {
+  clicks: number;
 }
 
 export interface TrackConversionRequest {
@@ -516,6 +556,18 @@ export const GetLinkTimeseriesInterval = {
 export type GetLinkEventsParams = {
   limit?: number;
   offset?: number;
+};
+
+export type GetWorkspaceEventsParams = {
+  limit?: number;
+  offset?: number;
+};
+
+export type GetStatsTodayParams = {
+  /**
+   * Optional IANA timezone (e.g. Asia/Karachi). Defaults to UTC.
+   */
+  tz?: string;
 };
 
 export type GetConversionsParams = {

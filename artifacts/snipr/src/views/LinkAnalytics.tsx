@@ -279,7 +279,7 @@ export default function LinkAnalytics() {
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
           <div className="flex flex-col gap-4">
             <TopList title="Countries" data={stats?.topCountries} isLoading={isLoadingStats} icon={<Globe className="w-3.5 h-3.5" />} color="#8B5CF6" compact />
-            <TopList title="Cities" data={(stats as any)?.topCities} isLoading={isLoadingStats} icon={<MapPin className="w-3.5 h-3.5" />} color="#EF4444" compact />
+            <TopList title="Cities" data={stats?.topCities} isLoading={isLoadingStats} icon={<MapPin className="w-3.5 h-3.5" />} color="#EF4444" compact />
           </div>
           <TopList title="Referrers" data={stats?.topReferrers} isLoading={isLoadingStats} icon={<ExternalLink className="w-3.5 h-3.5" />} color="#8B5CF6" />
           <div className="flex flex-col gap-4">

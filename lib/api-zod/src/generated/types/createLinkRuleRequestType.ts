@@ -11,6 +11,7 @@ export type CreateLinkRuleRequestType =
 
 export const CreateLinkRuleRequestType = {
   geo: "geo",
+  city: "city",
   device: "device",
   ab: "ab",
   rotator: "rotator",

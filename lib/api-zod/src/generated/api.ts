@@ -102,6 +102,12 @@ export const GetLinksQueryParams = zod.object({
 export const GetLinksResponseItem = zod.object({
   id: zod.string(),
   workspaceId: zod.string(),
+  domainId: zod
+    .string()
+    .nullish()
+    .describe(
+      "When set, the link belongs to a custom or platform domain. null = use the default redirect host.",
+    ),
   slug: zod.string(),
   destinationUrl: zod.string(),
   title: zod.string().nullish(),
@@ -111,6 +117,18 @@ export const GetLinksResponseItem = zod.object({
   clickLimit: zod.number().nullish(),
   fallbackUrl: zod.string().nullish(),
   hasPassword: zod.boolean(),
+  flaggedAt: zod
+    .date()
+    .nullish()
+    .describe(
+      "When non-null the link's redirect is paused (plan-cap or abuse-detection).",
+    ),
+  flaggedReason: zod.string().nullish(),
+  propagateUtm: zod.boolean().nullish(),
+  isCloaked: zod.boolean().nullish(),
+  hideReferrer: zod.boolean().nullish(),
+  iosDeepLink: zod.string().nullish(),
+  androidDeepLink: zod.string().nullish(),
   createdAt: zod.date(),
   updatedAt: zod.date(),
 });
@@ -143,6 +161,12 @@ export const GetLinkParams = zod.object({
 export const GetLinkResponse = zod.object({
   id: zod.string(),
   workspaceId: zod.string(),
+  domainId: zod
+    .string()
+    .nullish()
+    .describe(
+      "When set, the link belongs to a custom or platform domain. null = use the default redirect host.",
+    ),
   slug: zod.string(),
   destinationUrl: zod.string(),
   title: zod.string().nullish(),
@@ -152,6 +176,18 @@ export const GetLinkResponse = zod.object({
   clickLimit: zod.number().nullish(),
   fallbackUrl: zod.string().nullish(),
   hasPassword: zod.boolean(),
+  flaggedAt: zod
+    .date()
+    .nullish()
+    .describe(
+      "When non-null the link's redirect is paused (plan-cap or abuse-detection).",
+    ),
+  flaggedReason: zod.string().nullish(),
+  propagateUtm: zod.boolean().nullish(),
+  isCloaked: zod.boolean().nullish(),
+  hideReferrer: zod.boolean().nullish(),
+  iosDeepLink: zod.string().nullish(),
+  androidDeepLink: zod.string().nullish(),
   createdAt: zod.date(),
   updatedAt: zod.date(),
 });
@@ -181,6 +217,12 @@ export const UpdateLinkBody = zod.object({
 export const UpdateLinkResponse = zod.object({
   id: zod.string(),
   workspaceId: zod.string(),
+  domainId: zod
+    .string()
+    .nullish()
+    .describe(
+      "When set, the link belongs to a custom or platform domain. null = use the default redirect host.",
+    ),
   slug: zod.string(),
   destinationUrl: zod.string(),
   title: zod.string().nullish(),
@@ -190,6 +232,18 @@ export const UpdateLinkResponse = zod.object({
   clickLimit: zod.number().nullish(),
   fallbackUrl: zod.string().nullish(),
   hasPassword: zod.boolean(),
+  flaggedAt: zod
+    .date()
+    .nullish()
+    .describe(
+      "When non-null the link's redirect is paused (plan-cap or abuse-detection).",
+    ),
+  flaggedReason: zod.string().nullish(),
+  propagateUtm: zod.boolean().nullish(),
+  isCloaked: zod.boolean().nullish(),
+  hideReferrer: zod.boolean().nullish(),
+  iosDeepLink: zod.string().nullish(),
+  androidDeepLink: zod.string().nullish(),
   createdAt: zod.date(),
   updatedAt: zod.date(),
 });
@@ -259,7 +313,7 @@ export const GetLinkRulesParams = zod.object({
 export const GetLinkRulesResponseItem = zod.object({
   id: zod.string(),
   linkId: zod.string(),
-  type: zod.enum(["geo", "device", "ab", "rotator"]),
+  type: zod.enum(["geo", "city", "device", "ab", "rotator"]),
   priority: zod.number(),
   conditions: zod
     .object({})
@@ -283,7 +337,7 @@ export const SetLinkRulesParams = zod.object({
 export const SetLinkRulesBody = zod.object({
   rules: zod.array(
     zod.object({
-      type: zod.enum(["geo", "device", "ab", "rotator"]),
+      type: zod.enum(["geo", "city", "device", "ab", "rotator"]),
       priority: zod.number().optional(),
       conditions: zod.object({}).passthrough().optional(),
       destinationUrl: zod.string(),
@@ -295,7 +349,7 @@ export const SetLinkRulesBody = zod.object({
 export const SetLinkRulesResponseItem = zod.object({
   id: zod.string(),
   linkId: zod.string(),
-  type: zod.enum(["geo", "device", "ab", "rotator"]),
+  type: zod.enum(["geo", "city", "device", "ab", "rotator"]),
   priority: zod.number(),
   conditions: zod
     .object({})
@@ -314,9 +368,19 @@ export const SetLinkRulesResponse = zod.array(SetLinkRulesResponseItem);
  */
 export const GetDomainsResponseItem = zod.object({
   id: zod.string(),
-  workspaceId: zod.string(),
+  workspaceId: zod
+    .string()
+    .nullish()
+    .describe(
+      "Platform domains have no workspaceId (workspaceId can be null on shared\/platform domains).",
+    ),
   domain: zod.string(),
   verified: zod.boolean(),
+  isPlatformDomain: zod
+    .boolean()
+    .nullish()
+    .describe("Platform-shared domains are visible to every user."),
+  supportsSubdomains: zod.boolean().nullish(),
   createdAt: zod.date(),
   updatedAt: zod.date(),
 });
@@ -520,6 +584,8 @@ export const GetWorkspaceAnalyticsResponse = zod.object({
   uniqueClicks: zod.number(),
   totalLinks: zod.number(),
   enabledLinks: zod.number(),
+  qrClicks: zod.number(),
+  directClicks: zod.number(),
   topLinks: zod.array(
     zod.object({
       label: zod.string(),
@@ -547,6 +613,42 @@ export const GetWorkspaceAnalyticsResponse = zod.object({
   topDevices: zod.array(
     zod.object({
       label: zod.string(),
+      count: zod.number(),
+    }),
+  ),
+  topOs: zod.array(
+    zod.object({
+      label: zod.string(),
+      count: zod.number(),
+    }),
+  ),
+  topCities: zod.array(
+    zod.object({
+      label: zod.string(),
+      count: zod.number(),
+    }),
+  ),
+  topUtmSources: zod.array(
+    zod.object({
+      label: zod.string(),
+      count: zod.number(),
+    }),
+  ),
+  topUtmMediums: zod.array(
+    zod.object({
+      label: zod.string(),
+      count: zod.number(),
+    }),
+  ),
+  topUtmCampaigns: zod.array(
+    zod.object({
+      label: zod.string(),
+      count: zod.number(),
+    }),
+  ),
+  hourOfDay: zod.array(
+    zod.object({
+      hour: zod.number(),
       count: zod.number(),
     }),
   ),
@@ -612,6 +714,12 @@ export const GetLinkAnalyticsResponse = zod.object({
       count: zod.number(),
     }),
   ),
+  topCities: zod.array(
+    zod.object({
+      label: zod.string(),
+      count: zod.number(),
+    }),
+  ),
   topOs: zod.array(
     zod.object({
       label: zod.string(),
@@ -670,6 +778,59 @@ export const GetLinkEventsResponseItem = zod.object({
   utmCampaign: zod.string().nullish(),
 });
 export const GetLinkEventsResponse = zod.array(GetLinkEventsResponseItem);
+
+/**
+ * @summary Get recent click events for the whole workspace
+ */
+export const GetWorkspaceEventsQueryParams = zod.object({
+  limit: zod.coerce.number().optional(),
+  offset: zod.coerce.number().optional(),
+});
+
+export const GetWorkspaceEventsResponse = zod.object({
+  events: zod.array(
+    zod
+      .object({
+        id: zod.string(),
+        linkId: zod.string(),
+        timestamp: zod.date(),
+        referrer: zod.string().nullish(),
+        browser: zod.string().nullish(),
+        os: zod.string().nullish(),
+        device: zod.string().nullish(),
+        country: zod.string().nullish(),
+        city: zod.string().nullish(),
+        isQr: zod.boolean(),
+        utmSource: zod.string().nullish(),
+        utmMedium: zod.string().nullish(),
+        utmCampaign: zod.string().nullish(),
+      })
+      .and(
+        zod.object({
+          slug: zod.string(),
+          domainId: zod.string().nullish(),
+          destinationUrl: zod.string(),
+        }),
+      ),
+  ),
+  total: zod.number(),
+  limit: zod.number(),
+  offset: zod.number(),
+});
+
+/**
+ * @summary Today's click count for the workspace
+ */
+export const GetStatsTodayQueryParams = zod.object({
+  tz: zod.coerce
+    .string()
+    .optional()
+    .describe("Optional IANA timezone (e.g. Asia\/Karachi). Defaults to UTC."),
+});
+
+export const GetStatsTodayResponse = zod.object({
+  clicks: zod.number(),
+});
 
 /**
  * @summary Track a conversion event

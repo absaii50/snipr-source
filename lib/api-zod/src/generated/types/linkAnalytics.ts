@@ -16,5 +16,6 @@ export interface LinkAnalytics {
   topReferrers: TopEntry[];
   topBrowsers: TopEntry[];
   topDevices: TopEntry[];
+  topCities: TopEntry[];
   topOs: TopEntry[];
 }

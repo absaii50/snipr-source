@@ -5,6 +5,7 @@
  * Snipr URL shortener API
  * OpenAPI spec version: 0.1.0
  */
+import type { HourOfDayPoint } from "./hourOfDayPoint";
 import type { TopEntry } from "./topEntry";
 
 export interface WorkspaceAnalytics {
@@ -12,9 +13,17 @@ export interface WorkspaceAnalytics {
   uniqueClicks: number;
   totalLinks: number;
   enabledLinks: number;
+  qrClicks: number;
+  directClicks: number;
   topLinks: TopEntry[];
   topCountries: TopEntry[];
   topReferrers: TopEntry[];
   topBrowsers: TopEntry[];
   topDevices: TopEntry[];
+  topOs: TopEntry[];
+  topCities: TopEntry[];
+  topUtmSources: TopEntry[];
+  topUtmMediums: TopEntry[];
+  topUtmCampaigns: TopEntry[];
+  hourOfDay: HourOfDayPoint[];
 }

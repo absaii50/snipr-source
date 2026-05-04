@@ -9,6 +9,8 @@
 export interface Link {
   id: string;
   workspaceId: string;
+  /** When set, the link belongs to a custom or platform domain. null = use the default redirect host. */
+  domainId?: string | null;
   slug: string;
   destinationUrl: string;
   title?: string | null;
@@ -18,6 +20,14 @@ export interface Link {
   clickLimit?: number | null;
   fallbackUrl?: string | null;
   hasPassword: boolean;
+  /** When non-null the link's redirect is paused (plan-cap or abuse-detection). */
+  flaggedAt?: Date | null;
+  flaggedReason?: string | null;
+  propagateUtm?: boolean | null;
+  isCloaked?: boolean | null;
+  hideReferrer?: boolean | null;
+  iosDeepLink?: string | null;
+  androidDeepLink?: string | null;
   createdAt: Date;
   updatedAt: Date;
 }

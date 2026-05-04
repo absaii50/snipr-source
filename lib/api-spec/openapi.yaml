@@ -974,6 +974,59 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /analytics/events:
+    get:
+      operationId: getWorkspaceEvents
+      tags: [analytics]
+      summary: Get recent click events for the whole workspace
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: number
+        - name: offset
+          in: query
+          schema:
+            type: number
+      responses:
+        "200":
+          description: Workspace click events with pagination total
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkspaceEventsResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /stats/today:
+    get:
+      operationId: getStatsToday
+      tags: [analytics]
+      summary: Today's click count for the workspace
+      parameters:
+        - name: tz
+          in: query
+          description: Optional IANA timezone (e.g. Asia/Karachi). Defaults to UTC.
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Today's click count
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StatsTodayResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /conversions:
     post:
       operationId: trackConversion
@@ -1318,6 +1371,10 @@ components:
           type: string
         workspaceId:
           type: string
+        domainId:
+          type: string
+          nullable: true
+          description: When set, the link belongs to a custom or platform domain. null = use the default redirect host.
         slug:
           type: string
         destinationUrl:
@@ -1342,6 +1399,29 @@ components:
           nullable: true
         hasPassword:
           type: boolean
+        flaggedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: When non-null the link's redirect is paused (plan-cap or abuse-detection).
+        flaggedReason:
+          type: string
+          nullable: true
+        propagateUtm:
+          type: boolean
+          nullable: true
+        isCloaked:
+          type: boolean
+          nullable: true
+        hideReferrer:
+          type: boolean
+          nullable: true
+        iosDeepLink:
+          type: string
+          nullable: true
+        androidDeepLink:
+          type: string
+          nullable: true
         createdAt:
           type: string
           format: date-time
@@ -1444,7 +1524,7 @@ components:
           type: string
         type:
           type: string
-          enum: [geo, device, ab, rotator]
+          enum: [geo, city, device, ab, rotator]
         priority:
           type: number
         conditions:
@@ -1472,7 +1552,7 @@ components:
       properties:
         type:
           type: string
-          enum: [geo, device, ab, rotator]
+          enum: [geo, city, device, ab, rotator]
         priority:
           type: number
         conditions:
@@ -1493,10 +1573,19 @@ components:
           type: string
         workspaceId:
           type: string
+          nullable: true
+          description: Platform domains have no workspaceId (workspaceId can be null on shared/platform domains).
         domain:
           type: string
         verified:
           type: boolean
+        isPlatformDomain:
+          type: boolean
+          nullable: true
+          description: Platform-shared domains are visible to every user.
+        supportsSubdomains:
+          type: boolean
+          nullable: true
         createdAt:
           type: string
           format: date-time
@@ -1505,7 +1594,6 @@ components:
           format: date-time
       required:
         - id
-        - workspaceId
         - domain
         - verified
         - createdAt
@@ -1703,6 +1791,10 @@ components:
           type: number
         enabledLinks:
           type: number
+        qrClicks:
+          type: number
+        directClicks:
+          type: number
         topLinks:
           type: array
           items:
@@ -1723,16 +1815,59 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/TopEntry"
+        topOs:
+          type: array
+          items:
+            $ref: "#/components/schemas/TopEntry"
+        topCities:
+          type: array
+          items:
+            $ref: "#/components/schemas/TopEntry"
+        topUtmSources:
+          type: array
+          items:
+            $ref: "#/components/schemas/TopEntry"
+        topUtmMediums:
+          type: array
+          items:
+            $ref: "#/components/schemas/TopEntry"
+        topUtmCampaigns:
+          type: array
+          items:
+            $ref: "#/components/schemas/TopEntry"
+        hourOfDay:
+          type: array
+          items:
+            $ref: "#/components/schemas/HourOfDayPoint"
       required:
         - totalClicks
         - uniqueClicks
         - totalLinks
         - enabledLinks
+        - qrClicks
+        - directClicks
         - topLinks
         - topCountries
         - topReferrers
         - topBrowsers
         - topDevices
+        - topOs
+        - topCities
+        - topUtmSources
+        - topUtmMediums
+        - topUtmCampaigns
+        - hourOfDay
+
+    HourOfDayPoint:
+      type: object
+      properties:
+        hour:
+          type: number
+        count:
+          type: number
+      required:
+        - hour
+        - count
 
     LinkAnalytics:
       type: object
@@ -1761,6 +1896,10 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/TopEntry"
+        topCities:
+          type: array
+          items:
+            $ref: "#/components/schemas/TopEntry"
         topOs:
           type: array
           items:
@@ -1774,6 +1913,7 @@ components:
         - topReferrers
         - topBrowsers
         - topDevices
+        - topCities
         - topOs
 
     ClickEvent:
@@ -1820,6 +1960,49 @@ components:
         - linkId
         - timestamp
         - isQr
+
+    WorkspaceClickEvent:
+      allOf:
+        - $ref: "#/components/schemas/ClickEvent"
+        - type: object
+          properties:
+            slug:
+              type: string
+            domainId:
+              type: string
+              nullable: true
+            destinationUrl:
+              type: string
+          required:
+            - slug
+            - destinationUrl
+
+    WorkspaceEventsResponse:
+      type: object
+      properties:
+        events:
+          type: array
+          items:
+            $ref: "#/components/schemas/WorkspaceClickEvent"
+        total:
+          type: number
+        limit:
+          type: number
+        offset:
+          type: number
+      required:
+        - events
+        - total
+        - limit
+        - offset
+
+    StatsTodayResponse:
+      type: object
+      properties:
+        clicks:
+          type: number
+      required:
+        - clicks
 
     TrackConversionRequest:
       type: object

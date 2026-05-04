@@ -40,7 +40,9 @@ import type {
   GetLinkTimeseriesParams,
   GetLinksParams,
   GetRevenueReportParams,
+  GetStatsTodayParams,
   GetWorkspaceAnalyticsParams,
+  GetWorkspaceEventsParams,
   GetWorkspaceTimeseriesParams,
   HealthStatus,
   InviteMemberRequest,
@@ -58,6 +60,7 @@ import type {
   SetLinkTagsBody,
   SlugSuggestRequest,
   SlugSuggestResponse,
+  StatsTodayResponse,
   Tag,
   TimeseriesPoint,
   TrackConversionRequest,
@@ -68,6 +71,7 @@ import type {
   UpdateTagRequest,
   UserResponse,
   WorkspaceAnalytics,
+  WorkspaceEventsResponse,
   WorkspaceMember,
 } from "./api.schemas";
 
@@ -3251,6 +3255,200 @@ export function useGetLinkEvents<
   },
 ): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getGetLinkEventsQueryOptions(id, params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Get recent click events for the whole workspace
+ */
+export const getGetWorkspaceEventsUrl = (params?: GetWorkspaceEventsParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/analytics/events?${stringifiedParams}`
+    : `/api/analytics/events`;
+};
+
+export const getWorkspaceEvents = async (
+  params?: GetWorkspaceEventsParams,
+  options?: RequestInit,
+): Promise<WorkspaceEventsResponse> => {
+  return customFetch<WorkspaceEventsResponse>(
+    getGetWorkspaceEventsUrl(params),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetWorkspaceEventsQueryKey = (
+  params?: GetWorkspaceEventsParams,
+) => {
+  return [`/api/analytics/events`, ...(params ? [params] : [])] as const;
+};
+
+export const getGetWorkspaceEventsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getWorkspaceEvents>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  params?: GetWorkspaceEventsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getWorkspaceEvents>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetWorkspaceEventsQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getWorkspaceEvents>>
+  > = ({ signal }) => getWorkspaceEvents(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getWorkspaceEvents>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetWorkspaceEventsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getWorkspaceEvents>>
+>;
+export type GetWorkspaceEventsQueryError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Get recent click events for the whole workspace
+ */
+
+export function useGetWorkspaceEvents<
+  TData = Awaited<ReturnType<typeof getWorkspaceEvents>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  params?: GetWorkspaceEventsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getWorkspaceEvents>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetWorkspaceEventsQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Today's click count for the workspace
+ */
+export const getGetStatsTodayUrl = (params?: GetStatsTodayParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/stats/today?${stringifiedParams}`
+    : `/api/stats/today`;
+};
+
+export const getStatsToday = async (
+  params?: GetStatsTodayParams,
+  options?: RequestInit,
+): Promise<StatsTodayResponse> => {
+  return customFetch<StatsTodayResponse>(getGetStatsTodayUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetStatsTodayQueryKey = (params?: GetStatsTodayParams) => {
+  return [`/api/stats/today`, ...(params ? [params] : [])] as const;
+};
+
+export const getGetStatsTodayQueryOptions = <
+  TData = Awaited<ReturnType<typeof getStatsToday>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  params?: GetStatsTodayParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getStatsToday>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetStatsTodayQueryKey(params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getStatsToday>>> = ({
+    signal,
+  }) => getStatsToday(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getStatsToday>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetStatsTodayQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getStatsToday>>
+>;
+export type GetStatsTodayQueryError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Today's click count for the workspace
+ */
+
+export function useGetStatsToday<
+  TData = Awaited<ReturnType<typeof getStatsToday>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  params?: GetStatsTodayParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getStatsToday>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetStatsTodayQueryOptions(params, options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;
