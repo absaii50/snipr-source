@@ -1018,7 +1018,8 @@ router.post("/admin/resend-verification/:userId", requireAdmin, async (req, res)
 
 /* ── Analytics ─────────────────────────────────────────────────────── */
 router.get("/admin/analytics", requireAdmin, async (req, res): Promise<void> => {
-  const days = parseInt((req.query.days as string) ?? "30", 10);
+  const rawDays = parseInt((req.query.days as string) ?? "30", 10);
+  const days = Number.isFinite(rawDays) ? Math.min(Math.max(rawDays, 1), 365) : 30;
   const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
 
   const [clicksByDay, topCountries, topDevices, topBrowsers, topReferrers] = await Promise.all([
@@ -1417,7 +1418,8 @@ router.get("/admin/links/performance", requireAdmin, async (req, res): Promise<v
 /* ── Platform Timeseries & Growth ────────────────────────────────────── */
 
 router.get("/admin/analytics/platform", requireAdmin, async (req, res): Promise<void> => {
-  const days = Math.min(parseInt((req.query.days as string) ?? "30", 10), 365);
+  const rawDays = parseInt((req.query.days as string) ?? "30", 10);
+  const days = Number.isFinite(rawDays) ? Math.min(Math.max(rawDays, 1), 365) : 30;
 
   const [clicksRows, usersRows, linksRows] = await Promise.all([
     db.execute(sql`

@@ -119,14 +119,17 @@ router.get("/analytics/workspace", requireAuth, async (req, res): Promise<void> 
     .from(linksTable)
     .where(eq(linksTable.workspaceId, workspaceId));
 
+  // For column types where NULL means "couldn't be determined" (country, city, browser, os, device),
+  // surface a labelled "Unknown" entry so the topN counts add up to totalClicks. UTM fields keep NULL
+  // filtering — most clicks have no UTM, so an "(none)" entry would dominate the list and hide real signal.
   const [tLinks, tCountries, tReferrers, tBrowsers, tDevices, tOs, tCities, tUtmSources, tUtmMediums, tUtmCampaigns] = await Promise.all([
     topLinks(workspaceId, fromDate, toDate),
-    topN(workspaceId, clickEventsTable.country, fromDate, toDate, linkId),
+    topN(workspaceId, clickEventsTable.country, fromDate, toDate, linkId, 10, "Unknown"),
     topN(workspaceId, clickEventsTable.referrer, fromDate, toDate, linkId, 10, "Direct"),
-    topN(workspaceId, clickEventsTable.browser, fromDate, toDate, linkId),
-    topN(workspaceId, clickEventsTable.device, fromDate, toDate, linkId),
-    topN(workspaceId, clickEventsTable.os, fromDate, toDate, linkId),
-    topN(workspaceId, clickEventsTable.city, fromDate, toDate, linkId, 15),
+    topN(workspaceId, clickEventsTable.browser, fromDate, toDate, linkId, 10, "Unknown"),
+    topN(workspaceId, clickEventsTable.device, fromDate, toDate, linkId, 10, "Unknown"),
+    topN(workspaceId, clickEventsTable.os, fromDate, toDate, linkId, 10, "Unknown"),
+    topN(workspaceId, clickEventsTable.city, fromDate, toDate, linkId, 15, "Unknown"),
     topN(workspaceId, clickEventsTable.utmSource, fromDate, toDate, linkId),
     topN(workspaceId, clickEventsTable.utmMedium, fromDate, toDate, linkId),
     topN(workspaceId, clickEventsTable.utmCampaign, fromDate, toDate, linkId),
@@ -270,12 +273,12 @@ router.get("/analytics/links/:id", requireAuth, async (req, res): Promise<void> 
     );
 
   const [tCountries, tReferrers, tBrowsers, tDevices, tOs, tCities] = await Promise.all([
-    topN(workspaceId, clickEventsTable.country, fromDate, toDate, id),
+    topN(workspaceId, clickEventsTable.country, fromDate, toDate, id, 10, "Unknown"),
     topN(workspaceId, clickEventsTable.referrer, fromDate, toDate, id, 10, "Direct"),
-    topN(workspaceId, clickEventsTable.browser, fromDate, toDate, id),
-    topN(workspaceId, clickEventsTable.device, fromDate, toDate, id),
-    topN(workspaceId, clickEventsTable.os, fromDate, toDate, id),
-    topN(workspaceId, clickEventsTable.city, fromDate, toDate, id, 15),
+    topN(workspaceId, clickEventsTable.browser, fromDate, toDate, id, 10, "Unknown"),
+    topN(workspaceId, clickEventsTable.device, fromDate, toDate, id, 10, "Unknown"),
+    topN(workspaceId, clickEventsTable.os, fromDate, toDate, id, 10, "Unknown"),
+    topN(workspaceId, clickEventsTable.city, fromDate, toDate, id, 15, "Unknown"),
   ]);
 
   res.json({
@@ -429,10 +432,35 @@ router.get("/analytics/events", requireAuth, async (req, res): Promise<void> => 
 });
 
 // GET /api/stats/today — today's click count for the workspace
+// Uses UTC midnight to match /api/analytics/workspace's date handling. Optionally
+// accepts ?tz=Asia/Karachi to compute "today" in the caller's local timezone.
 router.get("/stats/today", requireAuth, async (req, res): Promise<void> => {
   const workspaceId = req.session.workspaceId!;
-  const startOfDay = new Date();
-  startOfDay.setHours(0, 0, 0, 0);
+  const tz = (req.query.tz as string | undefined)?.trim();
+
+  let startOfDay: Date;
+  if (tz) {
+    // Compute midnight in the requested IANA timezone, then convert to UTC.
+    try {
+      const parts = new Intl.DateTimeFormat("en-CA", {
+        timeZone: tz,
+        year: "numeric", month: "2-digit", day: "2-digit",
+      }).formatToParts(new Date());
+      const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "";
+      const dateStr = `${get("year")}-${get("month")}-${get("day")}T00:00:00`;
+      // Compute the UTC instant that corresponds to local-midnight in tz.
+      const local = new Date(`${dateStr}Z`);
+      const offsetMs = local.getTime() - new Date(local.toLocaleString("en-US", { timeZone: tz })).getTime();
+      startOfDay = new Date(local.getTime() + offsetMs);
+    } catch {
+      // Bad tz — fall back to UTC.
+      startOfDay = new Date();
+      startOfDay.setUTCHours(0, 0, 0, 0);
+    }
+  } else {
+    startOfDay = new Date();
+    startOfDay.setUTCHours(0, 0, 0, 0);
+  }
 
   const [result] = await db
     .select({ clicks: count() })
