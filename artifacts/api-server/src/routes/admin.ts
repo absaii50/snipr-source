@@ -455,8 +455,10 @@ router.get("/admin/links", requireAdmin, async (req, res): Promise<void> => {
 router.patch("/admin/links/:id/toggle", requireAdmin, async (req, res): Promise<void> => {
   const [link] = await db.select({ enabled: linksTable.enabled }).from(linksTable).where(eq(linksTable.id, req.params.id));
   if (!link) { res.status(404).json({ error: "Not found" }); return; }
-  await db.update(linksTable).set({ enabled: !link.enabled }).where(eq(linksTable.id, req.params.id));
-  res.json({ enabled: !link.enabled });
+  const newEnabled = !link.enabled;
+  await db.update(linksTable).set({ enabled: newEnabled }).where(eq(linksTable.id, req.params.id));
+  await logAuditAction("toggle_link", "link", req.params.id, { enabled: newEnabled }, req.ip);
+  res.json({ enabled: newEnabled });
 });
 
 router.delete("/admin/links/:id", requireAdmin, async (req, res): Promise<void> => {
@@ -529,6 +531,7 @@ router.patch("/admin/domains/:id/unverify", requireAdmin, async (req, res): Prom
     .update(domainsTable)
     .set({ verified: false })
     .where(eq(domainsTable.id, req.params.id));
+  await logAuditAction("unverify_domain", "domain", req.params.id, null, req.ip);
   res.json({ ok: true });
 });
 
@@ -1225,6 +1228,7 @@ Respond ONLY with valid JSON in this exact schema, no markdown:
     }
   }
 
+  await logAuditAction("ai_insights", "platform", null, { model: "deepseek" }, req.ip);
   res.json({ ...parsed, generatedAt: new Date().toISOString() });
 });
 
