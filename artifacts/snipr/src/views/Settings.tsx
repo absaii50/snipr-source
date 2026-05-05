@@ -45,14 +45,15 @@ function ProfileSection() {
         setEmail(data.user.email ?? "");
       }
       toast({ title: "Profile updated", description: data.message === "No changes" ? "No changes were made." : "Your profile has been updated." });
-    } catch {
+    } catch (err) {
+      console.error("[Settings] profile save failed:", err);
       toast({ title: "Something went wrong", variant: "destructive" });
     } finally {
       setSaving(false);
     }
   }
 
-  const hasChanges = name.trim() !== (user?.name ?? "") || email.trim().toLowerCase() !== (user?.email ?? "");
+  const hasChanges = name.trim() !== (user?.name ?? "") || email.trim().toLowerCase() !== (user?.email ?? "").toLowerCase();
 
   const initials = user?.name
     ? user.name.split(" ").map((n: string) => n[0]).slice(0, 2).join("").toUpperCase()

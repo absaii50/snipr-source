@@ -107,15 +107,15 @@ interface UserContext {
 
 async function fetchTodayClicks({ signal }: { signal: AbortSignal }): Promise<number> {
   try { const r = await fetch("/api/stats/today", { credentials: "include", signal }); return r.ok ? (await r.json()).clicks ?? 0 : 0; }
-  catch { return 0; }
+  catch (err) { if (!(err instanceof DOMException && err.name === "AbortError")) console.error("[Dashboard] fetchTodayClicks failed:", err); return 0; }
 }
 async function fetchLinkClicks({ signal }: { signal: AbortSignal }): Promise<Record<string, { total: number; unique: number }>> {
   try { const r = await fetch("/api/links/clicks", { credentials: "include", signal }); return r.ok ? r.json() : {}; }
-  catch { return {}; }
+  catch (err) { if (!(err instanceof DOMException && err.name === "AbortError")) console.error("[Dashboard] fetchLinkClicks failed:", err); return {}; }
 }
 async function fetchUserContext({ signal }: { signal: AbortSignal }): Promise<UserContext | null> {
   try { const r = await fetch("/api/auth/context", { credentials: "include", signal }); return r.ok ? r.json() : null; }
-  catch { return null; }
+  catch (err) { if (!(err instanceof DOMException && err.name === "AbortError")) console.error("[Dashboard] fetchUserContext failed:", err); return null; }
 }
 interface PlanUsage {
   clicks30d: number;
@@ -145,7 +145,7 @@ interface Subscription {
 }
 async function fetchSubscription({ signal }: { signal: AbortSignal }): Promise<Subscription | null> {
   try { const r = await fetch("/api/billing/subscription", { credentials: "include", signal }); return r.ok ? r.json() : null; }
-  catch { return null; }
+  catch (err) { if (!(err instanceof DOMException && err.name === "AbortError")) console.error("[Dashboard] fetchSubscription failed:", err); return null; }
 }
 
 interface ClickEvent {
@@ -155,7 +155,7 @@ interface ClickEvent {
 }
 async function fetchRecentClicks({ signal }: { signal: AbortSignal }): Promise<ClickEvent[]> {
   try { const r = await fetch("/api/analytics/events?limit=6", { credentials: "include", signal }); return r.ok ? (await r.json()).events ?? [] : []; }
-  catch { return []; }
+  catch (err) { if (!(err instanceof DOMException && err.name === "AbortError")) console.error("[Dashboard] fetchRecentClicks failed:", err); return []; }
 }
 
 /* ─── main component ─── */

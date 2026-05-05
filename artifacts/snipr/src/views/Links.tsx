@@ -130,6 +130,7 @@ export default function Links() {
   const [isBulkLoading, setIsBulkLoading] = useState(false);
   const [moveFolderId, setMoveFolderId] = useState<string>("");
   const [bulkTagId, setBulkTagId] = useState<string>("");
+  const [bulkDeletePending, setBulkDeletePending] = useState<number | null>(null);
   const [baseUrl, setBaseUrl] = useState("");
   const [folderFilter, setFolderFilter] = useState<string>("");
   const [tagFilter, setTagFilter] = useState<string>("");
@@ -254,9 +255,8 @@ export default function Links() {
     }
   };
 
-  const handleBulkAction = async (action: "enable" | "disable" | "delete" | "move" | "tag") => {
+  const executeBulkAction = async (action: "enable" | "disable" | "delete" | "move" | "tag") => {
     if (selectedIds.size === 0) return;
-    if (action === "delete" && !confirm(`Delete ${selectedIds.size} links? This cannot be undone.`)) return;
     if (action === "tag" && !bulkTagId) {
       toast({ title: "Please select a tag first", variant: "destructive" });
       return;
@@ -268,18 +268,36 @@ export default function Links() {
       if (action === "move") body.folderId = moveFolderId || null;
       if (action === "tag") body.tagIds = [bulkTagId];
       const res = await fetch("/api/links/bulk", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
-      if (!res.ok) throw new Error("Failed");
+      if (!res.ok) {
+        const errBody = await res.json().catch(() => null);
+        throw new Error(errBody?.error || `Bulk ${action} failed (${res.status})`);
+      }
       queryClient.invalidateQueries({ queryKey: getGetLinksQueryKey() });
       queryClient.invalidateQueries({ queryKey: ["links-clicks"] });
       queryClient.invalidateQueries({ queryKey: ["links-sparklines"] });
       setSelectedIds(new Set());
       const actionLabels: Record<string, string> = { enable: "enabled", disable: "disabled", delete: "deleted", move: "moved", tag: "tagged" };
       toast({ title: `${count} links ${actionLabels[action] ?? action}` });
-    } catch {
-      toast({ title: "Bulk action failed", variant: "destructive" });
+    } catch (err) {
+      toast({ title: err instanceof Error ? err.message : "Bulk action failed", variant: "destructive" });
     } finally {
       setIsBulkLoading(false);
     }
+  };
+
+  const handleBulkAction = (action: "enable" | "disable" | "delete" | "move" | "tag") => {
+    if (selectedIds.size === 0) return;
+    if (action === "delete") {
+      // Defer to a styled confirmation modal — no native confirm()
+      setBulkDeletePending(selectedIds.size);
+      return;
+    }
+    void executeBulkAction(action);
+  };
+
+  const confirmBulkDelete = () => {
+    setBulkDeletePending(null);
+    void executeBulkAction("delete");
   };
 
   const toggleSelect = useCallback((id: string) => {
@@ -510,7 +528,74 @@ export default function Links() {
 
       <LinkModal isOpen={isModalOpen} onClose={() => { setIsModalOpen(false); setPrefilledSlug(undefined); }} link={editingLink} initialSlug={editingLink ? undefined : prefilledSlug} />
       <QrModal link={qrLink} onClose={() => setQrLink(null)} domainMap={domainMap} />
+      <BulkDeleteConfirm
+        count={bulkDeletePending}
+        onCancel={() => setBulkDeletePending(null)}
+        onConfirm={confirmBulkDelete}
+      />
     </ProtectedLayout>
+  );
+}
+
+/* ── BulkDeleteConfirm ── */
+function BulkDeleteConfirm({ count, onCancel, onConfirm }: { count: number | null; onCancel: () => void; onConfirm: () => void }) {
+  useEffect(() => {
+    if (count === null) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onCancel();
+      if (e.key === "Enter") onConfirm();
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [count, onCancel, onConfirm]);
+
+  if (count === null) return null;
+
+  return (
+    <div
+      className="fixed inset-0 z-[10000] flex items-center justify-center px-4"
+      style={{ background: "rgba(0,0,0,0.65)", backdropFilter: "blur(2px)" }}
+      onClick={onCancel}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="rounded-xl bg-[#18181B] border border-[#27272A] w-full max-w-md p-6"
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="bulk-delete-title"
+      >
+        <div className="flex items-start gap-3">
+          <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 bg-[#EF4444]/15 border border-[#EF4444]/25">
+            <Trash2 className="w-5 h-5 text-[#EF4444]" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <h3 id="bulk-delete-title" className="text-[15px] font-semibold text-[#FAFAFA] leading-tight">
+              Delete {count} link{count === 1 ? "" : "s"}?
+            </h3>
+            <p className="text-[13px] text-[#A1A1AA] mt-1.5 leading-relaxed">
+              This permanently removes the links and all their click history. This action cannot be undone.
+            </p>
+          </div>
+        </div>
+        <div className="flex justify-end gap-2 mt-5">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="text-[13px] font-semibold px-4 py-2 rounded-lg text-[#E4E4E7] bg-[#27272A] hover:bg-[#3F3F46] transition-colors"
+            autoFocus
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            className="text-[13px] font-semibold px-4 py-2 rounded-lg text-white bg-[#EF4444] hover:bg-[#DC2626] transition-colors"
+          >
+            Delete {count}
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 

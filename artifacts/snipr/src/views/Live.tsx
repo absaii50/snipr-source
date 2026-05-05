@@ -131,6 +131,7 @@ export default function Live() {
   const esRef = useRef<EventSource | null>(null);
   const eventsRef = useRef<ClickEvent[]>([]);
   const seenIds = useRef<Set<string>>(new Set());
+  const idCounter = useRef<number>(0);
 
   /* ── Seed from DB ── */
   useEffect(() => {
@@ -162,7 +163,7 @@ export default function Live() {
         eventsRef.current = dbEvents.slice(0, 200);
         setEvents([...eventsRef.current]);
         setTotalSession(dbEvents.length);
-      } catch { /* SSE is primary */ }
+      } catch (err) { console.error("[Live] seed from DB failed:", err); /* SSE will fill in */ }
     })();
     return () => { cancelled = true; };
   }, []);
@@ -182,15 +183,26 @@ export default function Live() {
         try {
           const data = JSON.parse(e.data);
           if (data.type === "click") {
-            const _id = Math.random().toString(36).slice(2) + Date.now().toString(36);
-            if (data.linkId && seenIds.current.has(data.linkId + data.timestamp)) return;
-            seenIds.current.add(data.linkId + data.timestamp);
+            // Collision-proof event ID: prefer crypto.randomUUID, fall back to a 64-bit
+            // random + monotonic counter so two clicks in the same ms can't collide.
+            const _id =
+              typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+                ? crypto.randomUUID()
+                : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}-${(idCounter.current++).toString(36)}`;
+            // Dedup by stable composite key — only skip if both fields are present.
+            if (data.linkId && data.timestamp) {
+              const dedupKey = `${data.linkId}|${data.timestamp}`;
+              if (seenIds.current.has(dedupKey)) return;
+              seenIds.current.add(dedupKey);
+            }
             const event: ClickEvent = { ...data, _id };
             eventsRef.current = [event, ...eventsRef.current].slice(0, 200);
             setEvents([...eventsRef.current]);
             setTotalSession(t => t + 1);
           }
-        } catch { }
+        } catch (err) {
+          console.error("[Live] SSE message parse failed:", err);
+        }
       };
       es.onerror = () => {
         setStatus("disconnected");
@@ -241,7 +253,9 @@ export default function Live() {
         eventsRef.current = merged;
         setEvents([...merged]);
         setTotalSession(merged.length);
-      } catch { }
+      } catch (err) {
+        if (!(err instanceof DOMException && err.name === "AbortError")) console.error("[Live] poll failed:", err);
+      }
     };
     const iv = setInterval(poll, 15_000);
     poll();
