@@ -299,7 +299,10 @@ export default function Dashboard() {
         <div className="px-4 sm:px-6 lg:px-8 pt-14 lg:pt-6 pb-20 max-w-[1280px] mx-auto w-full space-y-6">
 
           {/* ── TRIAL BANNER (active Starter trial countdown) ── */}
-          <TrialBanner trial={subscription?.trial} />
+          <TrialBanner
+            trial={subscription?.trial}
+            hasStripeSubscription={!!subscription?.subscriptionId}
+          />
 
           {/* ── PLAN USAGE BANNER (warning / over_cap / flagged) ── */}
           <PlanUsageBanner usage={subscription?.usage} />
@@ -957,7 +960,7 @@ function PlanUsageBanner({ usage }: { usage: PlanUsage | undefined }) {
 }
 
 /* ─────────────── Trial Banner ─────────────── */
-function TrialBanner({ trial }: { trial: TrialInfo | null | undefined }) {
+function TrialBanner({ trial, hasStripeSubscription }: { trial: TrialInfo | null | undefined; hasStripeSubscription: boolean }) {
   if (!trial) return null;
   const { daysLeft, hoursLeft } = trial;
   const planLabel = trial.plan.charAt(0).toUpperCase() + trial.plan.slice(1);
@@ -972,9 +975,18 @@ function TrialBanner({ trial }: { trial: TrialInfo | null | undefined }) {
   const title = isUrgent
     ? `Your ${planLabel} trial ends in ${hoursLeft} hour${hoursLeft === 1 ? "" : "s"}`
     : `Your ${planLabel} trial is active — ${daysLeft} day${daysLeft === 1 ? "" : "s"} left`;
-  const body = isUrgent
-    ? `We'll bill your saved card automatically when the trial ends, keeping your subscription active. Cancel anytime from Billing if you'd like to stop before then.`
-    : `You've got full ${planLabel} access until ${new Date(trial.endsAt).toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" })}. Manage or cancel anytime.`;
+
+  // Two trial paths — messaging needs to match what actually happens at end:
+  //   • Stripe checkout trial: card on file, auto-bills at trial end (or cancels if no card).
+  //   • Email-verification reward trial: no card, auto-reverts to Free at trial end.
+  const body = hasStripeSubscription
+    ? (isUrgent
+        ? `We'll bill your saved card automatically when the trial ends, keeping your subscription active. Cancel anytime from Billing if you'd like to stop before then.`
+        : `You've got full ${planLabel} access until ${new Date(trial.endsAt).toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" })}. Manage or cancel anytime from Billing.`)
+    : (isUrgent
+        ? `Subscribe before the trial ends to keep ${planLabel} features. Otherwise your account will revert to the Free plan and these features will be locked.`
+        : `Enjoy ${planLabel} features free until ${new Date(trial.endsAt).toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" })}. Add a payment method to continue uninterrupted.`);
+  const ctaLabel = hasStripeSubscription ? "Manage subscription" : "Add payment method";
 
   return (
     <div
@@ -993,7 +1005,7 @@ function TrialBanner({ trial }: { trial: TrialInfo | null | undefined }) {
           className="px-4 py-2 rounded-lg text-[13px] font-semibold text-white transition-all hover:-translate-y-0.5"
           style={{ background: "linear-gradient(135deg, #8B5CF6, #06B6D4)", boxShadow: "0 4px 14px rgba(139,92,246,0.25)" }}
         >
-          Manage subscription
+          {ctaLabel}
         </button>
       </Link>
     </div>

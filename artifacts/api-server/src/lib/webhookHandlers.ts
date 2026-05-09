@@ -237,6 +237,19 @@ export class WebhookHandlers {
           updates.planRenewsAt = new Date(subscription.current_period_end * 1000);
         }
 
+        // Sync trial fields from Stripe so the dashboard's TrialBanner has
+        // something to render. Without this, a Stripe-trialing user has
+        // trialEndsAt=NULL in our DB and the banner stays invisible.
+        if (status === "trialing" && subscription.trial_end) {
+          updates.trialEndsAt = new Date(subscription.trial_end * 1000);
+          updates.trialPlan = plan;
+        } else if (user.trialEndsAt) {
+          // Trial converted to active, was canceled, etc. — clear stale fields
+          // so trialStatus() doesn't keep showing a countdown.
+          updates.trialEndsAt = null;
+          updates.trialPlan = null;
+        }
+
         await db
           .update(usersTable)
           .set(updates)
@@ -264,6 +277,11 @@ export class WebhookHandlers {
             stripeSubscriptionStatus: "canceled",
             stripeSubscriptionId: null,
             planRenewsAt: null,
+            // Also wipe trial fields — if Stripe deleted the sub mid-trial
+            // (no payment method on file at trial end), the user should not
+            // keep a stale trial countdown after revert to free.
+            trialEndsAt: null,
+            trialPlan: null,
           })
           .where(eq(usersTable.id, user.id));
 
