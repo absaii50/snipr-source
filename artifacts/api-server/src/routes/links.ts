@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, and, or, count, countDistinct, inArray, gte, sql, desc } from "drizzle-orm";
+import { eq, and, or, count, countDistinct, inArray, gte, sql, desc, isNull } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import QRCode from "qrcode";
 import bcrypt from "bcryptjs";
@@ -337,6 +337,68 @@ router.post("/links", requireAuth, async (req, res): Promise<void> => {
   // Clear any stale negative cache entry for this slug
   invalidateLinkCache(link.slug);
   res.status(201).json(serializeLink(link));
+});
+
+/**
+ * GET /api/links/check-slug?slug=foo&domainId=...&excludeLinkId=...
+ *
+ * Real-time slug availability check used by the LinkModal to give users
+ * inline feedback before they hit Save. The same validation rules as
+ * POST /links are mirrored here so the user sees the *real* reason the
+ * slug would be rejected. `excludeLinkId` lets the edit form check its
+ * own slug (so editing without changing the slug stays "available").
+ */
+router.get("/links/check-slug", requireAuth, async (req, res): Promise<void> => {
+  const workspaceId = req.session.workspaceId!;
+  const rawSlug = (req.query.slug as string | undefined ?? "").trim().toLowerCase();
+  const domainIdRaw = (req.query.domainId as string | undefined ?? "").trim();
+  const excludeLinkId = (req.query.excludeLinkId as string | undefined ?? "").trim();
+
+  if (!rawSlug) {
+    res.json({ available: false, reason: "empty", message: "Enter a slug" });
+    return;
+  }
+
+  if (!/^[a-z0-9_-]+$/.test(rawSlug)) {
+    res.json({ available: false, reason: "invalid", message: "Only letters, numbers, dashes, underscores" });
+    return;
+  }
+
+  if (rawSlug.length < 2 || rawSlug.length > 255) {
+    res.json({ available: false, reason: "length", message: "Must be 2–255 characters" });
+    return;
+  }
+
+  const reservedSlugs = ["admin", "api", "r", "app", "login", "logout", "register", "signup"];
+  if (reservedSlugs.includes(rawSlug)) {
+    res.json({ available: false, reason: "reserved", message: `"${rawSlug}" is reserved` });
+    return;
+  }
+
+  // Slug uniqueness is scoped to (slug, domainId). When no domainId is given
+  // we treat it as "default" (snipr.sh) which is domainId IS NULL in the DB.
+  const conditions = [eq(linksTable.slug, rawSlug)];
+  if (domainIdRaw) {
+    conditions.push(eq(linksTable.domainId, domainIdRaw));
+  } else {
+    conditions.push(isNull(linksTable.domainId));
+  }
+  // For platform domains anyone can reserve a slug, so the workspace filter is
+  // intentionally absent here — uniqueness is global per (slug, domainId).
+
+  const [existing] = await db
+    .select({ id: linksTable.id, workspaceId: linksTable.workspaceId })
+    .from(linksTable)
+    .where(and(...conditions))
+    .limit(1);
+
+  if (existing && existing.id !== excludeLinkId) {
+    // For privacy, don't reveal which workspace owns the slug.
+    res.json({ available: false, reason: "taken", message: "Slug already taken" });
+    return;
+  }
+
+  res.json({ available: true });
 });
 
 router.get("/links/clicks", requireAuth, async (req, res): Promise<void> => {

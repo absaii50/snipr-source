@@ -21,6 +21,7 @@ import type {
   AiAskResponse,
   AiInsight,
   AuthResponse,
+  CheckSlugAvailabilityParams,
   ClickEvent,
   Conversion,
   ConversionRow,
@@ -58,6 +59,7 @@ import type {
   RevenueReport,
   SetLinkRulesBody,
   SetLinkTagsBody,
+  SlugAvailabilityResponse,
   SlugSuggestRequest,
   SlugSuggestResponse,
   StatsTodayResponse,
@@ -826,6 +828,109 @@ export const useCreateLink = <
 > => {
   return useMutation(getCreateLinkMutationOptions(options));
 };
+
+/**
+ * @summary Real-time check whether a slug is available on a given domain
+ */
+export const getCheckSlugAvailabilityUrl = (
+  params: CheckSlugAvailabilityParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/links/check-slug?${stringifiedParams}`
+    : `/api/links/check-slug`;
+};
+
+export const checkSlugAvailability = async (
+  params: CheckSlugAvailabilityParams,
+  options?: RequestInit,
+): Promise<SlugAvailabilityResponse> => {
+  return customFetch<SlugAvailabilityResponse>(
+    getCheckSlugAvailabilityUrl(params),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getCheckSlugAvailabilityQueryKey = (
+  params?: CheckSlugAvailabilityParams,
+) => {
+  return [`/api/links/check-slug`, ...(params ? [params] : [])] as const;
+};
+
+export const getCheckSlugAvailabilityQueryOptions = <
+  TData = Awaited<ReturnType<typeof checkSlugAvailability>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  params: CheckSlugAvailabilityParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof checkSlugAvailability>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getCheckSlugAvailabilityQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof checkSlugAvailability>>
+  > = ({ signal }) =>
+    checkSlugAvailability(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof checkSlugAvailability>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type CheckSlugAvailabilityQueryResult = NonNullable<
+  Awaited<ReturnType<typeof checkSlugAvailability>>
+>;
+export type CheckSlugAvailabilityQueryError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Real-time check whether a slug is available on a given domain
+ */
+
+export function useCheckSlugAvailability<
+  TData = Awaited<ReturnType<typeof checkSlugAvailability>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  params: CheckSlugAvailabilityParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof checkSlugAvailability>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getCheckSlugAvailabilityQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
 
 /**
  * @summary Get a link by ID

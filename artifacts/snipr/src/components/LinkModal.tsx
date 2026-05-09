@@ -23,6 +23,8 @@ import {
   useSetLinkTags,
   useSuggestSlugs,
   useGetDomains,
+  useCheckSlugAvailability,
+  getCheckSlugAvailabilityQueryKey,
   type Link,
   type Domain
 } from "@workspace/api-client-react";
@@ -32,6 +34,62 @@ import { useToast } from "@/hooks/use-toast";
 async function fetchDefaultDomain({ signal }: { signal: AbortSignal }): Promise<{ id: string; domain: string } | null> {
   try { const r = await fetch("/api/domains/default", { credentials: "include", signal }); return r.ok ? r.json() : null; }
   catch { return null; }
+}
+
+/* ── UTM helpers ──────────────────────────────────────────────────────
+ *  The UTM builder lets users tack utm_* params onto their destination
+ *  URL inside the modal. We don't add a separate backend field for this —
+ *  on submit the params are merged into `destinationUrl`. On edit the
+ *  existing destinationUrl is parsed so the same fields show up again.
+ */
+const UTM_KEYS = ["utmSource", "utmMedium", "utmCampaign", "utmTerm", "utmContent"] as const;
+type UtmKey = typeof UTM_KEYS[number];
+type UtmValues = Record<UtmKey, string>;
+const EMPTY_UTM: UtmValues = { utmSource: "", utmMedium: "", utmCampaign: "", utmTerm: "", utmContent: "" };
+const UTM_FIELD_TO_PARAM: Record<UtmKey, string> = {
+  utmSource: "utm_source",
+  utmMedium: "utm_medium",
+  utmCampaign: "utm_campaign",
+  utmTerm: "utm_term",
+  utmContent: "utm_content",
+};
+
+function extractUtms(url: string): { utms: UtmValues; cleanUrl: string } {
+  try {
+    const u = new URL(url);
+    const utms: UtmValues = { ...EMPTY_UTM };
+    for (const [field, param] of Object.entries(UTM_FIELD_TO_PARAM) as [UtmKey, string][]) {
+      const v = u.searchParams.get(param);
+      if (v) {
+        utms[field] = v;
+        u.searchParams.delete(param);
+      }
+    }
+    return { utms, cleanUrl: u.toString() };
+  } catch {
+    return { utms: { ...EMPTY_UTM }, cleanUrl: url };
+  }
+}
+
+function applyUtmsToUrl(url: string, utms: UtmValues): string {
+  const hasAny = UTM_KEYS.some((k) => utms[k].trim().length > 0);
+  if (!hasAny) return url;
+  try {
+    const u = new URL(url);
+    for (const [field, param] of Object.entries(UTM_FIELD_TO_PARAM) as [UtmKey, string][]) {
+      const value = utms[field].trim();
+      if (value) {
+        u.searchParams.set(param, value);
+      } else {
+        // Empty input means "remove" — covers the edit case where a user
+        // clears a previously-set tag.
+        u.searchParams.delete(param);
+      }
+    }
+    return u.toString();
+  } catch {
+    return url;
+  }
 }
 import { Settings2, ChevronDown, ChevronUp, Link as LinkIcon, ShieldAlert, Sparkles, Loader2, EyeOff, ShieldOff, Smartphone, Globe, Lock, Target, FolderOpen, Tag, Copy, CheckCircle2, ExternalLink, QrCode, Download, X } from "lucide-react";
 
@@ -121,6 +179,8 @@ export function LinkModal({ isOpen, onClose, link, initialSlug }: LinkModalProps
   const [copied, setCopied] = useState(false);
   const [qrSvg, setQrSvg] = useState<string | null>(null);
   const [qrLoading, setQrLoading] = useState(false);
+  const [utms, setUtms] = useState<UtmValues>(EMPTY_UTM);
+  const [showUtmBuilder, setShowUtmBuilder] = useState(false);
 
   const { data: folders } = useGetFolders();
   const { data: tags } = useGetTags();
@@ -165,9 +225,15 @@ export function LinkModal({ isOpen, onClose, link, initialSlug }: LinkModalProps
       setCreatedLink(null);
       setCopied(false);
       setQrSvg(null);
+      setShowUtmBuilder(false);
       if (link) {
+        // Pull any pre-existing utm_* params off the destination URL so the
+        // builder is editable without showing them inline in the URL field.
+        const { utms: existingUtms, cleanUrl } = extractUtms(link.destinationUrl);
+        setUtms(existingUtms);
+        if (UTM_KEYS.some((k) => existingUtms[k])) setShowUtmBuilder(true);
         form.reset({
-          destinationUrl: link.destinationUrl,
+          destinationUrl: cleanUrl,
           slug: link.slug,
           title: link.title || "",
           expiresAt: link.expiresAt ? new Date(link.expiresAt).toISOString().slice(0, 16) : "",
@@ -184,6 +250,7 @@ export function LinkModal({ isOpen, onClose, link, initialSlug }: LinkModalProps
           androidDeepLink: (link as any).androidDeepLink || "",
         });
       } else {
+        setUtms(EMPTY_UTM);
         form.reset({
           destinationUrl: "",
           slug: initialSlug ?? "",
@@ -209,8 +276,11 @@ export function LinkModal({ isOpen, onClose, link, initialSlug }: LinkModalProps
   const updateMutation = useUpdateLink();
 
   const onSubmit = async (values: FormValues) => {
+    // Merge any UTM-builder values into the destination URL right before sending.
+    // The backend stores the URL as-is — UTMs travel with the destinationUrl field.
+    const finalDestinationUrl = applyUtmsToUrl(values.destinationUrl, utms);
     const basePayload = {
-      destinationUrl: values.destinationUrl,
+      destinationUrl: finalDestinationUrl,
       slug: values.slug || null,
       title: values.title || null,
       expiresAt: values.expiresAt ? new Date(values.expiresAt).toISOString() : null,
@@ -271,8 +341,53 @@ export function LinkModal({ isOpen, onClose, link, initialSlug }: LinkModalProps
   const isPending = createMutation.isPending || updateMutation.isPending || setTagsMutation.isPending;
   const watchUrl = form.watch("destinationUrl");
   const watchDomainId = form.watch("domainId");
+  const watchSlug = form.watch("slug");
   const selectedDomain = verifiedDomains.find((d) => d.id === watchDomainId);
   const slugPrefix = selectedDomain ? `${selectedDomain.domain}/` : "";
+
+  // Debounced slug for the availability check — skip empty input and avoid hammering
+  // the endpoint on every keystroke.
+  const [debouncedSlug, setDebouncedSlug] = useState("");
+  useEffect(() => {
+    const normalized = (watchSlug ?? "").trim().toLowerCase();
+    const t = setTimeout(() => setDebouncedSlug(normalized), 350);
+    return () => clearTimeout(t);
+  }, [watchSlug]);
+
+  // Don't check while editing if the slug hasn't changed from the saved one.
+  const skipCheckBecauseUnchanged =
+    isEdit && link?.slug && debouncedSlug === link.slug.toLowerCase();
+
+  const slugCheckParams = {
+    slug: debouncedSlug,
+    domainId: watchDomainId || undefined,
+    excludeLinkId: link?.id || undefined,
+  };
+  const slugCheck = useCheckSlugAvailability(slugCheckParams, {
+    query: {
+      queryKey: getCheckSlugAvailabilityQueryKey(slugCheckParams),
+      enabled: debouncedSlug.length >= 2 && !skipCheckBecauseUnchanged,
+      // Don't refetch on focus — slug uniqueness is unlikely to change while the
+      // modal is open and the user is mid-edit.
+      refetchOnWindowFocus: false,
+      staleTime: 30_000,
+      retry: false,
+    },
+  });
+
+  const slugStatus: "idle" | "checking" | "available" | "taken" | "invalid" =
+    debouncedSlug.length === 0
+      ? "idle"
+      : skipCheckBecauseUnchanged
+        ? "available"
+        : slugCheck.isFetching
+          ? "checking"
+          : slugCheck.data?.available
+            ? "available"
+            : slugCheck.data?.reason === "taken"
+              ? "taken"
+              : "invalid";
+  const slugStatusMessage = !skipCheckBecauseUnchanged && slugCheck.data?.message;
 
   const handleCopyLink = () => {
     if (!createdLink) return;
@@ -522,9 +637,23 @@ export function LinkModal({ isOpen, onClose, link, initialSlug }: LinkModalProps
                       id="slug"
                       placeholder="my-campaign"
                       {...form.register("slug")}
+                      aria-invalid={slugStatus === "taken" || slugStatus === "invalid" ? true : undefined}
+                      aria-describedby="slug-status"
                       className="h-11 rounded-lg text-[14px] font-medium text-[#E4E4E7] placeholder:text-[#71717A] focus:border-[#8B5CF6] focus:ring-2 focus:ring-[#8B5CF6]/15 transition-all"
-                      style={{ background: "#27272A", border: "1px solid #3F3F46", paddingLeft: slugPrefix ? `${Math.min(slugPrefix.length * 7.2 + 12, 150)}px` : undefined }}
+                      style={{
+                        background: "#27272A",
+                        border: `1px solid ${slugStatus === "taken" || slugStatus === "invalid" ? "#EF4444" : slugStatus === "available" ? "#10B981" : "#3F3F46"}`,
+                        paddingLeft: slugPrefix ? `${Math.min(slugPrefix.length * 7.2 + 12, 150)}px` : undefined,
+                        paddingRight: slugStatus === "idle" ? undefined : "32px",
+                      }}
                     />
+                    {slugStatus !== "idle" && (
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center pointer-events-none">
+                        {slugStatus === "checking" && <Loader2 className="w-4 h-4 animate-spin text-[#71717A]" />}
+                        {slugStatus === "available" && <CheckCircle2 className="w-4 h-4 text-[#10B981]" />}
+                        {(slugStatus === "taken" || slugStatus === "invalid") && <ShieldAlert className="w-4 h-4 text-[#EF4444]" />}
+                      </span>
+                    )}
                   </div>
                   {watchUrl && (
                     <Popover open={showSuggestions} onOpenChange={setShowSuggestions}>
@@ -561,6 +690,15 @@ export function LinkModal({ isOpen, onClose, link, initialSlug }: LinkModalProps
                     </Popover>
                   )}
                 </div>
+                {slugStatusMessage && slugStatus !== "idle" && slugStatus !== "checking" && (
+                  <p
+                    id="slug-status"
+                    className="text-[11px] font-medium mt-1"
+                    style={{ color: slugStatus === "available" ? "#10B981" : "#FCA5A5" }}
+                  >
+                    {slugStatusMessage}
+                  </p>
+                )}
               </div>
             </div>
 
@@ -681,6 +819,66 @@ export function LinkModal({ isOpen, onClose, link, initialSlug }: LinkModalProps
                       className="h-10 rounded-lg text-[13px] font-medium text-[#E4E4E7] placeholder:text-[#71717A]"
                       style={{ background: "#18181B", border: "1px solid #3F3F46" }}
                     />
+                  </div>
+
+                  {/* UTM Builder */}
+                  <div className="rounded-lg overflow-hidden" style={{ background: "#18181B", border: "1px solid #3F3F46" }}>
+                    <button
+                      type="button"
+                      onClick={() => setShowUtmBuilder(!showUtmBuilder)}
+                      className="w-full flex items-center justify-between px-3.5 py-3 text-left hover:bg-[#27272A]/40 transition-colors"
+                      aria-expanded={showUtmBuilder}
+                      aria-controls="utm-builder-content"
+                    >
+                      <div className="flex items-center gap-1.5">
+                        <Tag className="w-3 h-3 text-[#06B6D4]" />
+                        <span className="text-[11px] font-bold text-[#71717A] tracking-[0.04em] uppercase">UTM Tags</span>
+                        {UTM_KEYS.some((k) => utms[k].trim().length > 0) && (
+                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-[#06B6D4]/15 text-[#06B6D4] border border-[#06B6D4]/25">
+                            {UTM_KEYS.filter((k) => utms[k].trim().length > 0).length} set
+                          </span>
+                        )}
+                      </div>
+                      {showUtmBuilder ? <ChevronUp className="w-4 h-4 text-[#71717A]" /> : <ChevronDown className="w-4 h-4 text-[#71717A]" />}
+                    </button>
+
+                    {showUtmBuilder && (
+                      <div id="utm-builder-content" className="px-3.5 pb-3.5 space-y-3 border-t border-[#27272A] pt-3.5">
+                        <p className="text-[11px] text-[#71717A] leading-relaxed">
+                          Append Google Analytics tracking parameters to your destination URL.
+                        </p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                          {([
+                            ["utmSource", "Source", "google, facebook, newsletter"],
+                            ["utmMedium", "Medium", "cpc, social, email"],
+                            ["utmCampaign", "Campaign", "summer-sale-2026"],
+                            ["utmTerm", "Term", "running shoes"],
+                            ["utmContent", "Content", "header-cta"],
+                          ] as const).map(([field, label, ph]) => (
+                            <div key={field} className="space-y-1">
+                              <Label className="text-[10px] font-bold text-[#52525B] tracking-[0.05em] uppercase">{label}</Label>
+                              <Input
+                                value={utms[field]}
+                                onChange={(e) => setUtms((prev) => ({ ...prev, [field]: e.target.value }))}
+                                placeholder={ph}
+                                className="h-9 rounded-md text-[12px] text-[#E4E4E7] placeholder:text-[#52525B]"
+                                style={{ background: "#0A0A0A", border: "1px solid #27272A" }}
+                              />
+                            </div>
+                          ))}
+                        </div>
+                        {(() => {
+                          const preview = applyUtmsToUrl(watchUrl || "", utms);
+                          if (!watchUrl || preview === watchUrl) return null;
+                          return (
+                            <div className="rounded-md px-3 py-2.5" style={{ background: "#0A0A0A", border: "1px solid #27272A" }}>
+                              <p className="text-[10px] font-bold text-[#52525B] tracking-[0.05em] uppercase mb-1">Final URL</p>
+                              <p className="text-[11px] font-mono text-[#A1A1AA] break-all leading-snug">{preview}</p>
+                            </div>
+                          );
+                        })()}
+                      </div>
+                    )}
                   </div>
 
                   {/* Toggle switches */}
@@ -815,8 +1013,14 @@ export function LinkModal({ isOpen, onClose, link, initialSlug }: LinkModalProps
           <button
             form="link-form"
             type="submit"
-            disabled={isPending || verifiedDomains.length === 0}
-            className="px-6 py-2.5 rounded-lg text-[13px] font-bold text-white transition-all duration-200 hover:-translate-y-0.5 active:scale-[0.97] disabled:opacity-50 disabled:hover:translate-y-0"
+            disabled={
+              isPending ||
+              verifiedDomains.length === 0 ||
+              slugStatus === "taken" ||
+              slugStatus === "invalid" ||
+              slugStatus === "checking"
+            }
+            className="px-6 py-2.5 rounded-lg text-[13px] font-bold text-white transition-all duration-200 hover:-translate-y-0.5 active:scale-[0.97] disabled:opacity-50 disabled:hover:translate-y-0 disabled:cursor-not-allowed"
             style={{
               background: "linear-gradient(135deg, #8B5CF6, #7C3AED)",
               boxShadow: "0 4px 14px rgba(139,92,246,0.35), 0 1px 3px rgba(0,0,0,0.2)",

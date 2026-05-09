@@ -345,6 +345,23 @@ export interface StatsTodayResponse {
   clicks: number;
 }
 
+export type SlugAvailabilityResponseReason =
+  (typeof SlugAvailabilityResponseReason)[keyof typeof SlugAvailabilityResponseReason];
+
+export const SlugAvailabilityResponseReason = {
+  empty: "empty",
+  invalid: "invalid",
+  length: "length",
+  reserved: "reserved",
+  taken: "taken",
+} as const;
+
+export interface SlugAvailabilityResponse {
+  available: boolean;
+  reason?: SlugAvailabilityResponseReason;
+  message?: string;
+}
+
 export interface TrackConversionRequest {
   slug?: string | null;
   workspaceId?: string | null;
@@ -501,6 +518,15 @@ export type GetLinksParams = {
   folderId?: string;
   tagId?: string;
   search?: string;
+};
+
+export type CheckSlugAvailabilityParams = {
+  slug: string;
+  domainId?: string;
+  /**
+   * When editing a link, pass its id so its own slug doesn't count as taken.
+   */
+  excludeLinkId?: string;
 };
 
 export type SetLinkTagsBody = {

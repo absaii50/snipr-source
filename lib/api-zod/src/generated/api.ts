@@ -152,6 +152,28 @@ export const CreateLinkBody = zod.object({
 });
 
 /**
+ * @summary Real-time check whether a slug is available on a given domain
+ */
+export const CheckSlugAvailabilityQueryParams = zod.object({
+  slug: zod.coerce.string(),
+  domainId: zod.coerce.string().optional(),
+  excludeLinkId: zod.coerce
+    .string()
+    .optional()
+    .describe(
+      "When editing a link, pass its id so its own slug doesn't count as taken.",
+    ),
+});
+
+export const CheckSlugAvailabilityResponse = zod.object({
+  available: zod.boolean(),
+  reason: zod
+    .enum(["empty", "invalid", "length", "reserved", "taken"])
+    .optional(),
+  message: zod.string().optional(),
+});
+
+/**
  * @summary Get a link by ID
  */
 export const GetLinkParams = zod.object({
