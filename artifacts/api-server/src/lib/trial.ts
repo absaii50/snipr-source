@@ -14,15 +14,17 @@ export async function expireTrialIfDue(user: UserRow): Promise<UserRow> {
   if (!user.trialEndsAt) return user;
   if (user.trialEndsAt > new Date()) return user; // still in trial
 
-  // If the user upgraded to a real Stripe subscription mid-trial, leave them alone.
-  // Their plan should already be set by the Stripe webhook.
-  if (user.stripeSubscriptionId && user.stripeSubscriptionStatus === "active") {
-    // Just clear trial fields — no need to keep them on the trial state.
+  // If the user has any Stripe subscription, Stripe is the source of truth for
+  // their plan — we must NOT auto-revert here. There's a small window between
+  // a Stripe trial ending and the next webhook firing where local trialEndsAt
+  // is in the past but the subscription is mid-transition. Clearing local
+  // trial fields is safe; downgrading their plan is not.
+  if (user.stripeSubscriptionId) {
     await db.update(usersTable).set({ trialEndsAt: null, trialPlan: null }).where(eq(usersTable.id, user.id));
     return { ...user, trialEndsAt: null, trialPlan: null };
   }
 
-  // Trial expired without subscription — revert to Free.
+  // No Stripe sub — this was an email-verification reward trial. Revert to Free.
   await db.update(usersTable)
     .set({ plan: "free", trialEndsAt: null, trialPlan: null })
     .where(eq(usersTable.id, user.id));

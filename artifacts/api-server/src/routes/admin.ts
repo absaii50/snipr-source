@@ -333,7 +333,12 @@ router.patch("/admin/users/:id/plan", requireAdmin, async (req, res): Promise<vo
     return;
   }
 
-  await db.update(usersTable).set({ plan }).where(eq(usersTable.id, req.params.id));
+  // Manual admin plan changes override any active trial — leaving stale trial
+  // fields would keep showing the trial banner with the wrong plan and confuse
+  // both admin and user. Comp-style upgrades come straight here, no trial.
+  await db.update(usersTable)
+    .set({ plan, trialEndsAt: null, trialPlan: null })
+    .where(eq(usersTable.id, req.params.id));
   await logAuditAction("change_plan", "user", req.params.id, { plan }, req.ip);
   res.json({ ok: true, plan });
 });
