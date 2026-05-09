@@ -21,6 +21,10 @@ interface PerformanceUser {
   suspended_at: string | null;
   created_at: string;
   email_verified: boolean;
+  trial_ends_at: string | null;
+  trial_plan: string | null;
+  stripe_subscription_status: string | null;
+  has_stripe_subscription: boolean;
   workspace_name: string | null;
   workspace_slug: string | null;
   total_links: number;
@@ -35,6 +39,55 @@ interface PerformanceUser {
 type SortKey = "clicks" | "links" | "avg" | "name";
 type PlanFilter = "all" | "free" | "starter" | "growth" | "pro" | "business" | "enterprise";
 type StatusFilter = "all" | "active" | "suspended";
+
+/** Returns trial state for an admin row.
+ *  Two paths produce a trial:
+ *    1. Stripe checkout trial — `stripe_subscription_status === "trialing"`
+ *    2. Email-verification reward — `trial_ends_at` set, no Stripe sub
+ *  Both surface here so admins can see and filter both kinds. */
+function getTrialInfo(u: Pick<PerformanceUser, "trial_ends_at" | "trial_plan" | "stripe_subscription_status" | "has_stripe_subscription" | "plan">) {
+  const isStripeTrialing = u.stripe_subscription_status === "trialing";
+  const localEnds = u.trial_ends_at ? new Date(u.trial_ends_at).getTime() : null;
+  const isLocalTrial = localEnds !== null && localEnds > Date.now();
+  if (!isStripeTrialing && !isLocalTrial) return null;
+  const ms = localEnds !== null ? localEnds - Date.now() : null;
+  const daysLeft = ms !== null ? Math.max(0, Math.floor(ms / (24 * 60 * 60 * 1000))) : null;
+  const hoursLeft = ms !== null ? Math.max(0, Math.round(ms / (60 * 60 * 1000))) : null;
+  return {
+    source: isStripeTrialing ? "stripe" as const : "verification" as const,
+    plan: u.trial_plan ?? u.plan,
+    endsAt: u.trial_ends_at,
+    daysLeft,
+    hoursLeft,
+    requiresCard: isStripeTrialing, // Stripe trial = card on file → auto-bill at end
+  };
+}
+
+function TrialBadge({ user }: { user: PerformanceUser }) {
+  const info = getTrialInfo(user);
+  if (!info) return null;
+  const urgent = info.hoursLeft !== null && info.hoursLeft <= 24;
+  const countdownLabel = info.daysLeft !== null
+    ? info.daysLeft <= 0
+      ? `${info.hoursLeft}h left`
+      : `${info.daysLeft}d left`
+    : "trial";
+  return (
+    <span
+      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+        urgent
+          ? "bg-red-50 text-red-700 border-red-200"
+          : info.source === "stripe"
+            ? "bg-violet-50 text-violet-700 border-violet-200"
+            : "bg-cyan-50 text-cyan-700 border-cyan-200"
+      }`}
+      title={`${info.source === "stripe" ? "Stripe trial — card on file" : "Email-verification reward trial — no card"}${info.endsAt ? ` · ends ${new Date(info.endsAt).toLocaleString()}` : ""}`}
+    >
+      <span className={`w-1.5 h-1.5 rounded-full ${urgent ? "bg-red-500 animate-pulse" : info.source === "stripe" ? "bg-violet-500" : "bg-cyan-500"}`} />
+      Trial · {countdownLabel}
+    </span>
+  );
+}
 
 function PlanBadge({ plan }: { plan: string }) {
   const cfg = plan === "business"
@@ -75,7 +128,19 @@ function MiniBar({ value, max }: { value: number; max: number }) {
 const PLAN_OPTIONS = ["free", "starter", "growth", "pro", "business", "enterprise"] as const;
 
 interface WorkspaceDetail {
-  user: { id: string; name: string; email: string; plan: string; createdAt: string; suspendedAt: string | null; emailVerified: boolean };
+  user: {
+    id: string;
+    name: string;
+    email: string;
+    plan: string;
+    createdAt: string;
+    suspendedAt: string | null;
+    emailVerified: boolean;
+    trialEndsAt?: string | null;
+    trialPlan?: string | null;
+    stripeSubscriptionStatus?: string | null;
+    hasStripeSubscription?: boolean;
+  };
   workspace: { id: string; name: string; slug: string; createdAt: string } | null;
   links: { id: string; slug: string; destination_url: string; title: string | null; enabled: boolean; total_clicks: number; last_click_at: string | null }[];
   domains: { id: string; domain: string; verified: boolean }[];
@@ -98,6 +163,7 @@ export default function UsersTab() {
   });
   const [plan, setPlan] = useState<PlanFilter>("all");
   const [status, setStatus] = useState<StatusFilter>("all");
+  const [trialOnly, setTrialOnly] = useState(false);
   const [sort, setSort] = useState<SortKey>("clicks");
   const [actionId, setActionId] = useState<string | null>(null);
   const [profileUserId, setProfileUserId] = useState<string | null>(null);
@@ -135,12 +201,13 @@ export default function UsersTab() {
     return () => document.removeEventListener("mousedown", handleClick);
   }, []);
 
-  const doLoad = useCallback(async (q: string, p: PlanFilter, s: SortKey) => {
+  const doLoad = useCallback(async (q: string, p: PlanFilter, s: SortKey, trialFilter: boolean) => {
     setLoading(true);
     try {
       const params = new URLSearchParams({ sort: s });
       if (q) params.set("search", q);
       if (p !== "all") params.set("plan", p);
+      if (trialFilter) params.set("trialOnly", "1");
       const data = await apiFetch(`/admin/users/performance?${params}`);
       setUsers(data);
     } finally {
@@ -152,9 +219,9 @@ export default function UsersTab() {
     const searchChanged = prevSearchRef.current !== search;
     prevSearchRef.current = search;
     const delay = searchChanged ? 300 : 0;
-    const t = setTimeout(() => doLoad(search, plan, sort), delay);
+    const t = setTimeout(() => doLoad(search, plan, sort, trialOnly), delay);
     return () => clearTimeout(t);
-  }, [search, plan, sort, doLoad]);
+  }, [search, plan, sort, trialOnly, doLoad]);
 
   async function suspend(id: string) {
     setActionId(id);
@@ -219,7 +286,7 @@ export default function UsersTab() {
           await apiFetch("/admin/users/bulk", { method: "POST", body: JSON.stringify({ action, userIds: ids, plan }) });
           setSelected(new Set());
           setBulkPlanOpen(false);
-          doLoad(search, "all" as PlanFilter, sort);
+          doLoad(search, "all" as PlanFilter, sort, trialOnly);
         } catch { toast(`Failed to ${action}.`, "error"); }
         finally { setBulkAction(null); }
       },
@@ -320,6 +387,18 @@ export default function UsersTab() {
               </button>
             ))}
           </div>
+          <button
+            onClick={() => setTrialOnly((v) => !v)}
+            title={trialOnly ? "Showing only users currently on a trial" : "Show only users currently on a trial"}
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium transition-all border ${
+              trialOnly
+                ? "bg-violet-50 text-violet-700 border-violet-200 shadow-sm"
+                : "bg-white text-[#8888A0] hover:text-[#3A3A3E] border-[#E2E8F0]"
+            }`}
+          >
+            <span className={`w-1.5 h-1.5 rounded-full ${trialOnly ? "bg-violet-500" : "bg-[#C0C0CC]"}`} />
+            Trial only
+          </button>
           <div className="relative">
             <button onClick={() => setSortOpen((v) => !v)}
               className="flex items-center gap-1.5 px-3 py-2 bg-white border border-[#E2E8F0] rounded-xl text-xs text-[#3A3A3E] hover:bg-[#F4F4F6] transition-all">
@@ -342,7 +421,7 @@ export default function UsersTab() {
             className="p-2 rounded-xl border border-[#E2E8F0] bg-white hover:bg-[#F4F4F6] transition-all">
             <Download className="w-3.5 h-3.5 text-[#8888A0]" />
           </button>
-          <button onClick={() => doLoad(search, plan, sort)}
+          <button onClick={() => doLoad(search, plan, sort, trialOnly)}
             className="p-2 rounded-xl border border-[#E2E8F0] bg-white hover:bg-[#F4F4F6] transition-all">
             <RefreshCw className={`w-3.5 h-3.5 text-[#8888A0] ${loading ? "animate-spin" : ""}`} />
           </button>
@@ -438,7 +517,12 @@ export default function UsersTab() {
                       </div>
                     </div>
                   </td>
-                  <td className="px-4 py-3.5"><PlanBadge plan={u.plan} /></td>
+                  <td className="px-4 py-3.5">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <PlanBadge plan={u.plan} />
+                      <TrialBadge user={u} />
+                    </div>
+                  </td>
                   <td className="px-4 py-3.5">
                     <div className="flex items-center gap-1.5">
                       <Link2 className="w-3 h-3 text-[#8888A0]" />
