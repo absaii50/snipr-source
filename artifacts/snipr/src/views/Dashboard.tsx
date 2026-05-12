@@ -945,5 +945,3 @@ function PlanUsageBanner({ usage }: { usage: PlanUsage | undefined }) {
     </div>
   );
 }
-
-/* ─────────────── Trial Banner ─────────────── */
