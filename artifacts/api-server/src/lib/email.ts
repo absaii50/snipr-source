@@ -126,19 +126,13 @@ export async function sendWelcomeEmail(user: {
   id: string;
   name: string;
   email: string;
-  trialDays?: number;
-  trialEndsAt?: Date;
 }): Promise<void> {
   const dashboardUrl = `${FRONTEND_URL}/dashboard`;
-  const html = getWelcomeEmailHtml(user.name, dashboardUrl, user.trialDays, user.trialEndsAt);
-
-  const subject = user.trialDays
-    ? `Welcome to Snipr! Your ${user.trialDays}-day Starter trial is active`
-    : "Welcome to Snipr! 🎉";
+  const html = getWelcomeEmailHtml(user.name, dashboardUrl);
 
   await sendEmail({
     to: user.email,
-    subject,
+    subject: "Welcome to Snipr! 🎉",
     html,
     userId: user.id,
     type: "welcome",
@@ -295,27 +289,3 @@ export async function sendAbuseWarningEmail(opts: {
   });
 }
 
-/** Sent ~3 days before a Stripe trial ends, via the
- *  customer.subscription.trial_will_end webhook. */
-export async function sendTrialEndingEmail(opts: {
-  id: string;
-  name: string;
-  email: string;
-  trialEndsAt: string | null;
-  planLabel: string;
-}): Promise<{ id?: string; error?: string }> {
-  const { getTrialEndingEmailHtml } = await import("./email-templates");
-  const html = getTrialEndingEmailHtml({
-    name: opts.name,
-    planLabel: opts.planLabel,
-    trialEndsAt: opts.trialEndsAt,
-    billingUrl: `${FRONTEND_URL}/billing`,
-  });
-  return sendEmail({
-    to: opts.email,
-    subject: `Your Snipr ${opts.planLabel} trial ends in 3 days`,
-    html,
-    userId: opts.id,
-    type: "trial_ending",
-  });
-}

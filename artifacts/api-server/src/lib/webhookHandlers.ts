@@ -226,7 +226,7 @@ export class WebhookHandlers {
           stripeSubscriptionStatus: status,
         };
 
-        if (status === "active" || status === "trialing") {
+        if (status === "active") {
           updates.plan = plan;
         }
 
@@ -237,26 +237,13 @@ export class WebhookHandlers {
           updates.planRenewsAt = new Date(subscription.current_period_end * 1000);
         }
 
-        // Sync trial fields from Stripe so the dashboard's TrialBanner has
-        // something to render. Without this, a Stripe-trialing user has
-        // trialEndsAt=NULL in our DB and the banner stays invisible.
-        if (status === "trialing" && subscription.trial_end) {
-          updates.trialEndsAt = new Date(subscription.trial_end * 1000);
-          updates.trialPlan = plan;
-        } else if (user.trialEndsAt) {
-          // Trial converted to active, was canceled, etc. — clear stale fields
-          // so trialStatus() doesn't keep showing a countdown.
-          updates.trialEndsAt = null;
-          updates.trialPlan = null;
-        }
-
         await db
           .update(usersTable)
           .set(updates)
           .where(eq(usersTable.id, user.id));
 
-        // When subscription becomes active/trialing, try to unflag links immediately.
-        if ((status === "active" || status === "trialing") && plan) {
+        // When subscription becomes active, try to unflag links immediately.
+        if (status === "active" && plan) {
           try {
             const unflagged = await unflagLinksIfUnderCap(user.id, plan);
             if (unflagged > 0) logger.info({ userId: user.id, plan, unflagged }, "Auto-unflagged links on subscription update");
@@ -277,36 +264,10 @@ export class WebhookHandlers {
             stripeSubscriptionStatus: "canceled",
             stripeSubscriptionId: null,
             planRenewsAt: null,
-            // Also wipe trial fields — if Stripe deleted the sub mid-trial
-            // (no payment method on file at trial end), the user should not
-            // keep a stale trial countdown after revert to free.
-            trialEndsAt: null,
-            trialPlan: null,
           })
           .where(eq(usersTable.id, user.id));
 
         logger.info({ userId: user.id }, "Subscription deleted — reverted to free");
-        break;
-      }
-
-      case "customer.subscription.trial_will_end": {
-        // Stripe fires this 3 days before the trial ends. Email the user.
-        const trialEndIso = subscription.trial_end
-          ? new Date(subscription.trial_end * 1000).toISOString()
-          : null;
-        try {
-          const { sendTrialEndingEmail } = await import("./email");
-          await sendTrialEndingEmail({
-            id: user.id,
-            name: user.name,
-            email: user.email,
-            trialEndsAt: trialEndIso,
-            planLabel: (user.plan ?? "starter").charAt(0).toUpperCase() + (user.plan ?? "starter").slice(1),
-          });
-          logger.info({ userId: user.id, trialEnd: trialEndIso }, "Trial-ending email sent");
-        } catch (err) {
-          logger.error({ err, userId: user.id }, "Failed to send trial-ending email");
-        }
         break;
       }
     }

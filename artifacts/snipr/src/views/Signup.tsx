@@ -20,23 +20,27 @@ const registerSchema = z.object({
 type RegisterForm = z.infer<typeof registerSchema>;
 
 const PLANS = [
-  { id: "starter",  name: "Starter",  price: "$4",   sub: "1M clicks/month · 1 custom domain", recommended: true,  trial: true },
-  { id: "growth",   name: "Growth",   price: "$12",  sub: "5M clicks/month · 3 custom domains · UTM builder", recommended: false, trial: false },
-  { id: "pro",      name: "Pro",      price: "$29",  sub: "25M clicks/month · 10 domains · pixels & rules", recommended: false, trial: false },
-  { id: "business", name: "Business", price: "$79",  sub: "100M clicks/month · unlimited domains · team", recommended: false, trial: false },
+  { id: "free",     name: "Free",     price: "$0",   sub: "10K clicks/month · 5 links · no card needed", recommended: true,  free: true },
+  { id: "starter",  name: "Starter",  price: "$4",   sub: "1M clicks/month · 1 custom domain", recommended: false, free: false },
+  { id: "growth",   name: "Growth",   price: "$12",  sub: "5M clicks/month · 3 custom domains · UTM builder", recommended: false, free: false },
+  { id: "pro",      name: "Pro",      price: "$29",  sub: "25M clicks/month · 10 domains · pixels & rules", recommended: false, free: false },
+  { id: "business", name: "Business", price: "$79",  sub: "100M clicks/month · unlimited domains · team", recommended: false, free: false },
 ] as const;
 
 export default function Signup() {
   const searchParams = useSearchParams();
   const inviteToken = searchParams.get("invite");
-  const presetPlan = (searchParams.get("plan") || "starter") as typeof PLANS[number]["id"];
+  const presetPlan = (searchParams.get("plan") || "free") as typeof PLANS[number]["id"];
   const [selectedPlan, setSelectedPlan] = useState<string>(presetPlan);
 
-  // After register, send the user straight to /checkout with the plan they picked.
-  // For invited team members, we still respect the invite redirect.
+  // Free signups go straight to the dashboard. Paid plans collect card at
+  // /checkout (no trial — the Free tier is the no-card option). Invited team
+  // members still respect the invite redirect.
   const redirectTo = inviteToken
     ? `/join?token=${inviteToken}`
-    : `/checkout?plan=${selectedPlan}&new=1`;
+    : selectedPlan === "free"
+      ? "/dashboard"
+      : `/checkout?plan=${selectedPlan}&new=1`;
 
   const { register: authRegister, isRegistering } = useAuth({ redirectTo });
 
@@ -62,15 +66,15 @@ export default function Signup() {
             <span className="font-bold text-lg text-[#FAFAFA] tracking-tight">Snipr</span>
           </div>
           <h2 className="text-3xl font-bold text-[#FAFAFA] leading-tight mb-4">
-            Try Snipr for 7 days.<br />Cancel any time.
+            Start free.<br />Upgrade when you grow.
           </h2>
           <p className="text-[#71717A] text-[15px] leading-relaxed max-w-[320px]">
-            Full access to Starter — 1M clicks, custom domain, advanced analytics. We&apos;ll email you 3 days before the trial ends.
+            The Free plan gives you 10K clicks/month and 5 links — no card needed. Upgrade anytime for unlimited links, more clicks, and custom domains.
           </p>
         </div>
         <div className="relative z-10 space-y-3">
           {[
-            { icon: CheckCircle2, text: "No charges during your 7-day trial" },
+            { icon: CheckCircle2, text: "No credit card required for Free plan" },
             { icon: Shield, text: "Enterprise-grade security & privacy" },
             { icon: Sparkles, text: "AI insights included on all plans" },
           ].map((item, i) => (
@@ -95,7 +99,7 @@ export default function Signup() {
 
           <div className="mb-6">
             <h1 className="text-[26px] font-bold text-[#FAFAFA] tracking-tight">Create your account</h1>
-            <p className="text-[#71717A] text-[15px] mt-1.5">7-day free trial. Cancel any time.</p>
+            <p className="text-[#71717A] text-[15px] mt-1.5">Start on the Free plan — upgrade any time.</p>
           </div>
 
           {/* Plan picker — hidden when joining via team invite */}
@@ -124,8 +128,8 @@ export default function Signup() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
                           <span className="text-[13px] font-semibold text-[#FAFAFA]">{p.name}</span>
-                          {p.trial && <span className="text-[9px] font-bold text-[#A78BFA] bg-[#8B5CF6]/15 border border-[#8B5CF6]/30 px-1.5 py-0.5 rounded uppercase tracking-wider">7d free trial</span>}
-                          {p.recommended && !p.trial && <span className="text-[9px] font-bold text-[#FAFAFA] bg-[#27272A] px-1.5 py-0.5 rounded uppercase tracking-wider">Popular</span>}
+                          {p.free && <span className="text-[9px] font-bold text-[#34D399] bg-[#10B981]/15 border border-[#10B981]/30 px-1.5 py-0.5 rounded uppercase tracking-wider">Free forever</span>}
+                          {p.recommended && !p.free && <span className="text-[9px] font-bold text-[#FAFAFA] bg-[#27272A] px-1.5 py-0.5 rounded uppercase tracking-wider">Popular</span>}
                         </div>
                         <p className="text-[11px] text-[#71717A] mt-0.5 truncate">{p.sub}</p>
                       </div>

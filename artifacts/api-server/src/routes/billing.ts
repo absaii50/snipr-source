@@ -22,6 +22,16 @@ const PLAN_CLICK_CAPS: Record<string, number | null> = {
   enterprise: null,
 };
 
+/** Active-link cap per plan. null = unlimited. Only Free is gated by count. */
+export const PLAN_LINK_CAPS: Record<string, number | null> = {
+  free: 5,
+  starter: null,
+  growth: null,
+  pro: null,
+  business: null,
+  enterprise: null,
+};
+
 function isValidPlan(plan: string): plan is PlanName {
   return VALID_PLANS.includes(plan as PlanName);
 }
@@ -136,9 +146,7 @@ router.get("/billing/subscription", requireAuth, async (req: Request, res: Respo
     return;
   }
 
-  const { expireTrialIfDue, trialStatus } = await import("../lib/trial");
-  const user = await expireTrialIfDue(rawUser);
-  const trial = trialStatus(user);
+  const user = rawUser;
 
   let renewsAt: string | null = null;
   let expiresAt: string | null = null;
@@ -158,7 +166,8 @@ router.get("/billing/subscription", requireAuth, async (req: Request, res: Respo
 
   // Usage + flag state for the dashboard banner
   const cap = PLAN_CLICK_CAPS[user.plan] ?? null;
-  const [{ clicks30d, flaggedCount }] = await db
+  const linkCap = PLAN_LINK_CAPS[user.plan] ?? null;
+  const [{ clicks30d, flaggedCount, linkCount }] = await db
     .select({
       clicks30d: sql<number>`(
         SELECT COUNT(*)::int
@@ -174,6 +183,12 @@ router.get("/billing/subscription", requireAuth, async (req: Request, res: Respo
         JOIN ${workspacesTable} w ON w.id = l.workspace_id
         WHERE w.user_id = ${user.id}
           AND l.flagged_at IS NOT NULL
+      )`,
+      linkCount: sql<number>`(
+        SELECT COUNT(*)::int
+        FROM ${linksTable} l
+        JOIN ${workspacesTable} w ON w.id = l.workspace_id
+        WHERE w.user_id = ${user.id}
       )`,
     })
     .from(usersTable)
@@ -209,13 +224,14 @@ router.get("/billing/subscription", requireAuth, async (req: Request, res: Respo
     hoursUntilEnforcement = remaining;
   }
 
+  const linksUsed = Number(linkCount ?? 0);
+  const linkLimitReached = linkCap !== null && linksUsed >= linkCap;
   res.json({
     plan: user.plan,
     status: user.stripeSubscriptionStatus ?? null,
     subscriptionId: user.stripeSubscriptionId ?? null,
     renewsAt: renewsAt ?? user.planRenewsAt ?? null,
     expiresAt: expiresAt ?? user.planExpiresAt ?? null,
-    trial,
     usage: {
       clicks30d: used,
       cap,
@@ -225,6 +241,9 @@ router.get("/billing/subscription", requireAuth, async (req: Request, res: Respo
       flaggedLinksCount: Number(flaggedCount ?? 0),
       bannerState,
       hoursUntilEnforcement,
+      linksUsed,
+      linkCap,
+      linkLimitReached,
       nextPlanHint:
         user.plan === "free" ? "starter" :
         user.plan === "starter" ? "growth" :
@@ -410,24 +429,17 @@ router.post("/billing/create-subscription-intent", requireAuth, async (req: Requ
       }
     }
 
-    // No reusable subscription — create a new one.
-    // First-time subscribers (no prior Stripe subscription) get a 7-day free trial.
-    // Returning users (who previously subscribed) skip the trial.
-    const isFirstTimeSubscriber = !user.stripeSubscriptionId;
+    // No reusable subscription — create a new one. No free trial — users who
+    // want to try Snipr use the Free tier (10K clicks/month, 5 links). Paid
+    // plans are billed immediately on first confirmation.
     if (!subscription) {
-      const subParams: any = {
+      subscription = await stripe.subscriptions.create({
         customer: customerId,
         items: [{ price: priceId }],
         payment_behavior: "default_incomplete",
         payment_settings: { save_default_payment_method: "on_subscription" },
         expand: ["latest_invoice.confirmation_secret"],
-      };
-      if (isFirstTimeSubscriber) {
-        subParams.trial_period_days = 7;
-        // Send the trial-ending notification 3 days before charge
-        subParams.trial_settings = { end_behavior: { missing_payment_method: "cancel" } };
-      }
-      subscription = await stripe.subscriptions.create(subParams);
+      });
     }
 
     // Resolve client_secret — Stripe v21 (API 2025-04-30.basil)

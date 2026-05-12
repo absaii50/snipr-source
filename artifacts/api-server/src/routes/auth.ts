@@ -11,7 +11,6 @@ import {
 import { requireAuth } from "../lib/auth";
 import { sendVerificationEmail, sendWelcomeEmail, sendPasswordResetEmail } from "../lib/email";
 import { logger } from "../lib/logger";
-import { expireTrialIfDue, trialStatus } from "../lib/trial";
 
 const router: IRouter = Router();
 
@@ -182,8 +181,7 @@ router.get("/auth/me", requireAuth, async (req, res): Promise<void> => {
     return;
   }
 
-  // Auto-expire trial if due (runtime safeguard alongside any cron jobs)
-  const user = await expireTrialIfDue(rawUser);
+  const user = rawUser;
 
   const [workspace] = await db
     .select()
@@ -212,7 +210,6 @@ router.get("/auth/me", requireAuth, async (req, res): Promise<void> => {
       createdAt: user.createdAt,
       lastVerificationFailed,
       plan: user.plan,
-      trial: trialStatus(user),
     },
     workspace: workspace
       ? { id: workspace.id, name: workspace.name, slug: workspace.slug }
@@ -337,48 +334,21 @@ async function handleVerifyEmail(req: import("express").Request, res: import("ex
     return;
   }
 
-  // Verification reward: every newly-verified user on Free plan with no Stripe sub
-  // gets a 7-day Starter trial. They keep all paid features for free during the trial,
-  // then auto-revert to Free if they don't subscribe.
-  const TRIAL_DAYS = 7;
-  const eligibleForTrial =
-    user.plan === "free" &&
-    !user.stripeSubscriptionId &&
-    !user.trialEndsAt; // never trialed before
-  const updates: Partial<typeof usersTable.$inferInsert> = {
-    emailVerified: true,
-    emailVerificationToken: null,
-  };
-  if (eligibleForTrial) {
-    updates.plan = "starter";
-    updates.trialPlan = "starter";
-    updates.trialEndsAt = new Date(Date.now() + TRIAL_DAYS * 24 * 60 * 60 * 1000);
-  }
-
   await db
     .update(usersTable)
-    .set(updates)
+    .set({ emailVerified: true, emailVerificationToken: null })
     .where(eq(usersTable.id, user.id));
 
-  if (eligibleForTrial) {
-    logger.info({ userId: user.id, email: user.email }, `Granted ${TRIAL_DAYS}-day Starter trial on email verification`);
-  }
-
-  // Send welcome email (non-blocking) — note the trial flag so the template can include it
+  // Send welcome email (non-blocking).
   sendWelcomeEmail({
     id: user.id,
     name: user.name,
     email: user.email,
-    trialDays: eligibleForTrial ? TRIAL_DAYS : undefined,
-    trialEndsAt: eligibleForTrial ? updates.trialEndsAt as Date : undefined,
   }).catch((err) => logger.error({ err }, "Failed to send welcome email"));
 
   res.json({
     ok: true,
     message: "Email verified successfully",
-    trial: eligibleForTrial
-      ? { plan: "starter", days: TRIAL_DAYS, endsAt: updates.trialEndsAt }
-      : null,
   });
 }
 

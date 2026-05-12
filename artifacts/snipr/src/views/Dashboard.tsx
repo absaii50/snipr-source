@@ -128,19 +128,12 @@ interface PlanUsage {
   hoursUntilEnforcement: number | null;
   nextPlanHint: string | null;
 }
-interface TrialInfo {
-  plan: string;
-  daysLeft: number;
-  hoursLeft: number;
-  endsAt: string;
-}
 interface Subscription {
   plan: string;
   status?: string | null;
   subscriptionId?: string | null;
   renewsAt?: string | null;
   expiresAt?: string | null;
-  trial?: TrialInfo | null;
   usage?: PlanUsage;
 }
 async function fetchSubscription({ signal }: { signal: AbortSignal }): Promise<Subscription | null> {
@@ -297,12 +290,6 @@ export default function Dashboard() {
         </div>
 
         <div className="px-4 sm:px-6 lg:px-8 pt-14 lg:pt-6 pb-20 max-w-[1280px] mx-auto w-full space-y-6">
-
-          {/* ── TRIAL BANNER (active Starter trial countdown) ── */}
-          <TrialBanner
-            trial={subscription?.trial}
-            hasStripeSubscription={!!subscription?.subscriptionId}
-          />
 
           {/* ── PLAN USAGE BANNER (warning / over_cap / flagged) ── */}
           <PlanUsageBanner usage={subscription?.usage} />
@@ -960,54 +947,3 @@ function PlanUsageBanner({ usage }: { usage: PlanUsage | undefined }) {
 }
 
 /* ─────────────── Trial Banner ─────────────── */
-function TrialBanner({ trial, hasStripeSubscription }: { trial: TrialInfo | null | undefined; hasStripeSubscription: boolean }) {
-  if (!trial) return null;
-  const { daysLeft, hoursLeft } = trial;
-  const planLabel = trial.plan.charAt(0).toUpperCase() + trial.plan.slice(1);
-  const isUrgent = hoursLeft <= 24;
-  const isWarning = hoursLeft <= 72 && !isUrgent;
-  const colors = isUrgent
-    ? { bg: "rgba(239,68,68,0.08)", border: "rgba(239,68,68,0.35)", iconBg: "rgba(239,68,68,0.15)", iconColor: "#EF4444", title: "#FCA5A5", body: "#FECACA" }
-    : isWarning
-    ? { bg: "rgba(245,158,11,0.08)", border: "rgba(245,158,11,0.35)", iconBg: "rgba(245,158,11,0.15)", iconColor: "#F59E0B", title: "#FBBF24", body: "#FCD34D" }
-    : { bg: "linear-gradient(135deg, rgba(139,92,246,0.10), rgba(6,182,212,0.10))", border: "rgba(139,92,246,0.35)", iconBg: "rgba(139,92,246,0.15)", iconColor: "#A78BFA", title: "#C4B5FD", body: "#DDD6FE" };
-
-  const title = isUrgent
-    ? `Your ${planLabel} trial ends in ${hoursLeft} hour${hoursLeft === 1 ? "" : "s"}`
-    : `Your ${planLabel} trial is active — ${daysLeft} day${daysLeft === 1 ? "" : "s"} left`;
-
-  // Two trial paths — messaging needs to match what actually happens at end:
-  //   • Stripe checkout trial: card on file, auto-bills at trial end (or cancels if no card).
-  //   • Email-verification reward trial: no card, auto-reverts to Free at trial end.
-  const body = hasStripeSubscription
-    ? (isUrgent
-        ? `We'll bill your saved card automatically when the trial ends, keeping your subscription active. Cancel anytime from Billing if you'd like to stop before then.`
-        : `You've got full ${planLabel} access until ${new Date(trial.endsAt).toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" })}. Manage or cancel anytime from Billing.`)
-    : (isUrgent
-        ? `Subscribe before the trial ends to keep ${planLabel} features. Otherwise your account will revert to the Free plan and these features will be locked.`
-        : `Enjoy ${planLabel} features free until ${new Date(trial.endsAt).toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" })}. Add a payment method to continue uninterrupted.`);
-  const ctaLabel = hasStripeSubscription ? "Manage subscription" : "Add payment method";
-
-  return (
-    <div
-      className="rounded-xl border p-4 flex flex-col sm:flex-row sm:items-center gap-3"
-      style={{ background: colors.bg, borderColor: colors.border }}
-    >
-      <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: colors.iconBg }}>
-        <Sparkles className="w-5 h-5" style={{ color: colors.iconColor }} />
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-[14px] font-semibold leading-tight" style={{ color: colors.title }}>{title}</p>
-        <p className="text-[12px] mt-1 leading-relaxed" style={{ color: colors.body }}>{body}</p>
-      </div>
-      <Link href="/billing" className="shrink-0">
-        <button
-          className="px-4 py-2 rounded-lg text-[13px] font-semibold text-white transition-all hover:-translate-y-0.5"
-          style={{ background: "linear-gradient(135deg, #8B5CF6, #06B6D4)", boxShadow: "0 4px 14px rgba(139,92,246,0.25)" }}
-        >
-          {ctaLabel}
-        </button>
-      </Link>
-    </div>
-  );
-}

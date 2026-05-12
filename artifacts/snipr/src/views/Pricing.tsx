@@ -39,6 +39,27 @@ export default function Pricing() {
     disabled: boolean;
   }[] = [
     {
+      name: "Free",
+      plan: null,
+      monthlyPrice: "$0",
+      annualPrice: "$0",
+      annualMonthly: "$0",
+      clicks: "10K clicks/mo",
+      description: "For trying it out",
+      features: [
+        "10,000 clicks/month",
+        "Up to 5 short links",
+        "Platform domains (snipr.sh, snipr.is)",
+        "Real-time click analytics",
+        "QR codes",
+        "AI insights",
+      ],
+      cta: "Start free",
+      action: () => { if (!user) window.location.href = "/signup?plan=free"; else router.push("/dashboard"); },
+      highlighted: false,
+      disabled: false,
+    },
+    {
       name: "Starter",
       plan: "starter",
       monthlyPrice: "$4",
@@ -48,13 +69,14 @@ export default function Pricing() {
       description: "For personal projects",
       features: [
         "1M clicks/month",
+        "Unlimited links",
         "1 custom domain",
         "Geo & device analytics",
         "Link expiry & scheduling",
         "Password-protected links",
         "Folders & tags",
       ],
-      cta: loadingPlan === "starter" ? "Redirecting…" : "Start 7-day free trial",
+      cta: loadingPlan === "starter" ? "Redirecting…" : "Get Starter",
       action: () => startCheckout("starter"),
       highlighted: true,
       disabled: loadingPlan === "starter",

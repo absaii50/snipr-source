@@ -122,7 +122,7 @@ const useCases = [
 ];
 
 const faqs = [
-  { q: "Can I try Snipr before paying?", a: "Yes. Every new account gets a 7-day free trial of the Starter plan — 1 million clicks/month, 1 custom domain, full analytics, link expiry, and password-protected links. You'll need a card on file to start the trial, but you can cancel any time before day 7 and won't be charged." },
+  { q: "Can I try Snipr before paying?", a: "Yes. The Free plan gives you 10,000 clicks per month and up to 5 short links — no credit card required. Upgrade to a paid plan anytime for unlimited links, more clicks, custom domains, and advanced features." },
   { q: "Can I use my own custom domain?", a: "Yes. Pro and Business plans support custom domains. Just point your domain's DNS to Snipr and all your links will redirect from your branded domain." },
   { q: "How does smart routing work?", a: "Smart routing lets you create conditional rules for each link. Based on the visitor's country, device, time of day, or an A/B split, Snipr redirects them to the most relevant destination." },
   { q: "Is my link data private?", a: "Absolutely. Your link data is only visible to you and your team. We never sell data or use it for advertising. All data is stored securely with encryption at rest." },
@@ -1350,7 +1350,7 @@ export default function Home() {
             {/* ── Optional CTA ── */}
             <div className="flex justify-center mt-10">
               <a href="/signup" className="inline-flex items-center gap-2 text-[13px] font-semibold text-[#555] hover:text-[#0A0A0A] border border-[#DCDCDC] hover:border-[#AAAAAA] bg-white rounded-full px-6 py-2.5 transition-all shadow-sm hover:shadow-md">
-                Start your 7-day free trial
+                Start free — no card required
                 <ArrowRight className="w-3.5 h-3.5" />
               </a>
             </div>

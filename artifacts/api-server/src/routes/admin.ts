@@ -333,12 +333,7 @@ router.patch("/admin/users/:id/plan", requireAdmin, async (req, res): Promise<vo
     return;
   }
 
-  // Manual admin plan changes override any active trial — leaving stale trial
-  // fields would keep showing the trial banner with the wrong plan and confuse
-  // both admin and user. Comp-style upgrades come straight here, no trial.
-  await db.update(usersTable)
-    .set({ plan, trialEndsAt: null, trialPlan: null })
-    .where(eq(usersTable.id, req.params.id));
+  await db.update(usersTable).set({ plan }).where(eq(usersTable.id, req.params.id));
   await logAuditAction("change_plan", "user", req.params.id, { plan }, req.ip);
   res.json({ ok: true, plan });
 });
@@ -1246,10 +1241,6 @@ router.get("/admin/users/performance", requireAdmin, async (req, res): Promise<v
   const plan = (req.query.plan as string) ?? "";
   const sort = (req.query.sort as string) ?? "clicks";
   const days = Math.max(0, parseInt((req.query.days as string) ?? "0", 10)); // Validate non-negative
-  // ?trialOnly=1 narrows the response to users with an active trial — either
-  // a Stripe-managed trial (status=trialing) or the email-verification reward
-  // trial (trial_ends_at in the future). Useful for the new admin trial filter.
-  const trialOnly = ["1", "true", "yes"].includes(((req.query.trialOnly as string) ?? "").toLowerCase());
 
   // SECURITY: Whitelist allowed sort values to prevent SQL injection
   const validSortValues = ["links", "avg", "name", "clicks"];
@@ -1268,8 +1259,6 @@ router.get("/admin/users/performance", requireAdmin, async (req, res): Promise<v
       u.suspended_at,
       u.created_at,
       u.email_verified,
-      u.trial_ends_at,
-      u.trial_plan,
       u.stripe_subscription_status,
       u.stripe_subscription_id IS NOT NULL                            AS has_stripe_subscription,
       w.name   AS workspace_name,
@@ -1291,9 +1280,8 @@ router.get("/admin/users/performance", requireAdmin, async (req, res): Promise<v
     WHERE 1=1
       ${search ? sql`AND (lower(u.name) LIKE ${"%" + escapeLike(search) + "%"} OR lower(u.email) LIKE ${"%" + escapeLike(search) + "%"})` : sql``}
       ${plan ? sql`AND u.plan = ${plan}` : sql``}
-      ${trialOnly ? sql`AND (u.trial_ends_at > NOW() OR u.stripe_subscription_status = 'trialing')` : sql``}
     GROUP BY u.id, u.name, u.email, u.plan, u.suspended_at, u.created_at, u.email_verified,
-             u.trial_ends_at, u.trial_plan, u.stripe_subscription_status, u.stripe_subscription_id,
+             u.stripe_subscription_status, u.stripe_subscription_id,
              w.name, w.slug
     ORDER BY ${sql.raw(orderBy)}
     LIMIT 200
@@ -1312,7 +1300,6 @@ router.get("/admin/users/:id/analytics", requireAdmin, async (req, res): Promise
       SELECT u.id, u.name, u.email, u.plan, u.suspended_at, u.created_at,
              u.billing_details,
              u.stripe_customer_id, u.stripe_subscription_id, u.stripe_subscription_status,
-             u.trial_ends_at, u.trial_plan,
              w.name AS workspace_name, w.slug AS workspace_slug, w.id AS workspace_id
       FROM users u
       LEFT JOIN workspaces w ON w.user_id = u.id
@@ -2161,8 +2148,6 @@ router.get("/admin/users/:id/workspace-detail", requireAdmin, async (req, res): 
       createdAt: user.createdAt,
       suspendedAt: user.suspendedAt,
       emailVerified: user.emailVerified,
-      trialEndsAt: user.trialEndsAt,
-      trialPlan: user.trialPlan,
       stripeSubscriptionStatus: user.stripeSubscriptionStatus,
       hasStripeSubscription: !!user.stripeSubscriptionId,
     },

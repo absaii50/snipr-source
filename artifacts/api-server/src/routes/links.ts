@@ -3,7 +3,7 @@ import { eq, and, or, count, countDistinct, inArray, gte, sql, desc, isNull } fr
 import { nanoid } from "nanoid";
 import QRCode from "qrcode";
 import bcrypt from "bcryptjs";
-import { db, linksTable, workspacesTable, linkTagsTable, tagsTable, foldersTable, clickEventsTable, domainsTable, platformSettingsTable } from "@workspace/db";
+import { db, linksTable, workspacesTable, linkTagsTable, tagsTable, foldersTable, clickEventsTable, domainsTable, platformSettingsTable, usersTable } from "@workspace/db";
 import {
   CreateLinkBody,
   UpdateLinkBody,
@@ -83,8 +83,34 @@ router.post("/links", requireAuth, async (req, res): Promise<void> => {
   }
 
   const workspaceId = req.session.workspaceId!;
+  const userId = req.session.userId!;
   const { destinationUrl, title, expiresAt } = parsed.data;
   let slug = parsed.data.slug;
+
+  // Free plan: hard cap of 5 active links. Paid plans have no link-count cap.
+  // We re-check the plan + count here (not just rely on client UI) so direct
+  // API calls can't bypass the limit.
+  const [planRow] = await db
+    .select({ plan: usersTable.plan })
+    .from(usersTable)
+    .where(eq(usersTable.id, userId));
+  const FREE_LINK_CAP = 5;
+  if (planRow?.plan === "free") {
+    const [{ count: linkCount }] = await db
+      .select({ count: count() })
+      .from(linksTable)
+      .where(eq(linksTable.workspaceId, workspaceId));
+    if (Number(linkCount) >= FREE_LINK_CAP) {
+      res.status(402).json({
+        error: "Plan limit reached",
+        message: `Free plan is limited to ${FREE_LINK_CAP} links. Upgrade to Starter for unlimited links.`,
+        field: "plan",
+        currentCount: Number(linkCount),
+        limit: FREE_LINK_CAP,
+      });
+      return;
+    }
+  }
 
   // SECURITY: Validate destination URL is safe (http/https only)
   try {

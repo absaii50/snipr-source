@@ -78,8 +78,6 @@ interface UserAnalytics {
     stripe_customer_id: string | null;
     stripe_subscription_id: string | null;
     stripe_subscription_status: string | null;
-    trial_ends_at: string | null;
-    trial_plan: string | null;
   };
   allLinks: LinkRow[];
   topLinks: LinkRow[];
@@ -105,60 +103,6 @@ function PlanBadge({ plan }: { plan: string }) {
     <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold border ${cfg} capitalize`}>
       {plan}
     </span>
-  );
-}
-
-/** Surfaces trial state in the admin user profile. Shows distinct copy for the
- *  two trial paths (Stripe checkout with card vs email-verification reward), so
- *  the admin can immediately tell what'll happen when the trial ends. */
-function TrialInfoStrip({ user }: { user: UserAnalytics["user"] }) {
-  const isStripeTrial = user.stripe_subscription_status === "trialing";
-  const localEnds = user.trial_ends_at ? new Date(user.trial_ends_at).getTime() : null;
-  const isLocalTrial = localEnds !== null && localEnds > Date.now();
-  if (!isStripeTrial && !isLocalTrial) return null;
-
-  const ms = localEnds !== null ? localEnds - Date.now() : null;
-  const daysLeft = ms !== null ? Math.max(0, Math.floor(ms / (24 * 60 * 60 * 1000))) : null;
-  const hoursLeft = ms !== null ? Math.max(0, Math.round(ms / (60 * 60 * 1000))) : null;
-  const urgent = hoursLeft !== null && hoursLeft <= 24;
-
-  const planLabel = (user.trial_plan ?? user.plan).charAt(0).toUpperCase() + (user.trial_plan ?? user.plan).slice(1);
-
-  return (
-    <div
-      className={`mt-2 rounded-lg px-3 py-2 border text-[11px] flex items-start gap-2 ${
-        urgent
-          ? "bg-red-50 border-red-200 text-red-700"
-          : isStripeTrial
-            ? "bg-violet-50 border-violet-200 text-violet-700"
-            : "bg-cyan-50 border-cyan-200 text-cyan-700"
-      }`}
-    >
-      <span className={`w-1.5 h-1.5 rounded-full mt-1.5 shrink-0 ${urgent ? "bg-red-500 animate-pulse" : isStripeTrial ? "bg-violet-500" : "bg-cyan-500"}`} />
-      <div className="min-w-0 leading-snug">
-        <div className="font-semibold">
-          {isStripeTrial ? "Stripe trial" : "Verification reward trial"}
-          {" · "}
-          {planLabel}
-          {daysLeft !== null && (
-            <span className="font-normal opacity-80">
-              {" — "}
-              {daysLeft > 0 ? `${daysLeft} day${daysLeft === 1 ? "" : "s"} left` : `${hoursLeft} hour${hoursLeft === 1 ? "" : "s"} left`}
-            </span>
-          )}
-        </div>
-        <div className="opacity-80 mt-0.5">
-          {isStripeTrial
-            ? "Card on file — Stripe will auto-charge at trial end (or cancel if no payment method)."
-            : "No card on file — auto-reverts to Free plan when the trial ends."}
-          {user.trial_ends_at && (
-            <span className="ml-1">
-              Ends {new Date(user.trial_ends_at).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}.
-            </span>
-          )}
-        </div>
-      </div>
-    </div>
   );
 }
 
@@ -460,7 +404,6 @@ export default function UserProfile({
                       </>
                     )}
                   </div>
-                  <TrialInfoStrip user={data.user} />
                 </div>
               </div>
 

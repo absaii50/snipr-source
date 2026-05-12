@@ -199,33 +199,7 @@ export function getTeamInviteNewUserHtml(inviterName: string, workspaceName: str
   `);
 }
 
-export function getWelcomeEmailHtml(name: string, dashboardUrl: string, trialDays?: number, trialEndsAt?: Date): string {
-  const hasTrial = !!trialDays && !!trialEndsAt;
-  const trialEndDate = trialEndsAt
-    ? new Date(trialEndsAt).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })
-    : "";
-
-  const trialBlock = hasTrial ? `
-    <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="margin-bottom:16px;">
-      <tr>
-        <td style="background:linear-gradient(135deg, #F3E8FF, #E0E7FF);border-radius:12px;padding:18px;border:1px solid #DDD6FE;">
-          <div style="display:inline-block;background:#6B21A8;color:#fff;font-size:9px;font-weight:700;letter-spacing:0.08em;padding:3px 10px;border-radius:999px;text-transform:uppercase;margin-bottom:8px;">
-            🎁 Welcome Gift
-          </div>
-          <p style="color:#3B0764;font-size:16px;font-weight:700;margin:0 0 6px;line-height:1.3;">
-            We've upgraded you to Starter for ${trialDays} days
-          </p>
-          <p style="color:#5B21B6;font-size:13px;line-height:1.6;margin:0 0 4px;">
-            As a thank-you for verifying your email, you've got <strong>full Starter-plan access</strong> until <strong>${escHtml(trialEndDate)}</strong> — including 1 million clicks/month, custom domains, advanced analytics, and link expiry.
-          </p>
-          <p style="color:#6D28D9;font-size:12px;line-height:1.5;margin:8px 0 0;">
-            No payment required. We'll let you know before it expires.
-          </p>
-        </td>
-      </tr>
-    </table>
-  ` : "";
-
+export function getWelcomeEmailHtml(name: string, dashboardUrl: string): string {
   return layout(`
     <div style="text-align:center;padding-bottom:16px;">
       <div style="display:inline-block;width:56px;height:56px;background:#E8F5E9;border-radius:50%;line-height:56px;font-size:28px;">
@@ -238,16 +212,15 @@ export function getWelcomeEmailHtml(name: string, dashboardUrl: string, trialDay
     <p style="color:${BRAND.text};font-size:15px;line-height:1.6;margin:0 0 16px;text-align:center;">
       Your email is verified and your account is ready to go.
     </p>
-    ${trialBlock}
     <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="margin-bottom:8px;">
       <tr>
         <td style="background:${BRAND.light};border-radius:12px;padding:16px;">
           <p style="color:${BRAND.dark};font-weight:600;font-size:14px;margin:0 0 8px;">What you can do now:</p>
           <p style="color:${BRAND.text};font-size:13px;line-height:1.8;margin:0;">
-            &#8226; Create short links with custom domains<br>
-            &#8226; Track clicks with real-time analytics<br>
-            &#8226; Use AI-powered link insights<br>
-            &#8226; Set up redirect rules and A/B testing
+            &#8226; Create up to 5 short links on the Free plan<br>
+            &#8226; Track up to 10K clicks per month<br>
+            &#8226; Use real-time analytics and AI insights<br>
+            &#8226; Upgrade anytime for unlimited links and more clicks
           </p>
         </td>
       </tr>
@@ -476,43 +449,3 @@ export function getUpgradeReminderEmailHtml(opts: {
   `);
 }
 
-/* ──────────────── Trial Ending Reminder (Stripe trial_will_end) ──────────────── */
-
-export function getTrialEndingEmailHtml(opts: {
-  name: string;
-  planLabel: string;
-  trialEndsAt: string | null;
-  billingUrl: string;
-}): string {
-  const dateLabel = opts.trialEndsAt
-    ? new Date(opts.trialEndsAt).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })
-    : "in 3 days";
-  return layout(`
-    <div style="display:inline-block;background:#FEF3C7;color:#92400E;font-size:10px;font-weight:700;letter-spacing:0.08em;padding:4px 10px;border-radius:999px;text-transform:uppercase;margin-bottom:12px;">
-      ⏳ Trial Ending
-    </div>
-    <h1 style="color:${BRAND.dark};font-size:22px;font-weight:700;margin:0 0 8px;letter-spacing:-0.3px;line-height:1.3;">
-      Your ${escHtml(opts.planLabel)} trial ends in 3 days
-    </h1>
-    <p style="color:${BRAND.text};font-size:15px;line-height:1.6;margin:0 0 4px;">Hi ${escHtml(opts.name)},</p>
-    <p style="color:${BRAND.text};font-size:14px;line-height:1.7;margin:0 0 16px;">
-      Heads up — your free trial ends on <strong>${escHtml(dateLabel)}</strong>. After that, your saved card will be charged for the ${escHtml(opts.planLabel)} plan and your subscription continues without interruption.
-    </p>
-    <div style="background:${BRAND.light};border-radius:12px;padding:16px;margin-bottom:16px;border-left:3px solid ${BRAND.primary};">
-      <p style="color:${BRAND.dark};font-size:14px;font-weight:600;margin:0 0 8px;">If you'd like to continue</p>
-      <p style="color:${BRAND.text};font-size:13px;line-height:1.7;margin:0;">
-        You don't need to do anything — we'll bill you automatically when the trial ends and keep your subscription active.
-      </p>
-    </div>
-    <div style="background:#FFFBEB;border:1px solid #FDE68A;border-radius:12px;padding:16px;margin-bottom:16px;">
-      <p style="color:#92400E;font-size:13px;font-weight:700;margin:0 0 8px;">If you'd like to cancel</p>
-      <p style="color:#78350F;font-size:13px;line-height:1.7;margin:0;">
-        Open your Billing page and cancel anytime before ${escHtml(dateLabel)}. Your card won't be charged and your account will downgrade gracefully.
-      </p>
-    </div>
-    ${button("Manage Subscription", opts.billingUrl)}
-    <p style="color:${BRAND.muted};font-size:12px;line-height:1.6;margin:20px 0 0;text-align:center;">
-      Questions? Just reply to this email — we read every message.
-    </p>
-  `);
-}
