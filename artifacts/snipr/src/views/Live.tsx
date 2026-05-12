@@ -49,6 +49,20 @@ function countryName(code: string | null): string {
   try { return new Intl.DisplayNames(["en"], { type: "region" }).of(code) ?? code; } catch { return code; }
 }
 
+/** Single source of truth for "is this the same click event?" across all three
+ *  sources (DB seed, SSE stream, polling fallback). DB rows have a stable `id`
+ *  we can trust; SSE events arrive before the DB insert so they have no id and
+ *  fall back to linkId|timestamp. Using one helper guarantees the seed,
+ *  polling, and SSE paths all hash the same event to the same key — without
+ *  this the same click rendered twice when the seed and polling fired in
+ *  parallel during the initial "connecting" window. */
+function eventDedupKey(e: { id?: string | null; linkId?: string | null; link_id?: string | null; timestamp?: string | null }): string | null {
+  if (e.id) return `db:${e.id}`;
+  const lid = e.linkId ?? e.link_id ?? "";
+  const ts = e.timestamp ?? "";
+  return lid && ts ? `lt:${lid}|${ts}` : null;
+}
+
 
 /* ───── Mini Sparkline (SVG) ───── */
 function MiniSparkline({ data, color, height = 32 }: { data: number[]; color: string; height?: number }) {
@@ -143,7 +157,8 @@ export default function Live() {
         const data = await res.json();
         const dbEvents: ClickEvent[] = (data.events ?? []).map((e: any) => {
           const _id = e.id ?? (Math.random().toString(36).slice(2) + Date.now().toString(36));
-          seenIds.current.add(_id);
+          const key = eventDedupKey(e);
+          if (key) seenIds.current.add(key);
           return {
             type: "click" as const,
             linkId: e.link_id ?? e.linkId ?? "",
@@ -189,11 +204,13 @@ export default function Live() {
               typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
                 ? crypto.randomUUID()
                 : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}-${(idCounter.current++).toString(36)}`;
-            // Dedup by stable composite key — only skip if both fields are present.
-            if (data.linkId && data.timestamp) {
-              const dedupKey = `${data.linkId}|${data.timestamp}`;
-              if (seenIds.current.has(dedupKey)) return;
-              seenIds.current.add(dedupKey);
+            // Shared dedup key with seed + polling. SSE events have no DB id
+            // yet (broadcast fires before the INSERT lands) so this collapses
+            // to lt:linkId|timestamp for live messages.
+            const key = eventDedupKey(data);
+            if (key) {
+              if (seenIds.current.has(key)) return;
+              seenIds.current.add(key);
             }
             const event: ClickEvent = { ...data, _id };
             eventsRef.current = [event, ...eventsRef.current].slice(0, 200);
@@ -228,7 +245,8 @@ export default function Live() {
         const data = await res.json();
         const dbEvents: ClickEvent[] = (data.events ?? [])
           .filter((e: any) => {
-            const key = (e.id ?? "") + (e.timestamp ?? "");
+            const key = eventDedupKey(e);
+            if (!key) return true; // can't dedup → keep
             if (seenIds.current.has(key)) return false;
             seenIds.current.add(key);
             return true;
