@@ -95,7 +95,6 @@ export class WebhookHandlers {
       "customer.subscription.created",
       "customer.subscription.updated",
       "customer.subscription.deleted",
-      "customer.subscription.trial_will_end",
       "checkout.session.completed",
       "invoice.payment_succeeded",
       "invoice.payment_failed",
