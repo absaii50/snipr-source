@@ -3,6 +3,20 @@ import { db, usersTable, linksTable, workspacesTable, clickEventsTable } from "@
 import { getStripeClient, getWebhookSecret } from "./stripeClient";
 import { logger } from "./logger";
 
+/**
+ * Read the current billing period end from a Stripe subscription. As of API
+ * 2025-04-30.basil, `current_period_end` moved from the subscription level to
+ * the subscription items array (since different items can have different
+ * cycles). Older API versions still have it at the top level — we fall back
+ * so both paths work.
+ */
+function getPeriodEndUnix(sub: any): number | null {
+  const itemEnd = sub?.items?.data?.[0]?.current_period_end;
+  if (typeof itemEnd === "number") return itemEnd;
+  if (typeof sub?.current_period_end === "number") return sub.current_period_end;
+  return null;
+}
+
 const PLAN_CLICK_CAPS: Record<string, number | null> = {
   free: 10_000,
   starter: 1_000_000,
@@ -159,11 +173,12 @@ export class WebhookHandlers {
       const plan = priceId ? await WebhookHandlers.planFromPriceId(priceId) : null;
       if (!plan || plan === "free") return;
 
+      const periodEnd = getPeriodEndUnix(sub);
       await db.update(usersTable).set({
         plan,
         stripeSubscriptionId: sub.id,
         stripeSubscriptionStatus: sub.status,
-        planRenewsAt: sub.current_period_end ? new Date(sub.current_period_end * 1000) : null,
+        planRenewsAt: periodEnd ? new Date(periodEnd * 1000) : null,
       }).where(eq(usersTable.id, invUser.id));
 
       // Immediately unflag links now that they've paid — no need to wait for the 6h scanner.
@@ -232,8 +247,9 @@ export class WebhookHandlers {
         if (subscription.cancel_at) {
           updates.planExpiresAt = new Date(subscription.cancel_at * 1000);
         }
-        if (subscription.current_period_end) {
-          updates.planRenewsAt = new Date(subscription.current_period_end * 1000);
+        const periodEndSec = getPeriodEndUnix(subscription);
+        if (periodEndSec) {
+          updates.planRenewsAt = new Date(periodEndSec * 1000);
         }
 
         await db

@@ -155,8 +155,14 @@ router.get("/billing/subscription", requireAuth, async (req: Request, res: Respo
     try {
       const sub = await stripeStorage.getSubscription(user.stripeSubscriptionId);
       if (sub) {
-        // Stripe API returns timestamps as seconds (not ms)
-        renewsAt = sub.current_period_end ? new Date(sub.current_period_end * 1000).toISOString() : null;
+        // Stripe API 2025-04-30.basil moved current_period_end from the
+        // subscription root onto each sub item. We prefer the item-level value
+        // and fall back to the top-level field for older API versions.
+        const periodEnd =
+          (sub as any).items?.data?.[0]?.current_period_end ??
+          (sub as any).current_period_end ??
+          null;
+        renewsAt = periodEnd ? new Date(periodEnd * 1000).toISOString() : null;
         expiresAt = sub.cancel_at ? new Date(sub.cancel_at * 1000).toISOString() : null;
       }
     } catch {
