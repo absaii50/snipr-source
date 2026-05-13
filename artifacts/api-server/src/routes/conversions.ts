@@ -61,10 +61,12 @@ router.post("/conversions", requireAuthOrApiKey, async (req, res): Promise<void>
   // ─── Resolve & validate linkId ────────────────────────────────────────
   let linkId: string | null = null;
   if (typeof body.slug === "string" && body.slug.length > 0) {
+    // Slugs are stored case-sensitive (nanoid produces mixed case) so we
+    // don't lowercase the lookup. Match exactly what was created.
     const [link] = await db
       .select({ id: linksTable.id })
       .from(linksTable)
-      .where(and(eq(linksTable.slug, body.slug.toLowerCase()), eq(linksTable.workspaceId, workspaceId)));
+      .where(and(eq(linksTable.slug, body.slug), eq(linksTable.workspaceId, workspaceId)));
     if (!link) {
       res.status(404).json({ error: "Not found", message: "No link with that slug in this workspace." });
       return;
