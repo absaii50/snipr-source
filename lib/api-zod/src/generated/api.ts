@@ -855,6 +855,143 @@ export const GetStatsTodayResponse = zod.object({
 });
 
 /**
+ * @summary UTM dashboard data — KPIs + per-dimension breakdowns
+ */
+export const GetUtmOverviewQueryParams = zod.object({
+  from: zod.coerce.string().optional(),
+  to: zod.coerce.string().optional(),
+});
+
+export const GetUtmOverviewResponse = zod.object({
+  kpis: zod.object({
+    totalClicks: zod.number(),
+    utmClicks: zod.number(),
+    distinctSources: zod.number(),
+    distinctMediums: zod.number(),
+    distinctCampaigns: zod.number(),
+    conversions: zod.number(),
+    revenue: zod.number(),
+  }),
+  bySource: zod.array(
+    zod.object({
+      label: zod.string(),
+      clicks: zod.number(),
+      conversions: zod.number(),
+      revenue: zod.number(),
+      conversionRate: zod.number().describe("Conversions ÷ clicks, percent"),
+    }),
+  ),
+  byMedium: zod.array(
+    zod.object({
+      label: zod.string(),
+      clicks: zod.number(),
+      conversions: zod.number(),
+      revenue: zod.number(),
+      conversionRate: zod.number().describe("Conversions ÷ clicks, percent"),
+    }),
+  ),
+  byCampaign: zod.array(
+    zod.object({
+      label: zod.string(),
+      clicks: zod.number(),
+      conversions: zod.number(),
+      revenue: zod.number(),
+      conversionRate: zod.number().describe("Conversions ÷ clicks, percent"),
+    }),
+  ),
+});
+
+/**
+ * @summary Daily click time-series for top N values of a UTM dimension
+ */
+export const GetUtmTimeseriesQueryParams = zod.object({
+  from: zod.coerce.string().optional(),
+  to: zod.coerce.string().optional(),
+  dimension: zod.enum(["source", "medium", "campaign"]).optional(),
+  top: zod.coerce.number().optional(),
+});
+
+export const GetUtmTimeseriesResponse = zod
+  .object({
+    labels: zod.array(zod.string()),
+    series: zod.array(zod.record(zod.string(), zod.unknown())),
+  })
+  .describe(
+    'labels: top-N values in window\nseries: array of `{ day: \"YYYY-MM-DD\", [label1]: clicks, [label2]: clicks, ... }`\n',
+  );
+
+/**
+ * @summary Source × medium intersection for heatmap rendering
+ */
+export const GetUtmCrossTabQueryParams = zod.object({
+  from: zod.coerce.string().optional(),
+  to: zod.coerce.string().optional(),
+});
+
+export const GetUtmCrossTabResponse = zod.object({
+  sources: zod.array(zod.string()),
+  mediums: zod.array(zod.string()),
+  cells: zod.array(
+    zod.object({
+      source: zod.string(),
+      medium: zod.string(),
+      clicks: zod.number(),
+    }),
+  ),
+});
+
+/**
+ * @summary Distinct historical UTM values for autocomplete
+ */
+export const GetUtmHistoryResponse = zod.object({
+  source: zod.array(zod.string()),
+  medium: zod.array(zod.string()),
+  campaign: zod.array(zod.string()),
+  term: zod.array(zod.string()),
+  content: zod.array(zod.string()),
+});
+
+/**
+ * @summary List saved UTM templates for the workspace
+ */
+export const ListUtmTemplatesResponseItem = zod.object({
+  id: zod.string(),
+  name: zod.string(),
+  utmSource: zod.string().nullish(),
+  utmMedium: zod.string().nullish(),
+  utmCampaign: zod.string().nullish(),
+  utmTerm: zod.string().nullish(),
+  utmContent: zod.string().nullish(),
+  createdAt: zod.date(),
+});
+export const ListUtmTemplatesResponse = zod.array(ListUtmTemplatesResponseItem);
+
+/**
+ * @summary Save a new UTM template
+ */
+export const createUtmTemplateBodyNameMax = 80;
+
+export const CreateUtmTemplateBody = zod.object({
+  name: zod.string().max(createUtmTemplateBodyNameMax),
+  utmSource: zod.string().nullish(),
+  utmMedium: zod.string().nullish(),
+  utmCampaign: zod.string().nullish(),
+  utmTerm: zod.string().nullish(),
+  utmContent: zod.string().nullish(),
+});
+
+/**
+ * @summary Delete a UTM template
+ */
+export const DeleteUtmTemplateParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const DeleteUtmTemplateResponse = zod.object({
+  ok: zod.boolean(),
+});
+
+/**
  * @summary List API keys for the caller's workspace
  */
 export const ListApiKeysResponseItem = zod.object({

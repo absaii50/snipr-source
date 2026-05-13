@@ -25,8 +25,15 @@ import {
   useGetDomains,
   useCheckSlugAvailability,
   getCheckSlugAvailabilityQueryKey,
+  useGetUtmHistory,
+  getGetUtmHistoryQueryKey,
+  useListUtmTemplates,
+  useCreateUtmTemplate,
+  useDeleteUtmTemplate,
+  getListUtmTemplatesQueryKey,
   type Link,
-  type Domain
+  type Domain,
+  type UtmTemplate,
 } from "@workspace/api-client-react";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
@@ -196,6 +203,17 @@ export function LinkModal({ isOpen, onClose, link, initialSlug }: LinkModalProps
 
   const setTagsMutation = useSetLinkTags();
   const suggestMutation = useSuggestSlugs();
+
+  // UTM autocomplete + templates: only loaded when the modal is open so they
+  // don't fire on every page load. History is workspace-wide so reuses cache.
+  const { data: utmHistory } = useGetUtmHistory({
+    query: { queryKey: getGetUtmHistoryQueryKey(), enabled: isOpen, staleTime: 5 * 60 * 1000 },
+  });
+  const { data: utmTemplates } = useListUtmTemplates({
+    query: { queryKey: getListUtmTemplatesQueryKey(), enabled: isOpen, staleTime: 5 * 60 * 1000 },
+  });
+  const createUtmTemplate = useCreateUtmTemplate();
+  const deleteUtmTemplate = useDeleteUtmTemplate();
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -847,20 +865,83 @@ export function LinkModal({ isOpen, onClose, link, initialSlug }: LinkModalProps
                         <p className="text-[11px] text-[#71717A] leading-relaxed">
                           Append Google Analytics tracking parameters to your destination URL.
                         </p>
+                        {/* Template apply + save */}
+                        <div className="flex items-center gap-2 flex-wrap">
+                          {(utmTemplates ?? []).length > 0 && (
+                            <select
+                              value=""
+                              onChange={(e) => {
+                                const tpl = (utmTemplates ?? []).find((t) => t.id === e.target.value);
+                                if (!tpl) return;
+                                setUtms({
+                                  utmSource:   tpl.utmSource   ?? "",
+                                  utmMedium:   tpl.utmMedium   ?? "",
+                                  utmCampaign: tpl.utmCampaign ?? "",
+                                  utmTerm:     tpl.utmTerm     ?? "",
+                                  utmContent:  tpl.utmContent  ?? "",
+                                });
+                              }}
+                              className="h-8 rounded-md px-2 text-[11px] text-[#E4E4E7]"
+                              style={{ background: "#0A0A0A", border: "1px solid #27272A" }}
+                            >
+                              <option value="">Apply template…</option>
+                              {(utmTemplates ?? []).map((t) => (
+                                <option key={t.id} value={t.id}>{t.name}</option>
+                              ))}
+                            </select>
+                          )}
+                          <button
+                            type="button"
+                            disabled={!UTM_KEYS.some((k) => utms[k].trim().length > 0) || createUtmTemplate.isPending}
+                            onClick={async () => {
+                              const name = prompt("Save these UTMs as a template. Name?");
+                              if (!name || !name.trim()) return;
+                              try {
+                                await createUtmTemplate.mutateAsync({ data: { name: name.trim(), utmSource: utms.utmSource || null, utmMedium: utms.utmMedium || null, utmCampaign: utms.utmCampaign || null, utmTerm: utms.utmTerm || null, utmContent: utms.utmContent || null } });
+                                queryClient.invalidateQueries({ queryKey: getListUtmTemplatesQueryKey() });
+                                toast({ title: `Saved template "${name.trim()}"` });
+                              } catch (err: any) {
+                                toast({ title: err?.message || "Failed to save template", variant: "destructive" });
+                              }
+                            }}
+                            className="h-8 px-2.5 rounded-md text-[11px] font-semibold text-[#06B6D4] hover:text-[#22D3EE] disabled:opacity-40 disabled:cursor-not-allowed"
+                            style={{ background: "rgba(6,182,212,0.08)", border: "1px solid rgba(6,182,212,0.25)" }}
+                          >
+                            + Save as template
+                          </button>
+                        </div>
+
+                        {/* Field grid with datalist autocomplete from history */}
+                        <datalist id="utm-history-source">
+                          {(utmHistory?.source ?? []).map((v) => <option key={v} value={v} />)}
+                        </datalist>
+                        <datalist id="utm-history-medium">
+                          {(utmHistory?.medium ?? []).map((v) => <option key={v} value={v} />)}
+                        </datalist>
+                        <datalist id="utm-history-campaign">
+                          {(utmHistory?.campaign ?? []).map((v) => <option key={v} value={v} />)}
+                        </datalist>
+                        <datalist id="utm-history-term">
+                          {(utmHistory?.term ?? []).map((v) => <option key={v} value={v} />)}
+                        </datalist>
+                        <datalist id="utm-history-content">
+                          {(utmHistory?.content ?? []).map((v) => <option key={v} value={v} />)}
+                        </datalist>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                           {([
-                            ["utmSource", "Source", "google, facebook, newsletter"],
-                            ["utmMedium", "Medium", "cpc, social, email"],
-                            ["utmCampaign", "Campaign", "summer-sale-2026"],
-                            ["utmTerm", "Term", "running shoes"],
-                            ["utmContent", "Content", "header-cta"],
-                          ] as const).map(([field, label, ph]) => (
+                            ["utmSource",   "Source",   "google, facebook, newsletter", "utm-history-source"],
+                            ["utmMedium",   "Medium",   "cpc, social, email",            "utm-history-medium"],
+                            ["utmCampaign", "Campaign", "summer-sale-2026",              "utm-history-campaign"],
+                            ["utmTerm",     "Term",     "running shoes",                  "utm-history-term"],
+                            ["utmContent",  "Content",  "header-cta",                     "utm-history-content"],
+                          ] as const).map(([field, label, ph, listId]) => (
                             <div key={field} className="space-y-1">
                               <Label className="text-[10px] font-bold text-[#52525B] tracking-[0.05em] uppercase">{label}</Label>
                               <Input
                                 value={utms[field]}
                                 onChange={(e) => setUtms((prev) => ({ ...prev, [field]: e.target.value }))}
                                 placeholder={ph}
+                                list={listId}
                                 className="h-9 rounded-md text-[12px] text-[#E4E4E7] placeholder:text-[#52525B]"
                                 style={{ background: "#0A0A0A", border: "1px solid #27272A" }}
                               />

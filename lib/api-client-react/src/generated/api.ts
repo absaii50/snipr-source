@@ -32,7 +32,9 @@ import type {
   CreateLinkRequest,
   CreatePixelRequest,
   CreateTagRequest,
+  CreateUtmTemplateRequest,
   CreatedApiKey,
+  DeleteUtmTemplate200,
   Domain,
   ErrorResponse,
   Folder,
@@ -45,6 +47,9 @@ import type {
   GetLinksParams,
   GetRevenueReportParams,
   GetStatsTodayParams,
+  GetUtmCrossTabParams,
+  GetUtmOverviewParams,
+  GetUtmTimeseriesParams,
   GetWorkspaceAnalyticsParams,
   GetWorkspaceEventsParams,
   GetWorkspaceTimeseriesParams,
@@ -76,6 +81,11 @@ import type {
   UpdatePixelRequest,
   UpdateTagRequest,
   UserResponse,
+  UtmCrossTab,
+  UtmHistory,
+  UtmOverview,
+  UtmTemplate,
+  UtmTimeseries,
   WorkspaceAnalytics,
   WorkspaceEventsResponse,
   WorkspaceMember,
@@ -3565,6 +3575,614 @@ export function useGetStatsToday<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * @summary UTM dashboard data — KPIs + per-dimension breakdowns
+ */
+export const getGetUtmOverviewUrl = (params?: GetUtmOverviewParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/analytics/utm/overview?${stringifiedParams}`
+    : `/api/analytics/utm/overview`;
+};
+
+export const getUtmOverview = async (
+  params?: GetUtmOverviewParams,
+  options?: RequestInit,
+): Promise<UtmOverview> => {
+  return customFetch<UtmOverview>(getGetUtmOverviewUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetUtmOverviewQueryKey = (params?: GetUtmOverviewParams) => {
+  return [`/api/analytics/utm/overview`, ...(params ? [params] : [])] as const;
+};
+
+export const getGetUtmOverviewQueryOptions = <
+  TData = Awaited<ReturnType<typeof getUtmOverview>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: GetUtmOverviewParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getUtmOverview>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetUtmOverviewQueryKey(params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getUtmOverview>>> = ({
+    signal,
+  }) => getUtmOverview(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getUtmOverview>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetUtmOverviewQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getUtmOverview>>
+>;
+export type GetUtmOverviewQueryError = ErrorType<unknown>;
+
+/**
+ * @summary UTM dashboard data — KPIs + per-dimension breakdowns
+ */
+
+export function useGetUtmOverview<
+  TData = Awaited<ReturnType<typeof getUtmOverview>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: GetUtmOverviewParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getUtmOverview>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetUtmOverviewQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Daily click time-series for top N values of a UTM dimension
+ */
+export const getGetUtmTimeseriesUrl = (params?: GetUtmTimeseriesParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/analytics/utm/timeseries?${stringifiedParams}`
+    : `/api/analytics/utm/timeseries`;
+};
+
+export const getUtmTimeseries = async (
+  params?: GetUtmTimeseriesParams,
+  options?: RequestInit,
+): Promise<UtmTimeseries> => {
+  return customFetch<UtmTimeseries>(getGetUtmTimeseriesUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetUtmTimeseriesQueryKey = (
+  params?: GetUtmTimeseriesParams,
+) => {
+  return [
+    `/api/analytics/utm/timeseries`,
+    ...(params ? [params] : []),
+  ] as const;
+};
+
+export const getGetUtmTimeseriesQueryOptions = <
+  TData = Awaited<ReturnType<typeof getUtmTimeseries>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: GetUtmTimeseriesParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getUtmTimeseries>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetUtmTimeseriesQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getUtmTimeseries>>
+  > = ({ signal }) => getUtmTimeseries(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getUtmTimeseries>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetUtmTimeseriesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getUtmTimeseries>>
+>;
+export type GetUtmTimeseriesQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Daily click time-series for top N values of a UTM dimension
+ */
+
+export function useGetUtmTimeseries<
+  TData = Awaited<ReturnType<typeof getUtmTimeseries>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: GetUtmTimeseriesParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getUtmTimeseries>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetUtmTimeseriesQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Source × medium intersection for heatmap rendering
+ */
+export const getGetUtmCrossTabUrl = (params?: GetUtmCrossTabParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/analytics/utm/cross-tab?${stringifiedParams}`
+    : `/api/analytics/utm/cross-tab`;
+};
+
+export const getUtmCrossTab = async (
+  params?: GetUtmCrossTabParams,
+  options?: RequestInit,
+): Promise<UtmCrossTab> => {
+  return customFetch<UtmCrossTab>(getGetUtmCrossTabUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetUtmCrossTabQueryKey = (params?: GetUtmCrossTabParams) => {
+  return [`/api/analytics/utm/cross-tab`, ...(params ? [params] : [])] as const;
+};
+
+export const getGetUtmCrossTabQueryOptions = <
+  TData = Awaited<ReturnType<typeof getUtmCrossTab>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: GetUtmCrossTabParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getUtmCrossTab>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetUtmCrossTabQueryKey(params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getUtmCrossTab>>> = ({
+    signal,
+  }) => getUtmCrossTab(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getUtmCrossTab>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetUtmCrossTabQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getUtmCrossTab>>
+>;
+export type GetUtmCrossTabQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Source × medium intersection for heatmap rendering
+ */
+
+export function useGetUtmCrossTab<
+  TData = Awaited<ReturnType<typeof getUtmCrossTab>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: GetUtmCrossTabParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getUtmCrossTab>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetUtmCrossTabQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Distinct historical UTM values for autocomplete
+ */
+export const getGetUtmHistoryUrl = () => {
+  return `/api/analytics/utm/history`;
+};
+
+export const getUtmHistory = async (
+  options?: RequestInit,
+): Promise<UtmHistory> => {
+  return customFetch<UtmHistory>(getGetUtmHistoryUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetUtmHistoryQueryKey = () => {
+  return [`/api/analytics/utm/history`] as const;
+};
+
+export const getGetUtmHistoryQueryOptions = <
+  TData = Awaited<ReturnType<typeof getUtmHistory>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getUtmHistory>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetUtmHistoryQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getUtmHistory>>> = ({
+    signal,
+  }) => getUtmHistory({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getUtmHistory>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetUtmHistoryQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getUtmHistory>>
+>;
+export type GetUtmHistoryQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Distinct historical UTM values for autocomplete
+ */
+
+export function useGetUtmHistory<
+  TData = Awaited<ReturnType<typeof getUtmHistory>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getUtmHistory>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetUtmHistoryQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary List saved UTM templates for the workspace
+ */
+export const getListUtmTemplatesUrl = () => {
+  return `/api/utm-templates`;
+};
+
+export const listUtmTemplates = async (
+  options?: RequestInit,
+): Promise<UtmTemplate[]> => {
+  return customFetch<UtmTemplate[]>(getListUtmTemplatesUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListUtmTemplatesQueryKey = () => {
+  return [`/api/utm-templates`] as const;
+};
+
+export const getListUtmTemplatesQueryOptions = <
+  TData = Awaited<ReturnType<typeof listUtmTemplates>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listUtmTemplates>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListUtmTemplatesQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listUtmTemplates>>
+  > = ({ signal }) => listUtmTemplates({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listUtmTemplates>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListUtmTemplatesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listUtmTemplates>>
+>;
+export type ListUtmTemplatesQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List saved UTM templates for the workspace
+ */
+
+export function useListUtmTemplates<
+  TData = Awaited<ReturnType<typeof listUtmTemplates>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listUtmTemplates>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListUtmTemplatesQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Save a new UTM template
+ */
+export const getCreateUtmTemplateUrl = () => {
+  return `/api/utm-templates`;
+};
+
+export const createUtmTemplate = async (
+  createUtmTemplateRequest: CreateUtmTemplateRequest,
+  options?: RequestInit,
+): Promise<UtmTemplate> => {
+  return customFetch<UtmTemplate>(getCreateUtmTemplateUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createUtmTemplateRequest),
+  });
+};
+
+export const getCreateUtmTemplateMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createUtmTemplate>>,
+    TError,
+    { data: BodyType<CreateUtmTemplateRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createUtmTemplate>>,
+  TError,
+  { data: BodyType<CreateUtmTemplateRequest> },
+  TContext
+> => {
+  const mutationKey = ["createUtmTemplate"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createUtmTemplate>>,
+    { data: BodyType<CreateUtmTemplateRequest> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createUtmTemplate(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateUtmTemplateMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createUtmTemplate>>
+>;
+export type CreateUtmTemplateMutationBody = BodyType<CreateUtmTemplateRequest>;
+export type CreateUtmTemplateMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Save a new UTM template
+ */
+export const useCreateUtmTemplate = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createUtmTemplate>>,
+    TError,
+    { data: BodyType<CreateUtmTemplateRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createUtmTemplate>>,
+  TError,
+  { data: BodyType<CreateUtmTemplateRequest> },
+  TContext
+> => {
+  return useMutation(getCreateUtmTemplateMutationOptions(options));
+};
+
+/**
+ * @summary Delete a UTM template
+ */
+export const getDeleteUtmTemplateUrl = (id: string) => {
+  return `/api/utm-templates/${id}`;
+};
+
+export const deleteUtmTemplate = async (
+  id: string,
+  options?: RequestInit,
+): Promise<DeleteUtmTemplate200> => {
+  return customFetch<DeleteUtmTemplate200>(getDeleteUtmTemplateUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteUtmTemplateMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteUtmTemplate>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteUtmTemplate>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationKey = ["deleteUtmTemplate"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteUtmTemplate>>,
+    { id: string }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return deleteUtmTemplate(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteUtmTemplateMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteUtmTemplate>>
+>;
+
+export type DeleteUtmTemplateMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Delete a UTM template
+ */
+export const useDeleteUtmTemplate = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteUtmTemplate>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteUtmTemplate>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  return useMutation(getDeleteUtmTemplateMutationOptions(options));
+};
 
 /**
  * @summary List API keys for the caller's workspace

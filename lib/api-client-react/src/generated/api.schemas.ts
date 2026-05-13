@@ -382,6 +382,85 @@ export type CreatedApiKey = ApiKey & {
   key: string;
 };
 
+export interface UtmBreakdownRow {
+  label: string;
+  clicks: number;
+  conversions: number;
+  revenue: number;
+  /** Conversions ÷ clicks, percent */
+  conversionRate: number;
+}
+
+export type UtmOverviewKpis = {
+  totalClicks: number;
+  utmClicks: number;
+  distinctSources: number;
+  distinctMediums: number;
+  distinctCampaigns: number;
+  conversions: number;
+  revenue: number;
+};
+
+export interface UtmOverview {
+  kpis: UtmOverviewKpis;
+  bySource: UtmBreakdownRow[];
+  byMedium: UtmBreakdownRow[];
+  byCampaign: UtmBreakdownRow[];
+}
+
+export type UtmTimeseriesSeriesItem = { [key: string]: unknown };
+
+/**
+ * labels: top-N values in window
+series: array of `{ day: "YYYY-MM-DD", [label1]: clicks, [label2]: clicks, ... }`
+
+ */
+export interface UtmTimeseries {
+  labels: string[];
+  series: UtmTimeseriesSeriesItem[];
+}
+
+export interface UtmCrossTabCell {
+  source: string;
+  medium: string;
+  clicks: number;
+}
+
+export interface UtmCrossTab {
+  sources: string[];
+  mediums: string[];
+  cells: UtmCrossTabCell[];
+}
+
+export interface UtmHistory {
+  source: string[];
+  medium: string[];
+  campaign: string[];
+  term: string[];
+  content: string[];
+}
+
+export interface UtmTemplate {
+  id: string;
+  name: string;
+  utmSource?: string | null;
+  utmMedium?: string | null;
+  utmCampaign?: string | null;
+  utmTerm?: string | null;
+  utmContent?: string | null;
+  createdAt: string;
+}
+
+export interface CreateUtmTemplateRequest {
+  /** @maxLength 80 */
+  name: string;
+  utmSource?: string | null;
+  utmMedium?: string | null;
+  utmCampaign?: string | null;
+  utmTerm?: string | null;
+  utmContent?: string | null;
+}
+
 export interface TrackConversionRequest {
   slug?: string | null;
   workspaceId?: string | null;
@@ -614,6 +693,36 @@ export type GetStatsTodayParams = {
    * Optional IANA timezone (e.g. Asia/Karachi). Defaults to UTC.
    */
   tz?: string;
+};
+
+export type GetUtmOverviewParams = {
+  from?: string;
+  to?: string;
+};
+
+export type GetUtmTimeseriesParams = {
+  from?: string;
+  to?: string;
+  dimension?: GetUtmTimeseriesDimension;
+  top?: number;
+};
+
+export type GetUtmTimeseriesDimension =
+  (typeof GetUtmTimeseriesDimension)[keyof typeof GetUtmTimeseriesDimension];
+
+export const GetUtmTimeseriesDimension = {
+  source: "source",
+  medium: "medium",
+  campaign: "campaign",
+} as const;
+
+export type GetUtmCrossTabParams = {
+  from?: string;
+  to?: string;
+};
+
+export type DeleteUtmTemplate200 = {
+  ok: boolean;
 };
 
 export type RevokeApiKey200 = {

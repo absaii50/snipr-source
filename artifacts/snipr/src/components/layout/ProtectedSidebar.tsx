@@ -49,8 +49,9 @@ const NAV_GROUPS = [
     ],
   },
   {
-    title: "Monetise",
+    title: "Attribution",
     items: [
+      { label: "UTM",         href: "/utm",         icon: Megaphone },
       { label: "Conversions", href: "/conversions", icon: TrendingUp },
       { label: "Revenue",     href: "/revenue",     icon: DollarSign },
     ],

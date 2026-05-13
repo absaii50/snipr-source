@@ -1061,6 +1061,126 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /analytics/utm/overview:
+    get:
+      operationId: getUtmOverview
+      tags: [utm]
+      summary: UTM dashboard data — KPIs + per-dimension breakdowns
+      parameters:
+        - { name: from, in: query, schema: { type: string } }
+        - { name: to, in: query, schema: { type: string } }
+      responses:
+        "200":
+          description: UTM overview
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UtmOverview"
+
+  /analytics/utm/timeseries:
+    get:
+      operationId: getUtmTimeseries
+      tags: [utm]
+      summary: Daily click time-series for top N values of a UTM dimension
+      parameters:
+        - { name: from, in: query, schema: { type: string } }
+        - { name: to, in: query, schema: { type: string } }
+        - name: dimension
+          in: query
+          schema:
+            type: string
+            enum: [source, medium, campaign]
+        - name: top
+          in: query
+          schema:
+            type: number
+      responses:
+        "200":
+          description: Time-series
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UtmTimeseries"
+
+  /analytics/utm/cross-tab:
+    get:
+      operationId: getUtmCrossTab
+      tags: [utm]
+      summary: Source × medium intersection for heatmap rendering
+      parameters:
+        - { name: from, in: query, schema: { type: string } }
+        - { name: to, in: query, schema: { type: string } }
+      responses:
+        "200":
+          description: Cross-tab cells
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UtmCrossTab"
+
+  /analytics/utm/history:
+    get:
+      operationId: getUtmHistory
+      tags: [utm]
+      summary: Distinct historical UTM values for autocomplete
+      responses:
+        "200":
+          description: History per dimension
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UtmHistory"
+
+  /utm-templates:
+    get:
+      operationId: listUtmTemplates
+      tags: [utm]
+      summary: List saved UTM templates for the workspace
+      responses:
+        "200":
+          description: Templates
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/UtmTemplate"
+    post:
+      operationId: createUtmTemplate
+      tags: [utm]
+      summary: Save a new UTM template
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateUtmTemplateRequest"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UtmTemplate"
+
+  /utm-templates/{id}:
+    delete:
+      operationId: deleteUtmTemplate
+      tags: [utm]
+      summary: Delete a UTM template
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                required: [ok]
+
   /api-keys:
     get:
       operationId: listApiKeys
@@ -2169,6 +2289,113 @@ components:
               description: The raw secret. Returned ONCE at creation — store it now.
           required:
             - key
+
+    UtmBreakdownRow:
+      type: object
+      properties:
+        label: { type: string }
+        clicks: { type: number }
+        conversions: { type: number }
+        revenue: { type: number }
+        conversionRate: { type: number, description: "Conversions ÷ clicks, percent" }
+      required: [label, clicks, conversions, revenue, conversionRate]
+
+    UtmOverview:
+      type: object
+      properties:
+        kpis:
+          type: object
+          properties:
+            totalClicks: { type: number }
+            utmClicks: { type: number }
+            distinctSources: { type: number }
+            distinctMediums: { type: number }
+            distinctCampaigns: { type: number }
+            conversions: { type: number }
+            revenue: { type: number }
+          required: [totalClicks, utmClicks, distinctSources, distinctMediums, distinctCampaigns, conversions, revenue]
+        bySource:
+          type: array
+          items: { $ref: "#/components/schemas/UtmBreakdownRow" }
+        byMedium:
+          type: array
+          items: { $ref: "#/components/schemas/UtmBreakdownRow" }
+        byCampaign:
+          type: array
+          items: { $ref: "#/components/schemas/UtmBreakdownRow" }
+      required: [kpis, bySource, byMedium, byCampaign]
+
+    UtmTimeseries:
+      type: object
+      description: |
+        labels: top-N values in window
+        series: array of `{ day: "YYYY-MM-DD", [label1]: clicks, [label2]: clicks, ... }`
+      properties:
+        labels:
+          type: array
+          items: { type: string }
+        series:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+      required: [labels, series]
+
+    UtmCrossTabCell:
+      type: object
+      properties:
+        source: { type: string }
+        medium: { type: string }
+        clicks: { type: number }
+      required: [source, medium, clicks]
+
+    UtmCrossTab:
+      type: object
+      properties:
+        sources:
+          type: array
+          items: { type: string }
+        mediums:
+          type: array
+          items: { type: string }
+        cells:
+          type: array
+          items: { $ref: "#/components/schemas/UtmCrossTabCell" }
+      required: [sources, mediums, cells]
+
+    UtmHistory:
+      type: object
+      properties:
+        source:    { type: array, items: { type: string } }
+        medium:    { type: array, items: { type: string } }
+        campaign:  { type: array, items: { type: string } }
+        term:      { type: array, items: { type: string } }
+        content:   { type: array, items: { type: string } }
+      required: [source, medium, campaign, term, content]
+
+    UtmTemplate:
+      type: object
+      properties:
+        id:          { type: string }
+        name:        { type: string }
+        utmSource:   { type: string, nullable: true }
+        utmMedium:   { type: string, nullable: true }
+        utmCampaign: { type: string, nullable: true }
+        utmTerm:     { type: string, nullable: true }
+        utmContent:  { type: string, nullable: true }
+        createdAt:   { type: string, format: date-time }
+      required: [id, name, createdAt]
+
+    CreateUtmTemplateRequest:
+      type: object
+      properties:
+        name:        { type: string, maxLength: 80 }
+        utmSource:   { type: string, nullable: true }
+        utmMedium:   { type: string, nullable: true }
+        utmCampaign: { type: string, nullable: true }
+        utmTerm:     { type: string, nullable: true }
+        utmContent:  { type: string, nullable: true }
+      required: [name]
 
     TrackConversionRequest:
       type: object

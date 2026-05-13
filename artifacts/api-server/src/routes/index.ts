@@ -17,6 +17,8 @@ import realtimeRouter from "./realtime";
 import billingRouter from "./billing";
 import supportRouter from "./support";
 import apiKeysRouter from "./api-keys";
+import utmRouter from "./utm";
+import utmTemplatesRouter from "./utm-templates";
 
 const router: IRouter = Router();
 
@@ -38,5 +40,7 @@ router.use(integrationsRouter);
 router.use(realtimeRouter);
 router.use(supportRouter);
 router.use(apiKeysRouter);
+router.use(utmRouter);
+router.use(utmTemplatesRouter);
 
 export default router;

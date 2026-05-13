@@ -20,3 +20,4 @@ export * from "./email_logs";
 export * from "./admin_audit_log";
 export * from "./support";
 export * from "./api_keys";
+export * from "./utm_templates";
