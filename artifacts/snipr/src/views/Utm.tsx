@@ -6,11 +6,13 @@ import {
   getGetUtmOverviewQueryKey, getGetUtmTimeseriesQueryKey, getGetUtmCrossTabQueryKey,
 } from "@workspace/api-client-react";
 import type { UtmBreakdownRow } from "@workspace/api-client-react";
+import Link from "next/link";
 import {
   Target, TrendingUp, Layers, DollarSign,
   Download, Loader2, ArrowUpDown, BarChart3,
+  Sparkles, Copy, Check, Link2,
 } from "lucide-react";
-import { format, subDays } from "date-fns";
+import { subDays } from "date-fns";
 import dynamic from "next/dynamic";
 
 const UtmStackedChart = dynamic(() => import("@/components/charts/UtmStackedChart"), { ssr: false });
@@ -157,6 +159,15 @@ export default function Utm() {
             </button>
           </div>
         </div>
+
+        {/* ── Empty-state explainer ──────────────────────────────────────
+            Shows when the workspace has clicks but none of them carry UTMs.
+            Loud, actionable hint so users understand WHY the dashboard is empty
+            and HOW to start populating it. Hidden once any UTM data exists.
+        */}
+        {overview && overview.kpis.totalClicks > 0 && overview.kpis.utmClicks === 0 && (
+          <UtmGetStarted totalClicks={overview.kpis.totalClicks} />
+        )}
 
         {/* ── KPI cards ── */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -343,5 +354,92 @@ function CrossTabHeatmap({ data }: { data: { sources: string[]; mediums: string[
         ))}
       </tbody>
     </table>
+  );
+}
+
+/* ── Get-started card shown to workspaces with clicks but no UTM tags yet ── */
+function UtmGetStarted({ totalClicks }: { totalClicks: number }) {
+  const [copied, setCopied] = useState(false);
+  const example = "https://yoursite.com/product?utm_source=facebook&utm_medium=cpc&utm_campaign=summer_sale";
+
+  const copy = () => {
+    navigator.clipboard.writeText(example).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
+
+  return (
+    <div
+      className="rounded-xl overflow-hidden"
+      style={{
+        background: "linear-gradient(135deg, rgba(139,92,246,0.10), rgba(6,182,212,0.08))",
+        border: "1px solid rgba(139,92,246,0.25)",
+      }}
+    >
+      <div className="px-5 sm:px-6 py-5 flex flex-col lg:flex-row gap-5">
+        <div className="flex items-start gap-3 flex-1 min-w-0">
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: "rgba(139,92,246,0.18)" }}>
+            <Sparkles className="w-5 h-5 text-[#A78BFA]" />
+          </div>
+          <div className="min-w-0">
+            <h3 className="text-[15px] font-bold text-[#FAFAFA] leading-snug">
+              You&apos;ve got {totalClicks.toLocaleString()} clicks — let&apos;s start attributing them
+            </h3>
+            <p className="text-[12.5px] text-[#C4B5FD] mt-1 leading-relaxed">
+              None of your traffic is UTM-tagged yet. Add{" "}
+              <code className="text-[#E4E4E7] bg-[#27272A] px-1 py-0.5 rounded">?utm_source=…</code> to
+              the URLs you share, or set UTMs on the link itself, and this dashboard fills up
+              automatically.
+            </p>
+
+            {/* Example URL with copy */}
+            <div
+              className="mt-3 flex items-center gap-2 p-2.5 rounded-lg overflow-hidden"
+              style={{ background: "#09090B", border: "1px solid #27272A" }}
+            >
+              <Link2 className="w-3.5 h-3.5 text-[#71717A] shrink-0" />
+              <code className="text-[11px] font-mono text-[#A1A1AA] truncate flex-1 min-w-0">{example}</code>
+              <button
+                onClick={copy}
+                className="shrink-0 inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-semibold text-[#E4E4E7] bg-[#27272A] hover:bg-[#3F3F46]"
+              >
+                {copied ? <><Check className="w-3 h-3 text-[#10B981]" /> Copied</> : <><Copy className="w-3 h-3" /> Copy</>}
+              </button>
+            </div>
+
+            {/* 3-step guide */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 mt-4">
+              {[
+                { step: "1", title: "Open the Link modal", body: "Create a new link or edit one. Expand Advanced Settings → UTM Tags." },
+                { step: "2", title: "Fill any UTM fields", body: "Source, medium, campaign — autocomplete shows your history once you have some." },
+                { step: "3", title: "Save & share", body: "Snipr captures UTMs on every click. Come back here to see daily trends + revenue." },
+              ].map(({ step, title, body }) => (
+                <div key={step} className="p-3 rounded-lg" style={{ background: "rgba(0,0,0,0.25)", border: "1px solid #27272A" }}>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold text-white" style={{ background: "linear-gradient(135deg, #8B5CF6, #06B6D4)" }}>{step}</span>
+                    <span className="text-[12px] font-semibold text-[#E4E4E7]">{title}</span>
+                  </div>
+                  <p className="text-[11px] text-[#A1A1AA] leading-relaxed">{body}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="lg:w-44 shrink-0 flex flex-col gap-2 lg:items-end">
+          <Link
+            href="/links"
+            className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-lg text-[13px] font-semibold text-white"
+            style={{ background: "linear-gradient(135deg, #8B5CF6, #06B6D4)", boxShadow: "0 4px 14px rgba(139,92,246,0.25)" }}
+          >
+            <Sparkles className="w-3.5 h-3.5" /> Tag a link
+          </Link>
+          <p className="text-[10.5px] text-[#71717A] lg:text-right leading-relaxed">
+            Or just append <code className="text-[#A1A1AA]">?utm_source=…</code> to any URL you share.
+          </p>
+        </div>
+      </div>
+    </div>
   );
 }
