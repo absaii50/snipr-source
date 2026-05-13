@@ -362,6 +362,26 @@ export interface SlugAvailabilityResponse {
   message?: string;
 }
 
+export interface ApiKey {
+  id: string;
+  name: string;
+  /** Short non-secret prefix for the key (e.g. sk_live_a1b2c3) */
+  keyPrefix: string;
+  lastUsedAt?: string | null;
+  revokedAt?: string | null;
+  createdAt: string;
+}
+
+export interface CreateApiKeyRequest {
+  /** @maxLength 80 */
+  name: string;
+}
+
+export type CreatedApiKey = ApiKey & {
+  /** The raw secret. Returned ONCE at creation — store it now. */
+  key: string;
+};
+
 export interface TrackConversionRequest {
   slug?: string | null;
   workspaceId?: string | null;
@@ -594,6 +614,10 @@ export type GetStatsTodayParams = {
    * Optional IANA timezone (e.g. Asia/Karachi). Defaults to UTC.
    */
   tz?: string;
+};
+
+export type RevokeApiKey200 = {
+  ok: boolean;
 };
 
 export type GetConversionsParams = {

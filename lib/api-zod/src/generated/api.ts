@@ -855,7 +855,42 @@ export const GetStatsTodayResponse = zod.object({
 });
 
 /**
- * @summary Track a conversion event
+ * @summary List API keys for the caller's workspace
+ */
+export const ListApiKeysResponseItem = zod.object({
+  id: zod.string(),
+  name: zod.string(),
+  keyPrefix: zod
+    .string()
+    .describe("Short non-secret prefix for the key (e.g. sk_live_a1b2c3)"),
+  lastUsedAt: zod.date().nullish(),
+  revokedAt: zod.date().nullish(),
+  createdAt: zod.date(),
+});
+export const ListApiKeysResponse = zod.array(ListApiKeysResponseItem);
+
+/**
+ * @summary Create a new API key. The raw secret is returned ONCE and never again.
+ */
+export const createApiKeyBodyNameMax = 80;
+
+export const CreateApiKeyBody = zod.object({
+  name: zod.string().max(createApiKeyBodyNameMax),
+});
+
+/**
+ * @summary Revoke an API key (soft delete via revoked_at)
+ */
+export const RevokeApiKeyParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const RevokeApiKeyResponse = zod.object({
+  ok: zod.boolean(),
+});
+
+/**
+ * @summary Track a conversion event (X-API-Key or session)
  */
 export const TrackConversionBody = zod.object({
   slug: zod.string().nullish(),

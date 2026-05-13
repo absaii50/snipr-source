@@ -164,8 +164,9 @@ export default function Conversions() {
     );
   };
 
-  const curlSnippet = `curl -X POST https://your-domain.com/api/conversions \\
+  const curlSnippet = `curl -X POST https://snipr.sh/api/conversions \\
   -H "Content-Type: application/json" \\
+  -H "X-API-Key: sk_live_YOUR_KEY_HERE" \\
   -d '{
     "slug": "your-slug",
     "eventName": "purchase",
@@ -545,13 +546,13 @@ export default function Conversions() {
             {[
               {
                 step: "1",
-                title: "Create a short link",
-                body: "Create a link to your product or landing page. Note the slug (e.g. /buy or /promo).",
+                title: "Create an API key",
+                body: "Go to Settings → API Keys and generate a key. The raw secret is shown once — copy it into your server's env vars.",
               },
               {
                 step: "2",
                 title: "Fire an event on action",
-                body: "When a user completes an action (purchase, signup, download), POST to /api/conversions with the slug, event name, and revenue.",
+                body: "When a user completes an action (purchase, signup, download), POST to /api/conversions with X-API-Key header, plus slug/event/revenue.",
               },
               {
                 step: "3",

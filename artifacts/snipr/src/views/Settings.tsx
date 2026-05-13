@@ -4,11 +4,18 @@ import { ProtectedLayout } from "@/components/layout/ProtectedLayout";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
-import { getGetMeQueryKey } from "@workspace/api-client-react";
+import {
+  getGetMeQueryKey,
+  useListApiKeys,
+  useCreateApiKey,
+  useRevokeApiKey,
+  getListApiKeysQueryKey,
+} from "@workspace/api-client-react";
+import type { ApiKey, CreatedApiKey } from "@workspace/api-client-react";
 import {
   User, Mail, Lock, Shield, Trash2, Eye, EyeOff,
   Loader2, CheckCircle2, AlertTriangle, Settings as SettingsIcon,
-  KeyRound, UserCircle,
+  KeyRound, UserCircle, Copy, Plus, Check,
 } from "lucide-react";
 import { format } from "date-fns";
 
@@ -388,6 +395,182 @@ function DangerZone() {
   );
 }
 
+function ApiKeysSection() {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const { data: keys = [], isLoading } = useListApiKeys({
+    query: { queryKey: getListApiKeysQueryKey() },
+  });
+  const createMutation = useCreateApiKey();
+  const revokeMutation = useRevokeApiKey();
+
+  const [newKeyName, setNewKeyName] = useState("");
+  const [showCreate, setShowCreate] = useState(false);
+  const [justCreated, setJustCreated] = useState<CreatedApiKey | null>(null);
+  const [copiedKey, setCopiedKey] = useState(false);
+
+  const activeKeys = (keys as ApiKey[]).filter((k) => !k.revokedAt);
+
+  async function handleCreate() {
+    if (!newKeyName.trim()) {
+      toast({ title: "Name required", variant: "destructive" });
+      return;
+    }
+    try {
+      const result = await createMutation.mutateAsync({ data: { name: newKeyName.trim() } });
+      setJustCreated(result);
+      setNewKeyName("");
+      setShowCreate(false);
+      queryClient.invalidateQueries({ queryKey: getListApiKeysQueryKey() });
+    } catch (err: any) {
+      toast({ title: err?.message || "Failed to create API key", variant: "destructive" });
+    }
+  }
+
+  async function handleRevoke(id: string, name: string) {
+    if (!confirm(`Revoke API key "${name}"? Anything using it will start getting 401 errors immediately. This cannot be undone.`)) return;
+    try {
+      await revokeMutation.mutateAsync({ id });
+      queryClient.invalidateQueries({ queryKey: getListApiKeysQueryKey() });
+      toast({ title: "API key revoked" });
+    } catch (err: any) {
+      toast({ title: err?.message || "Failed to revoke key", variant: "destructive" });
+    }
+  }
+
+  function copyJustCreated() {
+    if (!justCreated?.key) return;
+    navigator.clipboard.writeText(justCreated.key).then(() => {
+      setCopiedKey(true);
+      setTimeout(() => setCopiedKey(false), 2000);
+    }).catch(() => toast({ title: "Failed to copy", variant: "destructive" }));
+  }
+
+  return (
+    <div className="rounded-xl bg-[#18181B] border border-[#27272A] p-6">
+      <div className="flex items-start justify-between mb-1">
+        <div>
+          <h2 className="text-[16px] font-bold text-[#FAFAFA] flex items-center gap-2">
+            <KeyRound className="w-4 h-4 text-[#A78BFA]" /> API Keys
+          </h2>
+          <p className="text-[12px] text-[#71717A] mt-0.5">
+            Use these to call <code className="text-[#A1A1AA]">/api/conversions</code> from your server. Pass <code className="text-[#A1A1AA]">X-API-Key</code> in the header.
+          </p>
+        </div>
+        {!showCreate && !justCreated && (
+          <button
+            onClick={() => setShowCreate(true)}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-semibold text-white"
+            style={{ background: "linear-gradient(135deg, #8B5CF6, #7C3AED)" }}
+          >
+            <Plus className="w-3.5 h-3.5" /> New key
+          </button>
+        )}
+      </div>
+
+      {justCreated && (
+        <div
+          className="mt-4 rounded-lg p-4"
+          style={{ background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.3)" }}
+        >
+          <p className="text-[12px] font-semibold text-[#34D399] mb-2 flex items-center gap-1.5">
+            <CheckCircle2 className="w-3.5 h-3.5" /> API key created — copy it now
+          </p>
+          <p className="text-[11px] text-[#86EFAC] mb-2">
+            This is the only time we&apos;ll show you the full secret. Store it somewhere safe.
+          </p>
+          <div className="flex items-center gap-2 p-2 rounded bg-[#09090B] border border-[#27272A]">
+            <code className="flex-1 text-[12px] font-mono text-[#E4E4E7] truncate">{justCreated.key}</code>
+            <button
+              onClick={copyJustCreated}
+              className="px-3 py-1.5 rounded text-[11px] font-semibold text-white bg-[#27272A] hover:bg-[#3F3F46] flex items-center gap-1"
+            >
+              {copiedKey ? <><Check className="w-3 h-3 text-[#10B981]" /> Copied</> : <><Copy className="w-3 h-3" /> Copy</>}
+            </button>
+          </div>
+          <button
+            onClick={() => setJustCreated(null)}
+            className="mt-3 text-[11px] text-[#86EFAC] hover:text-[#34D399]"
+          >
+            I&apos;ve saved the key — dismiss
+          </button>
+        </div>
+      )}
+
+      {showCreate && (
+        <div className="mt-4 rounded-lg p-4 bg-[#09090B] border border-[#27272A]">
+          <label className="text-[11px] font-semibold uppercase tracking-wider text-[#A1A1AA] block mb-2">
+            Key name
+          </label>
+          <input
+            value={newKeyName}
+            onChange={(e) => setNewKeyName(e.target.value)}
+            placeholder="e.g. Production server, Stripe webhook"
+            maxLength={80}
+            className="w-full h-10 rounded-lg px-3 text-[13px] text-[#E4E4E7] bg-[#18181B] border border-[#27272A] outline-none focus:border-[#8B5CF6]/40 focus:ring-2 focus:ring-[#8B5CF6]/10"
+          />
+          <div className="flex gap-2 mt-3">
+            <button
+              onClick={handleCreate}
+              disabled={createMutation.isPending || !newKeyName.trim()}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-semibold text-white disabled:opacity-50"
+              style={{ background: "linear-gradient(135deg, #8B5CF6, #7C3AED)" }}
+            >
+              {createMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
+              Create
+            </button>
+            <button
+              onClick={() => { setShowCreate(false); setNewKeyName(""); }}
+              className="px-3 py-1.5 rounded-lg text-[12px] font-medium text-[#A1A1AA] hover:text-[#E4E4E7]"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div className="mt-4 space-y-2">
+        {isLoading ? (
+          <div className="flex items-center justify-center py-6">
+            <Loader2 className="w-4 h-4 animate-spin text-[#71717A]" />
+          </div>
+        ) : activeKeys.length === 0 ? (
+          <div className="py-6 text-center text-[12px] text-[#71717A]">
+            No API keys yet. Create one to start tracking conversions from your server.
+          </div>
+        ) : (
+          activeKeys.map((k) => (
+            <div
+              key={k.id}
+              className="flex items-center justify-between p-3 rounded-lg bg-[#09090B] border border-[#27272A]"
+            >
+              <div className="min-w-0 flex-1">
+                <p className="text-[13px] font-semibold text-[#E4E4E7] truncate">{k.name}</p>
+                <p className="text-[11px] font-mono text-[#71717A] mt-0.5">
+                  {k.keyPrefix}…&nbsp;
+                  <span className="text-[#52525B]">
+                    · created {format(new Date(k.createdAt), "MMM d, yyyy")}
+                    {k.lastUsedAt && ` · last used ${format(new Date(k.lastUsedAt), "MMM d, yyyy")}`}
+                    {!k.lastUsedAt && " · never used"}
+                  </span>
+                </p>
+              </div>
+              <button
+                onClick={() => handleRevoke(k.id, k.name)}
+                disabled={revokeMutation.isPending}
+                className="ml-3 p-1.5 rounded text-[#71717A] hover:text-[#EF4444] hover:bg-[#EF4444]/10 disabled:opacity-50"
+                title="Revoke key"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function SettingsPage() {
   return (
     <ProtectedLayout>
@@ -413,6 +596,9 @@ export default function SettingsPage() {
             <PasswordSection />
           </div>
           <div className="animate-fade-up" style={{ animationDelay: "180ms" }}>
+            <ApiKeysSection />
+          </div>
+          <div className="animate-fade-up" style={{ animationDelay: "240ms" }}>
             <DangerZone />
           </div>
         </div>
