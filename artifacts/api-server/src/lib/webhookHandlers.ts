@@ -193,7 +193,9 @@ export class WebhookHandlers {
       return;
     }
 
-    // invoice.payment_failed — get real status from Stripe and update DB
+    // invoice.payment_failed — get real status from Stripe and update DB.
+    // Also fires a single dunning email per billing cycle so the user can
+    // actually fix the card before Stripe gives up.
     if (type === "invoice.payment_failed") {
       const invoice = event.data?.object;
       if (!invoice?.customer || !invoice?.subscription) return;
@@ -203,17 +205,58 @@ export class WebhookHandlers {
 
       const stripe = getStripeClient();
       const sub = await stripe.subscriptions.retrieve(invoice.subscription as string);
-      // status will be "incomplete" (first payment) or "past_due" (renewal failure)
-      const realStatus = sub.status;
+      const realStatus = sub.status; // "incomplete" or "past_due"
 
       await db.update(usersTable).set({
         stripeSubscriptionStatus: realStatus,
-        // If subscription is now past_due, keep the plan but flag it
-        // If subscription is incomplete (first payment failed), revert plan to free
         ...(realStatus === "incomplete" ? { plan: "free" } : {}),
       }).where(eq(usersTable.id, failUser.id));
 
       logger.warn({ userId: failUser.id, status: realStatus, invoiceId: invoice.id }, "Payment failed");
+
+      // Only email on renewal failures (past_due) — first-payment failures
+      // (incomplete) are handled by the checkout UI, no need to email those.
+      if (realStatus === "past_due") {
+        try {
+          // Anti-spam: only send one payment_failed email per 25 days so we
+          // don't blast the user every retry. Stripe retries 3-4 times over
+          // ~1 week, so one email at the first failure is enough.
+          const recent = await db.execute(sql`
+            SELECT 1 FROM email_logs
+            WHERE user_id = ${failUser.id}
+              AND type = 'payment_failed'
+              AND status = 'sent'
+              AND created_at > NOW() - INTERVAL '25 days'
+            LIMIT 1
+          `);
+          if (((recent.rows ?? recent) as any[]).length === 0) {
+            const planLabel = (failUser.plan ?? "starter").charAt(0).toUpperCase() + (failUser.plan ?? "starter").slice(1);
+            const amount = invoice.amount_due
+              ? `$${(invoice.amount_due / 100).toFixed(2)} ${(invoice.currency ?? "USD").toUpperCase()}`
+              : "your subscription fee";
+            const nextRetryDate = invoice.next_payment_attempt
+              ? new Date(invoice.next_payment_attempt * 1000).toLocaleString("en-US", {
+                  weekday: "long", month: "long", day: "numeric", hour: "numeric", minute: "2-digit",
+                  timeZoneName: "short",
+                })
+              : null;
+            const { sendPaymentFailedEmail } = await import("./email");
+            await sendPaymentFailedEmail({
+              id: failUser.id,
+              name: failUser.name,
+              email: failUser.email,
+              planLabel,
+              amount,
+              nextRetryDate,
+            });
+            logger.info({ userId: failUser.id, invoiceId: invoice.id }, "Sent payment_failed dunning email");
+          } else {
+            logger.info({ userId: failUser.id }, "Skipped payment_failed email (sent within last 25 days)");
+          }
+        } catch (err) {
+          logger.error({ err, userId: failUser.id }, "Failed to send payment_failed email");
+        }
+      }
       return;
     }
 
@@ -272,6 +315,7 @@ export class WebhookHandlers {
       }
 
       case "customer.subscription.deleted": {
+        const priorPlan = user.plan;
         await db
           .update(usersTable)
           .set({
@@ -283,6 +327,26 @@ export class WebhookHandlers {
           .where(eq(usersTable.id, user.id));
 
         logger.info({ userId: user.id }, "Subscription deleted — reverted to free");
+
+        // Tell the user their subscription is gone so they're not surprised
+        // when they hit plan limits next time. Skip when they were already on
+        // free (no real loss of access) or never had a paid plan in the first
+        // place (e.g. trial-only signup that never paid).
+        if (priorPlan && priorPlan !== "free") {
+          try {
+            const { sendSubscriptionCanceledEmail } = await import("./email");
+            const planLabel = priorPlan.charAt(0).toUpperCase() + priorPlan.slice(1);
+            await sendSubscriptionCanceledEmail({
+              id: user.id,
+              name: user.name,
+              email: user.email,
+              planLabel,
+            });
+            logger.info({ userId: user.id, priorPlan }, "Sent subscription_canceled email");
+          } catch (err) {
+            logger.error({ err, userId: user.id }, "Failed to send subscription_canceled email");
+          }
+        }
         break;
       }
     }

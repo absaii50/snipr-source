@@ -229,6 +229,76 @@ export function getWelcomeEmailHtml(name: string, dashboardUrl: string): string 
   `);
 }
 
+/* ────────────────────── Billing / dunning templates ────────────────────── */
+
+/** Sent the first time Stripe fails to charge a recurring invoice. Tells the
+ *  user what to do before Stripe gives up. */
+export function getPaymentFailedEmailHtml(opts: {
+  name: string;
+  planLabel: string;
+  amount: string;
+  nextRetryDate: string | null;
+  billingUrl: string;
+}): string {
+  const retryLine = opts.nextRetryDate
+    ? `<p style="color:${BRAND.text};font-size:14px;line-height:1.7;margin:0 0 16px;">We'll automatically try again on <strong>${escHtml(opts.nextRetryDate)}</strong>. If it keeps failing your subscription will be canceled and you'll move to the Free plan.</p>`
+    : `<p style="color:${BRAND.text};font-size:14px;line-height:1.7;margin:0 0 16px;">We'll keep retrying for the next few days. If it keeps failing your subscription will be canceled and you'll move to the Free plan.</p>`;
+  return layout(`
+    <div style="display:inline-block;background:#FEE2E2;color:#991B1B;font-size:10px;font-weight:700;letter-spacing:0.08em;padding:4px 10px;border-radius:999px;text-transform:uppercase;margin-bottom:12px;">
+      ⚠ Payment failed
+    </div>
+    <h1 style="color:${BRAND.dark};font-size:22px;font-weight:700;margin:0 0 8px;letter-spacing:-0.3px;line-height:1.3;">
+      We couldn't charge your card for Snipr ${escHtml(opts.planLabel)}
+    </h1>
+    <p style="color:${BRAND.text};font-size:15px;line-height:1.6;margin:0 0 4px;">Hi ${escHtml(opts.name)},</p>
+    <p style="color:${BRAND.text};font-size:14px;line-height:1.7;margin:0 0 16px;">
+      Your card was declined when we tried to renew your subscription for <strong>${escHtml(opts.amount)}</strong>. Common reasons: insufficient funds, the card expired, or your bank blocked the recurring charge.
+    </p>
+    ${retryLine}
+    <div style="background:${BRAND.light};border-radius:12px;padding:16px;margin-bottom:16px;border-left:3px solid ${BRAND.primary};">
+      <p style="color:${BRAND.dark};font-size:14px;font-weight:600;margin:0 0 8px;">How to fix it</p>
+      <p style="color:${BRAND.text};font-size:13px;line-height:1.7;margin:0;">
+        Open your Billing page and update your card. Once we successfully charge it, your subscription stays active with zero interruption.
+      </p>
+    </div>
+    ${button("Update payment method", opts.billingUrl)}
+    <p style="color:${BRAND.muted};font-size:12px;line-height:1.6;margin:20px 0 0;text-align:center;">
+      Questions? Just reply to this email — we'll help you sort it out.
+    </p>
+  `);
+}
+
+/** Sent when Stripe has exhausted dunning retries and canceled the
+ *  subscription. The user is back on Free at this point. */
+export function getSubscriptionCanceledEmailHtml(opts: {
+  name: string;
+  planLabel: string;
+  pricingUrl: string;
+}): string {
+  return layout(`
+    <div style="display:inline-block;background:#FEF3C7;color:#92400E;font-size:10px;font-weight:700;letter-spacing:0.08em;padding:4px 10px;border-radius:999px;text-transform:uppercase;margin-bottom:12px;">
+      Subscription canceled
+    </div>
+    <h1 style="color:${BRAND.dark};font-size:22px;font-weight:700;margin:0 0 8px;letter-spacing:-0.3px;line-height:1.3;">
+      Your ${escHtml(opts.planLabel)} subscription was canceled
+    </h1>
+    <p style="color:${BRAND.text};font-size:15px;line-height:1.6;margin:0 0 4px;">Hi ${escHtml(opts.name)},</p>
+    <p style="color:${BRAND.text};font-size:14px;line-height:1.7;margin:0 0 16px;">
+      We tried to renew your subscription a few times but the charge kept failing, so Stripe has now canceled it. Your account has moved back to the <strong>Free plan</strong> — your links keep working, you just lose ${escHtml(opts.planLabel)}-only features.
+    </p>
+    <div style="background:${BRAND.light};border-radius:12px;padding:16px;margin-bottom:16px;">
+      <p style="color:${BRAND.dark};font-size:14px;font-weight:600;margin:0 0 8px;">Want to come back?</p>
+      <p style="color:${BRAND.text};font-size:13px;line-height:1.7;margin:0;">
+        Re-subscribe any time from the pricing page. Same plan, same link history, no setup needed — just a new card.
+      </p>
+    </div>
+    ${button("Resubscribe", opts.pricingUrl)}
+    <p style="color:${BRAND.muted};font-size:12px;line-height:1.6;margin:20px 0 0;text-align:center;">
+      Was this a mistake? Reply and let us know — we can usually reinstate your subscription if you reach out within a week.
+    </p>
+  `);
+}
+
 /* ────────────────────── Support System templates ────────────────────── */
 
 function supportMessageBlock(body: string): string {

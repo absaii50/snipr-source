@@ -289,3 +289,52 @@ export async function sendAbuseWarningEmail(opts: {
   });
 }
 
+/** Sent on the first failed recurring charge so the user knows to update their
+ *  card before Stripe gives up retrying. */
+export async function sendPaymentFailedEmail(opts: {
+  id: string;
+  name: string;
+  email: string;
+  planLabel: string;
+  amount: string;          // e.g. "$4.00"
+  nextRetryDate: string | null; // ISO or human-readable
+}): Promise<{ id?: string; error?: string }> {
+  const { getPaymentFailedEmailHtml } = await import("./email-templates");
+  const html = getPaymentFailedEmailHtml({
+    name: opts.name,
+    planLabel: opts.planLabel,
+    amount: opts.amount,
+    nextRetryDate: opts.nextRetryDate,
+    billingUrl: `${FRONTEND_URL}/billing`,
+  });
+  return sendEmail({
+    to: opts.email,
+    subject: `Action needed: We couldn't charge your card for Snipr ${opts.planLabel}`,
+    html,
+    userId: opts.id,
+    type: "payment_failed",
+  });
+}
+
+/** Sent once Stripe has exhausted retries and finally canceled the sub. */
+export async function sendSubscriptionCanceledEmail(opts: {
+  id: string;
+  name: string;
+  email: string;
+  planLabel: string;
+}): Promise<{ id?: string; error?: string }> {
+  const { getSubscriptionCanceledEmailHtml } = await import("./email-templates");
+  const html = getSubscriptionCanceledEmailHtml({
+    name: opts.name,
+    planLabel: opts.planLabel,
+    pricingUrl: `${FRONTEND_URL}/pricing`,
+  });
+  return sendEmail({
+    to: opts.email,
+    subject: `Your Snipr ${opts.planLabel} subscription was canceled`,
+    html,
+    userId: opts.id,
+    type: "subscription_canceled",
+  });
+}
+
