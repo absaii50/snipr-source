@@ -197,7 +197,11 @@ export default function Signup() {
                   <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                   Creating account...
                 </span>
-              ) : (inviteToken ? "Join workspace" : "Continue to checkout")}
+              ) : (inviteToken
+                    ? "Join workspace"
+                    : selectedPlan === "free"
+                      ? "Create free account"
+                      : `Continue to checkout — ${PLANS.find(p => p.id === selectedPlan)?.price ?? ""}/mo`)}
             </button>
           </form>
 
