@@ -142,7 +142,7 @@ router.post("/links", requireAuth, async (req, res): Promise<void> => {
       const label = g.min.charAt(0).toUpperCase() + g.min.slice(1);
       res.status(402).json({
         error: "Plan upgrade required",
-        message: `${g.label} are available on the ${label} plan and above. Upgrade to unlock this feature.`,
+        message: `${g.label} requires the ${label} plan or above. Upgrade to unlock this feature.`,
         field: g.field,
         requiredPlan: g.min,
         currentPlan: userPlan,
@@ -745,7 +745,7 @@ router.put("/links/:id", requireAuth, async (req, res): Promise<void> => {
       const label = g.min.charAt(0).toUpperCase() + g.min.slice(1);
       res.status(402).json({
         error: "Plan upgrade required",
-        message: `${g.label} are available on the ${label} plan and above. Upgrade to unlock this feature.`,
+        message: `${g.label} requires the ${label} plan or above. Upgrade to unlock this feature.`,
         field: g.field,
         requiredPlan: g.min,
         currentPlan: updateUserPlan,

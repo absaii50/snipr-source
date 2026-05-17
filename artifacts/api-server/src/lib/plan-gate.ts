@@ -82,7 +82,7 @@ export function requirePlan(minPlan: Plan, featureName: string) {
       if (!planAtLeast(userPlan, minPlan)) {
         res.status(402).json({
           error: "Plan upgrade required",
-          message: `${featureName} is available on the ${PLAN_LABEL[minPlan]} plan and above. Upgrade to unlock this feature.`,
+          message: `${featureName} requires the ${PLAN_LABEL[minPlan]} plan or above. Upgrade to unlock this feature.`,
           field: "plan",
           requiredPlan: minPlan,
           currentPlan: userPlan,
