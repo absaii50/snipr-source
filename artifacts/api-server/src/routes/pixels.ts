@@ -2,8 +2,13 @@ import { Router, type IRouter } from "express";
 import { eq, and } from "drizzle-orm";
 import { db, pixelsTable } from "@workspace/db";
 import { requireAuth } from "../lib/auth";
+import { requirePlan } from "../lib/plan-gate";
 
 const VALID_TYPES = ["meta", "google_ads", "linkedin", "tiktok", "custom"] as const;
+
+/** Pixels are a Pro+ feature. GET is allowed (empty list for free) so the UI
+ *  can render the upgrade CTA; mutations require Pro+. */
+const requirePixelsPlan = requirePlan("pro", "Conversion pixels");
 
 const router: IRouter = Router();
 
@@ -17,7 +22,7 @@ router.get("/pixels", requireAuth, async (req, res): Promise<void> => {
   res.json(pixels);
 });
 
-router.post("/pixels", requireAuth, async (req, res): Promise<void> => {
+router.post("/pixels", requireAuth, requirePixelsPlan, async (req, res): Promise<void> => {
   const workspaceId = req.session.workspaceId!;
   const { name, type, pixelId, customScript } = req.body as {
     name?: string;
@@ -78,7 +83,7 @@ router.post("/pixels", requireAuth, async (req, res): Promise<void> => {
   res.status(201).json(created);
 });
 
-router.put("/pixels/:id", requireAuth, async (req, res): Promise<void> => {
+router.put("/pixels/:id", requireAuth, requirePixelsPlan, async (req, res): Promise<void> => {
   const workspaceId = req.session.workspaceId!;
   const { id } = req.params;
   const { name, pixelId, customScript } = req.body as {

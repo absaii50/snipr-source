@@ -2,8 +2,14 @@ import { Router, type IRouter } from "express";
 import { eq, and } from "drizzle-orm";
 import { db, linksTable, linkRulesTable, linkTagsTable, tagsTable } from "@workspace/db";
 import { requireAuth } from "../lib/auth";
+import { requirePlan } from "../lib/plan-gate";
 
 const VALID_RULE_TYPES = ["geo", "city", "device", "ab", "rotator"] as const;
+
+/** Geo/device routing + A/B + rotator rules are Pro+ features.
+ *  Reading is allowed (rule list will be empty for free) so the UI can render
+ *  the upgrade CTA without an error. Mutations require Pro. */
+const requireRulesPlan = requirePlan("pro", "Link rules (geo/device/A-B/rotator)");
 
 const router: IRouter = Router();
 
@@ -30,7 +36,7 @@ router.get("/links/:id/rules", requireAuth, async (req, res): Promise<void> => {
   res.json(rules);
 });
 
-router.put("/links/:id/rules", requireAuth, async (req, res): Promise<void> => {
+router.put("/links/:id/rules", requireAuth, requireRulesPlan, async (req, res): Promise<void> => {
   const workspaceId = req.session.workspaceId!;
   const { id } = req.params;
   const { rules } = req.body as {

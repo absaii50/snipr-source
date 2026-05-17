@@ -2,6 +2,7 @@ import { Router, type IRouter } from "express";
 import { eq, and, or } from "drizzle-orm";
 import { db, domainsTable, platformSettingsTable } from "@workspace/db";
 import { requireAuth } from "../lib/auth";
+import { requirePlan } from "../lib/plan-gate";
 import { getDomainVerifyToken, checkDomainDns, CNAME_TARGET } from "../lib/dns-utils";
 
 const SERVER_IP = process.env.SERVER_IP || "163.245.216.153";
@@ -49,7 +50,7 @@ router.get("/domains/default", requireAuth, async (_req, res): Promise<void> => 
   } catch { res.json(null); }
 });
 
-router.post("/domains", requireAuth, async (req, res): Promise<void> => {
+router.post("/domains", requireAuth, requirePlan("starter", "Custom domains"), async (req, res): Promise<void> => {
   const workspaceId = req.session.workspaceId!;
   const { domain, supportsSubdomains, purpose } = req.body as {
     domain?: string;

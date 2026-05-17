@@ -2,6 +2,10 @@ import { Router, type IRouter } from "express";
 import { eq, and, desc } from "drizzle-orm";
 import { db, utmTemplatesTable } from "@workspace/db";
 import { requireAuth } from "../lib/auth";
+import { requirePlan } from "../lib/plan-gate";
+
+/** UTM builder + saved templates are a Growth+ feature per Pricing.tsx. */
+const requireUtmTemplatePlan = requirePlan("growth", "UTM templates");
 
 const router: IRouter = Router();
 
@@ -24,7 +28,7 @@ router.get("/utm-templates", requireAuth, async (req, res): Promise<void> => {
   res.json(rows);
 });
 
-router.post("/utm-templates", requireAuth, async (req, res): Promise<void> => {
+router.post("/utm-templates", requireAuth, requireUtmTemplatePlan, async (req, res): Promise<void> => {
   const workspaceId = req.session.workspaceId!;
   const userId = req.session.userId!;
   const body = (req.body ?? {}) as Record<string, unknown>;

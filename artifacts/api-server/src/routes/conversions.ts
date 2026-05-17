@@ -3,6 +3,11 @@ import { eq, and, gte, lte, sum, count, desc } from "drizzle-orm";
 import { db, conversionsTable, linksTable, clickEventsTable } from "@workspace/db";
 import { requireAuth } from "../lib/auth";
 import { requireAuthOrApiKey } from "../lib/api-key-auth";
+import { requirePlan } from "../lib/plan-gate";
+
+/** Conversion tracking is a Pro+ feature. Reads return empty for free users
+ *  so the UI can render the upgrade CTA without errors. */
+const requireConversionsPlan = requirePlan("pro", "Conversion tracking");
 
 const router: IRouter = Router();
 
@@ -54,7 +59,7 @@ function clampMetadata(v: unknown): unknown {
  * server. Validates that any referenced linkId / clickEventId belong to the
  * caller's workspace (no cross-workspace attribution).
  */
-router.post("/conversions", requireAuthOrApiKey, async (req, res): Promise<void> => {
+router.post("/conversions", requireAuthOrApiKey, requireConversionsPlan, async (req, res): Promise<void> => {
   const body = (req.body ?? {}) as Record<string, unknown>;
   const workspaceId = req.session.workspaceId!;
 

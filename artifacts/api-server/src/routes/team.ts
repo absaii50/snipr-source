@@ -3,8 +3,12 @@ import { eq, and } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { db, workspaceMembersTable, usersTable, workspacesTable } from "@workspace/db";
 import { requireAuth } from "../lib/auth";
+import { requirePlan } from "../lib/plan-gate";
 import { sendTeamInviteExistingUser, sendTeamInviteNewUser } from "../lib/email";
 import { logger } from "../lib/logger";
+
+/** Team workspaces / multi-user invites are a Business+ feature. */
+const requireTeamPlan = requirePlan("business", "Team workspaces");
 
 const router: IRouter = Router();
 
@@ -32,7 +36,7 @@ router.get("/team", requireAuth, async (req, res): Promise<void> => {
   res.json(members);
 });
 
-router.post("/team/invite", requireAuth, async (req, res): Promise<void> => {
+router.post("/team/invite", requireAuth, requireTeamPlan, async (req, res): Promise<void> => {
   const workspaceId = req.session.workspaceId!;
   const inviterUserId = req.session.userId!;
   const body = req.body as Record<string, unknown>;

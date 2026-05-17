@@ -94,8 +94,9 @@ router.post("/links", requireAuth, async (req, res): Promise<void> => {
     .select({ plan: usersTable.plan })
     .from(usersTable)
     .where(eq(usersTable.id, userId));
+  const userPlan = planRow?.plan ?? "free";
   const FREE_LINK_CAP = 5;
-  if (planRow?.plan === "free") {
+  if (userPlan === "free") {
     const [{ count: linkCount }] = await db
       .select({ count: count() })
       .from(linksTable)
@@ -107,6 +108,44 @@ router.post("/links", requireAuth, async (req, res): Promise<void> => {
         field: "plan",
         currentCount: Number(linkCount),
         limit: FREE_LINK_CAP,
+      });
+      return;
+    }
+  }
+
+  // Per-feature plan gates for paid-only link fields. Mirrors the marketing
+  // copy on Pricing.tsx so the API matches what the public pricing page sells.
+  //   Starter: password, link expiry, fallback URL, folders
+  //   Growth:  link cloaking, hide referrer, iOS/Android deep links
+  // If a Free user sends one of these fields we reject the whole request with
+  // a friendly 402 so the client can show an upgrade CTA. We read off the
+  // unparsed req.body because some of these fields aren't in CreateLinkBody.
+  const rawBody = req.body as Record<string, unknown>;
+  const planLadder = ["free", "starter", "growth", "pro", "business", "enterprise"];
+  const planIdx = planLadder.indexOf(userPlan);
+  function planAtLeast(min: string): boolean {
+    return planIdx >= planLadder.indexOf(min);
+  }
+  type GatedField = { field: string; min: "starter" | "growth"; isSet: boolean; label: string };
+  const gatedFields: GatedField[] = [
+    { field: "password",       min: "starter", isSet: typeof rawBody.password === "string" && rawBody.password.length > 0,             label: "Password-protected links" },
+    { field: "expiresAt",      min: "starter", isSet: !!rawBody.expiresAt,                                                              label: "Link expiry / scheduling" },
+    { field: "fallbackUrl",    min: "starter", isSet: typeof rawBody.fallbackUrl === "string" && rawBody.fallbackUrl.length > 0,        label: "Fallback URLs" },
+    { field: "folderId",       min: "starter", isSet: typeof rawBody.folderId === "string" && rawBody.folderId.length > 0,              label: "Folders" },
+    { field: "isCloaked",      min: "growth",  isSet: rawBody.isCloaked === true,                                                       label: "Link cloaking" },
+    { field: "hideReferrer",   min: "growth",  isSet: rawBody.hideReferrer === true,                                                    label: "Hide referrer" },
+    { field: "iosDeepLink",    min: "growth",  isSet: typeof rawBody.iosDeepLink === "string" && rawBody.iosDeepLink.length > 0,        label: "iOS deep links" },
+    { field: "androidDeepLink",min: "growth",  isSet: typeof rawBody.androidDeepLink === "string" && rawBody.androidDeepLink.length > 0,label: "Android deep links" },
+  ];
+  for (const g of gatedFields) {
+    if (g.isSet && !planAtLeast(g.min)) {
+      const label = g.min.charAt(0).toUpperCase() + g.min.slice(1);
+      res.status(402).json({
+        error: "Plan upgrade required",
+        message: `${g.label} are available on the ${label} plan and above. Upgrade to unlock this feature.`,
+        field: g.field,
+        requiredPlan: g.min,
+        currentPlan: userPlan,
       });
       return;
     }
@@ -159,7 +198,7 @@ router.post("/links", requireAuth, async (req, res): Promise<void> => {
     }
   }
 
-  const body = req.body as Record<string, unknown>;
+  const body = rawBody;
 
   // SECURITY: Validate optional fields with additional constraints
   let password: string | null = null;
@@ -680,6 +719,40 @@ router.put("/links/:id", requireAuth, async (req, res): Promise<void> => {
 
   const updateData: Partial<typeof linksTable.$inferInsert> = {};
   const body = req.body as Record<string, unknown>;
+
+  // Plan gating mirrors POST /links. A Free user editing an existing link
+  // can't add paid-only features (password, expiry, cloaking, etc.).
+  const [updatePlanRow] = await db
+    .select({ plan: usersTable.plan })
+    .from(usersTable)
+    .where(eq(usersTable.id, req.session.userId!));
+  const updateUserPlan = updatePlanRow?.plan ?? "free";
+  const updateLadder = ["free", "starter", "growth", "pro", "business", "enterprise"];
+  const updateIdx = updateLadder.indexOf(updateUserPlan);
+  const updateAtLeast = (min: string) => updateIdx >= updateLadder.indexOf(min);
+  const updateGates: Array<{ field: string; min: "starter" | "growth"; isSet: boolean; label: string }> = [
+    { field: "password",       min: "starter", isSet: typeof body.password === "string" && body.password.length > 0,             label: "Password-protected links" },
+    { field: "expiresAt",      min: "starter", isSet: !!body.expiresAt,                                                          label: "Link expiry / scheduling" },
+    { field: "fallbackUrl",    min: "starter", isSet: typeof body.fallbackUrl === "string" && body.fallbackUrl.length > 0,       label: "Fallback URLs" },
+    { field: "folderId",       min: "starter", isSet: typeof body.folderId === "string" && body.folderId.length > 0,             label: "Folders" },
+    { field: "isCloaked",      min: "growth",  isSet: body.isCloaked === true,                                                   label: "Link cloaking" },
+    { field: "hideReferrer",   min: "growth",  isSet: body.hideReferrer === true,                                                label: "Hide referrer" },
+    { field: "iosDeepLink",    min: "growth",  isSet: typeof body.iosDeepLink === "string" && body.iosDeepLink.length > 0,       label: "iOS deep links" },
+    { field: "androidDeepLink",min: "growth",  isSet: typeof body.androidDeepLink === "string" && body.androidDeepLink.length > 0,label:"Android deep links" },
+  ];
+  for (const g of updateGates) {
+    if (g.isSet && !updateAtLeast(g.min)) {
+      const label = g.min.charAt(0).toUpperCase() + g.min.slice(1);
+      res.status(402).json({
+        error: "Plan upgrade required",
+        message: `${g.label} are available on the ${label} plan and above. Upgrade to unlock this feature.`,
+        field: g.field,
+        requiredPlan: g.min,
+        currentPlan: updateUserPlan,
+      });
+      return;
+    }
+  }
 
   if (parsed.data.destinationUrl !== undefined && parsed.data.destinationUrl !== null) {
     // SECURITY: Validate destination URL protocol on update

@@ -4,6 +4,11 @@ import { randomBytes } from "crypto";
 import { db, apiKeysTable } from "@workspace/db";
 import { requireAuth } from "../lib/auth";
 import { hashApiKey } from "../lib/api-key-auth";
+import { requirePlan } from "../lib/plan-gate";
+
+/** API keys (used for server-to-server conversion tracking + future endpoints)
+ *  are gated to Pro+, the same tier as Conversion tracking itself. */
+const requireApiKeyPlan = requirePlan("pro", "API access");
 
 const router: IRouter = Router();
 
@@ -40,7 +45,7 @@ router.get("/api-keys", requireAuth, async (req, res): Promise<void> => {
 });
 
 /** POST /api-keys — create a new key. Returns the raw key once. */
-router.post("/api-keys", requireAuth, async (req, res): Promise<void> => {
+router.post("/api-keys", requireAuth, requireApiKeyPlan, async (req, res): Promise<void> => {
   const workspaceId = req.session.workspaceId!;
   const userId = req.session.userId!;
   const body = (req.body ?? {}) as { name?: unknown };
