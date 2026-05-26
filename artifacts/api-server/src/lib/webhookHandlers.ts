@@ -1,7 +1,9 @@
-import { eq, and, isNotNull, inArray, sql } from "drizzle-orm";
-import { db, usersTable, linksTable, workspacesTable, clickEventsTable } from "@workspace/db";
+import { eq } from "drizzle-orm";
+import { db, usersTable } from "@workspace/db";
 import { getStripeClient, getWebhookSecret } from "./stripeClient";
 import { logger } from "./logger";
+import { unflagLinksIfUnderCap } from "./plan-enforcement";
+import { invalidatePlanCache } from "./plan-gate";
 
 /**
  * Read the current billing period end from a Stripe subscription. As of API
@@ -17,72 +19,8 @@ function getPeriodEndUnix(sub: any): number | null {
   return null;
 }
 
-const PLAN_CLICK_CAPS: Record<string, number | null> = {
-  free: 10_000,
-  starter: 1_000_000,
-  growth: 5_000_000,
-  pro: 25_000_000,
-  business: 100_000_000,
-  enterprise: null,
-};
-
-/**
- * Immediately unflag a user's links if their current 30-day click count is now
- * under their (possibly new) plan's cap. Called right after a Stripe plan update.
- * Returns the number of links unflagged.
- */
-async function unflagLinksIfUnderCap(userId: string, plan: string): Promise<number> {
-  const cap = PLAN_CLICK_CAPS[plan];
-  if (cap === undefined) return 0;
-  const isUnlimited = cap === null;
-
-  if (!isUnlimited) {
-    const [row] = await db
-      .select({
-        clicks: sql<number>`(
-          SELECT COUNT(*)::int
-          FROM ${clickEventsTable} ce
-          JOIN ${linksTable} l ON l.id = ce.link_id
-          JOIN ${workspacesTable} w ON w.id = l.workspace_id
-          WHERE w.user_id = ${userId}
-            AND ce.timestamp > NOW() - INTERVAL '30 days'
-        )`,
-      })
-      .from(usersTable)
-      .where(eq(usersTable.id, userId));
-    if (Number(row?.clicks ?? 0) >= (cap as number)) return 0;
-  }
-
-  const workspaceRows = await db
-    .select({ id: workspacesTable.id })
-    .from(workspacesTable)
-    .where(eq(workspacesTable.userId, userId));
-  const workspaceIds = workspaceRows.map((w) => w.id);
-  if (workspaceIds.length === 0) return 0;
-
-  const updated = await db
-    .update(linksTable)
-    .set({ flaggedAt: null, flaggedReason: null })
-    .where(and(
-      inArray(linksTable.workspaceId, workspaceIds),
-      isNotNull(linksTable.flaggedAt),
-    ))
-    .returning({ slug: linksTable.slug, domainId: linksTable.domainId });
-
-  // Invalidate the redirect cache so the new state is visible immediately.
-  if (updated.length > 0) {
-    try {
-      const { invalidateLinkCache } = await import("./link-cache");
-      for (const l of updated) {
-        invalidateLinkCache(l.slug, l.domainId);
-        invalidateLinkCache(l.slug, null); // also invalidate the default-domain key used for /r/:slug
-      }
-    } catch (err) {
-      logger.warn({ err }, "Failed to invalidate link cache after unflag");
-    }
-  }
-  return updated.length;
-}
+// PLAN_CLICK_CAPS + unflagLinksIfUnderCap live in lib/plan-enforcement.ts so
+// admin manual plan changes can reuse the same logic.
 
 export class WebhookHandlers {
   static async processWebhook(payload: Buffer, signature: string): Promise<void> {
@@ -149,6 +87,7 @@ export class WebhookHandlers {
         })
         .where(eq(usersTable.id, user.id));
 
+      invalidatePlanCache(user.id);
       logger.info({ userId: user.id, plan, subscriptionId }, "User plan updated from checkout");
       return;
     }
@@ -299,6 +238,8 @@ export class WebhookHandlers {
           .update(usersTable)
           .set(updates)
           .where(eq(usersTable.id, user.id));
+
+        invalidatePlanCache(user.id);
 
         // When subscription becomes active, try to unflag links immediately.
         if (status === "active" && plan) {

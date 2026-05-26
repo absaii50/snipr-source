@@ -19,6 +19,9 @@ import {
 } from "@workspace/db";
 import { asc, count, desc, eq, sql, ilike, isNull, isNotNull, and, inArray, or } from "drizzle-orm";
 import { sendVerificationEmail, sendEmail, notifySupportAdminReply } from "../lib/email";
+import { unflagLinksIfUnderCap } from "../lib/plan-enforcement";
+import { invalidatePlanCache } from "../lib/plan-gate";
+import { logger } from "../lib/logger";
 
 const router: IRouter = Router();
 
@@ -333,9 +336,37 @@ router.patch("/admin/users/:id/plan", requireAdmin, async (req, res): Promise<vo
     return;
   }
 
-  await db.update(usersTable).set({ plan }).where(eq(usersTable.id, req.params.id));
-  await logAuditAction("change_plan", "user", req.params.id, { plan }, req.ip);
-  res.json({ ok: true, plan });
+  const userId = req.params.id;
+
+  // Look up the workspace BEFORE updating so we can also bust the workspace-keyed
+  // plan cache used by API-key requests.
+  const [ws] = await db
+    .select({ id: workspacesTable.id })
+    .from(workspacesTable)
+    .where(eq(workspacesTable.userId, userId))
+    .limit(1);
+
+  await db.update(usersTable).set({ plan }).where(eq(usersTable.id, userId));
+  await logAuditAction("change_plan", "user", userId, { plan }, req.ip);
+
+  // Bust the in-process plan cache so the new plan is visible immediately
+  // (otherwise paid endpoints would 402 for up to 60s after the upgrade).
+  invalidatePlanCache(userId, ws?.id);
+
+  // If the new plan's click cap is higher than the user's 30-day usage, unflag
+  // any links that were previously plan-limit-page'd. This mirrors what the
+  // Stripe webhook does on a paid upgrade.
+  let unflagged = 0;
+  try {
+    unflagged = await unflagLinksIfUnderCap(userId, plan);
+    if (unflagged > 0) {
+      logger.info({ userId, plan, unflagged }, "Auto-unflagged links after admin plan change");
+    }
+  } catch (err) {
+    logger.error({ err, userId, plan }, "Failed to auto-unflag after admin plan change");
+  }
+
+  res.json({ ok: true, plan, unflagged });
 });
 
 router.patch("/admin/users/:id/edit", requireAdmin, async (req, res): Promise<void> => {
