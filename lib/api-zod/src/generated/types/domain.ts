@@ -5,6 +5,7 @@
  * Snipr URL shortener API
  * OpenAPI spec version: 0.1.0
  */
+import type { DomainSslStatus } from "./domainSslStatus";
 
 export interface Domain {
   id: string;
@@ -15,6 +16,16 @@ export interface Domain {
   /** Platform-shared domains are visible to every user. */
   isPlatformDomain?: boolean | null;
   supportsSubdomains?: boolean | null;
+  /** When the domain was successfully verified. */
+  verifiedAt?: Date | null;
+  /** Current SSL certificate state. null = no cert attempt yet. */
+  sslStatus?: DomainSslStatus;
+  sslIssuedAt?: Date | null;
+  /** Cert expiry. Used by the dashboard to surface renewal warnings. */
+  sslExpiresAt?: Date | null;
+  sslLastCheckAt?: Date | null;
+  /** Last certbot error message, present only when sslStatus=failed. */
+  sslError?: string | null;
   createdAt: Date;
   updatedAt: Date;
 }

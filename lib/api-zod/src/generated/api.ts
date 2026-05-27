@@ -403,6 +403,28 @@ export const GetDomainsResponseItem = zod.object({
     .nullish()
     .describe("Platform-shared domains are visible to every user."),
   supportsSubdomains: zod.boolean().nullish(),
+  verifiedAt: zod
+    .date()
+    .nullish()
+    .describe("When the domain was successfully verified."),
+  sslStatus: zod
+    .enum(["pending", "active", "failed"])
+    .nullish()
+    .describe("Current SSL certificate state. null = no cert attempt yet."),
+  sslIssuedAt: zod.date().nullish(),
+  sslExpiresAt: zod
+    .date()
+    .nullish()
+    .describe(
+      "Cert expiry. Used by the dashboard to surface renewal warnings.",
+    ),
+  sslLastCheckAt: zod.date().nullish(),
+  sslError: zod
+    .string()
+    .nullish()
+    .describe(
+      "Last certbot error message, present only when sslStatus=failed.",
+    ),
   createdAt: zod.date(),
   updatedAt: zod.date(),
 });

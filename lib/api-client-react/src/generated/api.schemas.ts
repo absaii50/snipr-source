@@ -163,6 +163,19 @@ export interface CreateLinkRuleRequest {
   label?: string | null;
 }
 
+/**
+ * Current SSL certificate state. null = no cert attempt yet.
+ */
+export type DomainSslStatus =
+  | (typeof DomainSslStatus)[keyof typeof DomainSslStatus]
+  | null;
+
+export const DomainSslStatus = {
+  pending: "pending",
+  active: "active",
+  failed: "failed",
+} as const;
+
 export interface Domain {
   id: string;
   /** Platform domains have no workspaceId (workspaceId can be null on shared/platform domains). */
@@ -172,6 +185,16 @@ export interface Domain {
   /** Platform-shared domains are visible to every user. */
   isPlatformDomain?: boolean | null;
   supportsSubdomains?: boolean | null;
+  /** When the domain was successfully verified. */
+  verifiedAt?: string | null;
+  /** Current SSL certificate state. null = no cert attempt yet. */
+  sslStatus?: DomainSslStatus;
+  sslIssuedAt?: string | null;
+  /** Cert expiry. Used by the dashboard to surface renewal warnings. */
+  sslExpiresAt?: string | null;
+  sslLastCheckAt?: string | null;
+  /** Last certbot error message, present only when sslStatus=failed. */
+  sslError?: string | null;
   createdAt: string;
   updatedAt: string;
 }

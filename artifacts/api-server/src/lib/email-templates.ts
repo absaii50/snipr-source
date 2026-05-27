@@ -519,3 +519,35 @@ export function getUpgradeReminderEmailHtml(opts: {
   `);
 }
 
+/** Sent when the background watcher auto-verifies a custom domain. */
+export function getDomainVerifiedEmailHtml(opts: {
+  name: string;
+  domain: string;
+  domainsUrl: string;
+}): string {
+  return layout(`
+    <div style="text-align:center;padding-bottom:16px;">
+      <div style="display:inline-block;width:56px;height:56px;background:#E8F5E9;border-radius:50%;line-height:56px;font-size:28px;">&#10003;</div>
+    </div>
+    <h1 style="color:${BRAND.dark};font-size:22px;font-weight:700;margin:0 0 8px;text-align:center;letter-spacing:-0.3px;">
+      ${escHtml(opts.domain)} is verified
+    </h1>
+    <p style="color:${BRAND.text};font-size:15px;line-height:1.6;margin:0 0 16px;text-align:center;">
+      Hi ${escHtml(opts.name)}, your DNS records propagated and we've activated your custom domain. You can now create branded short links on it.
+    </p>
+    <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="margin-bottom:8px;">
+      <tr>
+        <td style="background:${BRAND.light};border-radius:12px;padding:16px;">
+          <p style="color:${BRAND.dark};font-weight:600;font-size:14px;margin:0 0 8px;">What happens next:</p>
+          <p style="color:${BRAND.text};font-size:13px;line-height:1.8;margin:0;">
+            &#8226; We're issuing a free Let&#39;s Encrypt SSL certificate (takes ~2 minutes)<br>
+            &#8226; The cert auto-renews every 60 days — you don&#39;t have to do anything<br>
+            &#8226; Once active, your domain will serve HTTPS automatically
+          </p>
+        </td>
+      </tr>
+    </table>
+    ${button("Open Domains Dashboard", opts.domainsUrl)}
+  `);
+}
+

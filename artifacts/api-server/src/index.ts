@@ -1,5 +1,6 @@
 import app from "./app";
 import { logger } from "./lib/logger";
+import { startDomainVerifierWatcher } from "./lib/domain-verifier-watcher";
 
 const rawPort = process.env["PORT"];
 
@@ -28,4 +29,6 @@ if (!process.env.STRIPE_WEBHOOK_SECRET) {
 
 app.listen(port, () => {
   logger.info({ port }, "Server listening");
+  // Background watcher: auto-verifies pending custom domains once DNS propagates
+  startDomainVerifierWatcher();
 });

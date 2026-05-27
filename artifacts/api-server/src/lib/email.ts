@@ -338,3 +338,25 @@ export async function sendSubscriptionCanceledEmail(opts: {
   });
 }
 
+/** Sent when the background watcher auto-verifies a domain after DNS propagates. */
+export async function sendDomainVerifiedEmail(opts: {
+  id: string;
+  name: string;
+  email: string;
+  domain: string;
+}): Promise<{ id?: string; error?: string }> {
+  const { getDomainVerifiedEmailHtml } = await import("./email-templates");
+  const html = getDomainVerifiedEmailHtml({
+    name: opts.name,
+    domain: opts.domain,
+    domainsUrl: `${FRONTEND_URL}/domains`,
+  });
+  return sendEmail({
+    to: opts.email,
+    subject: `${opts.domain} is verified — your custom domain is live`,
+    html,
+    userId: opts.id,
+    type: "domain_verified",
+  });
+}
+

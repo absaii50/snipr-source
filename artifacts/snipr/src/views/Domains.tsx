@@ -30,10 +30,25 @@ function CopyText({ value }: { value: string }) {
 }
 
 export default function Domains() {
-  const { data: domains, isLoading } = useGetDomains();
-  const deleteMutation = useDeleteDomain();
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  // Refetch every 10s if any domain is mid-verify or mid-SSL-issue. Once
+  // everything is "active" we stop polling so the page goes idle.
+  const { data: domains, isLoading } = useGetDomains({
+    query: {
+      refetchInterval: (q: any) => {
+        const list = (q?.state?.data as any[]) ?? [];
+        const anyPending = list.some(
+          (d) =>
+            !d.isPlatformDomain &&
+            (!d.verified || d.sslStatus === "pending" || (d.verified && d.sslStatus == null))
+        );
+        return anyPending ? 10_000 : false;
+      },
+      refetchOnWindowFocus: true,
+    },
+  } as any);
+  const deleteMutation = useDeleteDomain();
 
   const [wizardOpen, setWizardOpen] = useState(false);
   const [wizardDomain, setWizardDomain] = useState<{ id: string; domain: string; verified: boolean; purpose?: string } | null>(null);
@@ -234,9 +249,41 @@ export default function Domains() {
                               <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 bg-[#10B981]/10 text-[#34D399]">
                                 <CheckCircle2 className="w-3 h-3" /> ACTIVE
                               </span>
+                              {/* SSL badge — surfaces cert state to the user */}
+                              {(() => {
+                                const s = (domain as any).sslStatus as string | null | undefined;
+                                if (s === "active") {
+                                  const exp = (domain as any).sslExpiresAt as string | null | undefined;
+                                  const daysLeft = exp ? Math.max(0, Math.round((new Date(exp).getTime() - Date.now()) / 86_400_000)) : null;
+                                  const tone = daysLeft !== null && daysLeft < 14 ? "bg-amber-500/10 text-amber-300" : "bg-sky-500/10 text-sky-300";
+                                  return (
+                                    <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 ${tone}`} title={exp ? `Expires ${format(new Date(exp), "MMM d, yyyy")}` : undefined}>
+                                      🔒 SSL {daysLeft !== null && daysLeft < 14 ? `· ${daysLeft}d` : ""}
+                                    </span>
+                                  );
+                                }
+                                if (s === "pending") {
+                                  return (
+                                    <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 bg-[#8B5CF6]/10 text-[#A78BFA]">
+                                      ⏳ SSL ISSUING
+                                    </span>
+                                  );
+                                }
+                                if (s === "failed") {
+                                  return (
+                                    <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 bg-red-500/10 text-red-300" title={(domain as any).sslError || undefined}>
+                                      ⚠️ SSL FAILED
+                                    </span>
+                                  );
+                                }
+                                return null;
+                              })()}
                             </div>
                             <p className="text-[12px] text-[#A1A1AA]">
                               Connected {format(new Date(domain.createdAt), "MMM d, yyyy")}
+                              {(domain as any).sslError && (domain as any).sslStatus === "failed" && (
+                                <span className="block text-[11px] text-red-400 mt-0.5">SSL: {(domain as any).sslError}</span>
+                              )}
                             </p>
                           </div>
                         </div>

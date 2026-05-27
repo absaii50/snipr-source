@@ -1812,6 +1812,33 @@ components:
         supportsSubdomains:
           type: boolean
           nullable: true
+        verifiedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: When the domain was successfully verified.
+        sslStatus:
+          type: string
+          enum: [pending, active, failed]
+          nullable: true
+          description: Current SSL certificate state. null = no cert attempt yet.
+        sslIssuedAt:
+          type: string
+          format: date-time
+          nullable: true
+        sslExpiresAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: Cert expiry. Used by the dashboard to surface renewal warnings.
+        sslLastCheckAt:
+          type: string
+          format: date-time
+          nullable: true
+        sslError:
+          type: string
+          nullable: true
+          description: Last certbot error message, present only when sslStatus=failed.
         createdAt:
           type: string
           format: date-time

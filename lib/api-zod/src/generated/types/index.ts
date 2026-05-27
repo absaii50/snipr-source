@@ -29,6 +29,7 @@ export * from "./createTagRequest";
 export * from "./createUtmTemplateRequest";
 export * from "./deleteUtmTemplate200";
 export * from "./domain";
+export * from "./domainSslStatus";
 export * from "./errorResponse";
 export * from "./folder";
 export * from "./forgotPasswordRequest";

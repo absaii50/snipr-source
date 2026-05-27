@@ -377,6 +377,68 @@ export default function DomainSetupWizard({
     if (step === 4 && currentDomain && !dnsResult && !checking) checkDns();
   }, [step]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ─── Auto-polling: keep re-checking DNS until it propagates ─────────
+  // Backs off from 5s → 15s based on attempts so we don't hammer resolvers.
+  // Stops after 20 attempts (~5 min) so a misconfigured domain doesn't loop
+  // forever; user can still click "Check Again" or "Force Verify".
+  useEffect(() => {
+    if (step !== 4) return;
+    if (!currentDomain || verifying) return;
+    if (dnsResult?.ready) return; // ready already — fall through to auto-verify
+    let cancelled = false;
+    let attempts = 0;
+    const tick = async () => {
+      if (cancelled) return;
+      attempts += 1;
+      if (attempts > 20) return; // give up after ~5 min, user can manual-retry
+      const delay = attempts < 3 ? 5_000 : attempts < 8 ? 8_000 : 15_000;
+      timeoutId = setTimeout(async () => {
+        if (cancelled) return;
+        await checkDns();
+        tick();
+      }, delay);
+    };
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+    tick();
+    return () => { cancelled = true; if (timeoutId) clearTimeout(timeoutId); };
+  }, [step, currentDomain, dnsResult?.ready, checkDns, verifying]);
+
+  // Once DNS is ready, automatically advance — no manual "Verify" click needed.
+  useEffect(() => {
+    if (step === 4 && dnsResult?.ready && !verifying && currentDomain) {
+      verifyDomain(false);
+    }
+  }, [step, dnsResult?.ready, verifying, currentDomain]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ─── SSL provisioning live state on step 5 ──────────────────────────
+  const [sslState, setSslState] = useState<"pending" | "active" | "failed" | null>(null);
+  const [sslError, setSslError] = useState<string | null>(null);
+  useEffect(() => {
+    if (step !== 5 || !currentDomain) return;
+    let cancelled = false;
+    let attempts = 0;
+    const poll = async () => {
+      if (cancelled) return;
+      try {
+        const r = await fetch("/api/domains", { credentials: "include" });
+        if (r.ok) {
+          const list = await r.json() as Array<{ id: string; sslStatus?: string | null; sslError?: string | null }>;
+          const me = list.find((d) => d.id === currentDomain.id);
+          if (me) {
+            setSslState((me.sslStatus as any) ?? null);
+            setSslError(me.sslError ?? null);
+            if (me.sslStatus === "active" || me.sslStatus === "failed") return; // stop polling
+          }
+        }
+      } catch {}
+      attempts += 1;
+      if (attempts > 30) return; // ~5 min max
+      setTimeout(poll, 8_000);
+    };
+    poll();
+    return () => { cancelled = true; };
+  }, [step, currentDomain]);
+
   const normalizedInput = domainInput.trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/.*$/, "");
   const isValidDomain = normalizedInput.includes(".") && normalizedInput.length > 3 &&
     !normalizedInput.endsWith(".snipr.sh") && normalizedInput !== "snipr.sh";
@@ -840,14 +902,18 @@ export default function DomainSetupWizard({
                 </div>
               )}
 
-              {/* ── Auto-retry countdown ── */}
-              {dnsResult && !dnsResult.ready && !checking && (
-                <div className="flex items-center justify-between p-3 rounded-xl bg-[#18181B] border border-[#27272A]">
-                  <AutoRetryCountdown onRetry={checkDns} seconds={30} />
+              {/* ── Auto-polling indicator (while DNS not ready) ── */}
+              {dnsResult && !dnsResult.ready && (
+                <div className="flex items-center gap-2 p-3 rounded-xl bg-[#18181B] border border-[#27272A]">
+                  <Loader2 className="w-4 h-4 text-[#8B5CF6] animate-spin shrink-0" />
+                  <div className="flex-1 text-left">
+                    <p className="text-xs font-semibold text-[#E4E4E7]">Auto-checking DNS every few seconds…</p>
+                    <p className="text-[11px] text-[#71717A] mt-0.5">As soon as your records propagate, we'll verify automatically. No need to click anything.</p>
+                  </div>
                 </div>
               )}
 
-              {/* ── Manual re-check button ── */}
+              {/* ── Manual re-check button (still available if user wants to nudge) ── */}
               {(!checking || dnsResult) && (
                 <button
                   onClick={checkDns}
@@ -856,7 +922,7 @@ export default function DomainSetupWizard({
                 >
                   {checking
                     ? <><Loader2 className="w-4 h-4 animate-spin" /> Checking…</>
-                    : <><RefreshCw className="w-4 h-4" /> Re-check DNS now</>
+                    : <><RefreshCw className="w-4 h-4" /> Check now</>
                   }
                 </button>
               )}
@@ -910,6 +976,40 @@ export default function DomainSetupWizard({
                   is verified and ready to use
                 </p>
               </div>
+
+              {/* Live SSL provisioning status */}
+              <div className={`p-4 rounded-xl border text-left ${
+                sslState === "active"
+                  ? "bg-emerald-500/5 border-emerald-500/30"
+                  : sslState === "failed"
+                  ? "bg-red-500/5 border-red-500/30"
+                  : "bg-[#27272A] border-[#3F3F46]"
+              }`}>
+                <div className="flex items-start gap-3">
+                  <div className="mt-0.5">
+                    {sslState === "active" ? (
+                      <CheckCircle2 className="w-5 h-5 text-emerald-500" />
+                    ) : sslState === "failed" ? (
+                      <ShieldCheck className="w-5 h-5 text-red-500" />
+                    ) : (
+                      <Loader2 className="w-5 h-5 text-[#8B5CF6] animate-spin" />
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-[#FAFAFA]">
+                      {sslState === "active" && "SSL certificate active"}
+                      {sslState === "failed" && "SSL certificate failed"}
+                      {(sslState === "pending" || sslState === null) && "Issuing SSL certificate…"}
+                    </p>
+                    <p className="text-xs text-[#A1A1AA] mt-1">
+                      {sslState === "active" && "Your domain serves HTTPS automatically. The cert auto-renews every 60 days."}
+                      {sslState === "failed" && (sslError || "Let's Encrypt couldn't issue a certificate. Check that your DNS still points to us and try again from the domains list.")}
+                      {(sslState === "pending" || sslState === null) && "Let's Encrypt is provisioning a free certificate. This usually takes about 60 seconds."}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
               <div className="p-4 rounded-xl bg-[#27272A] border border-[#3F3F46] text-left space-y-2">
                 <p className="text-xs font-semibold text-[#E4E4E7]">What's next?</p>
                 <ul className="space-y-1.5 text-xs text-[#A1A1AA]">

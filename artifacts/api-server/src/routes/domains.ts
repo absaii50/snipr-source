@@ -243,7 +243,10 @@ router.patch("/domains/:id/verify", requireAuth, async (req, res): Promise<void>
     return;
   }
 
-  await db.update(domainsTable).set({ verified: true }).where(eq(domainsTable.id, domain.id));
+  await db
+    .update(domainsTable)
+    .set({ verified: true, verifiedAt: new Date(), sslStatus: "pending" })
+    .where(eq(domainsTable.id, domain.id));
   res.json({ ok: true, domain: domain.domain });
 });
 
