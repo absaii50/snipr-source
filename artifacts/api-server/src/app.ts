@@ -122,7 +122,13 @@ app.use(
     cookie: {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
+      // "lax" is required for password-protected link unlocks to work when
+      // users land on /r/:slug from an external referrer (email, social media,
+      // chat apps). "strict" drops the unlock cookie on the cross-site → same-
+      // site redirect chain that happens after the user POSTs the password.
+      // "lax" still blocks CSRF on non-safe cross-site requests, so it's the
+      // right balance for both auth and the unlock flow.
+      sameSite: "lax",
       maxAge: 7 * 24 * 60 * 60 * 1000,
     },
   }),
