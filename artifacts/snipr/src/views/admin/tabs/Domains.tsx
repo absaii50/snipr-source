@@ -591,11 +591,19 @@ export default function DomainsTab() {
     return matchSearch && matchFilter;
   });
 
+  // Split into the two surfaces admins actually think about:
+  //   Platform domains — added by admin, visible to every workspace
+  //   User domains    — added by a specific workspace, scoped to them
+  const platformFiltered = filtered.filter((d) => d.isPlatformDomain);
+  const userFiltered = filtered.filter((d) => !d.isPlatformDomain);
+
   const counts = {
     all: domains.length,
     verified: domains.filter((d) => d.verified).length,
     pending: domains.filter((d) => !d.verified).length,
   };
+  const platformCount = domains.filter((d) => d.isPlatformDomain).length;
+  const userCount = domains.filter((d) => !d.isPlatformDomain).length;
 
   return (
     <div className="space-y-5">
@@ -684,40 +692,95 @@ export default function DomainsTab() {
         </div>
       )}
 
-      <div className="bg-white rounded-2xl border border-[#E2E8F0] overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm min-w-[680px]">
-            <thead>
-              <tr className="bg-[#F8F8FC] border-b border-[#E2E8F0]">
-                {["Domain", "Owner", "Workspace", "Status", "Added", ""].map((h) => (
-                  <th key={h} className="text-left px-5 py-3 text-xs font-semibold text-[#8888A0] uppercase tracking-wide">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[#F4F4F6]">
-              {loading && [...Array(4)].map((_, i) => (
-                <tr key={i}>
-                  {[...Array(6)].map((_, j) => (
-                    <td key={j} className="px-5 py-4"><div className="h-4 bg-[#F4F4F6] rounded animate-pulse" /></td>
+      {/* ── Section 1: Platform Domains ────────────────────────────── */}
+      <section>
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <h2 className="text-[15px] font-bold text-[#1A1A1F]">Platform Domains</h2>
+            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#728DA7]/15 text-[#4A6080]">{platformCount}</span>
+          </div>
+          <p className="text-xs text-[#8888A0]">Owned by Snipr · visible to every workspace · used for default short links</p>
+        </div>
+        <div className="bg-white rounded-2xl border border-[#E2E8F0] overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm min-w-[680px]">
+              <thead>
+                <tr className="bg-[#F8F8FC] border-b border-[#E2E8F0]">
+                  {["Domain", "Owner", "Workspace", "Status", "Added", ""].map((h) => (
+                    <th key={h} className="text-left px-5 py-3 text-xs font-semibold text-[#8888A0] uppercase tracking-wide">{h}</th>
                   ))}
                 </tr>
-              ))}
-              {!loading && filtered.length === 0 && (
-                <tr>
-                  <td colSpan={6} className="px-5 py-16 text-center">
-                    <Globe className="w-8 h-8 text-[#C8C8D8] mx-auto mb-3" />
-                    <p className="text-[#8888A0] text-sm">No custom domains found</p>
-                    <p className="text-[#B0B0C0] text-xs mt-1">Users can add domains from their workspace settings</p>
-                  </td>
-                </tr>
-              )}
-              {!loading && filtered.map((d) => (
-                <DomainRow key={d.id} d={d} onDelete={del} onRefresh={load} onShowWizard={setWizardDomain} />
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-[#F4F4F6]">
+                {loading && [...Array(2)].map((_, i) => (
+                  <tr key={i}>
+                    {[...Array(6)].map((_, j) => (
+                      <td key={j} className="px-5 py-4"><div className="h-4 bg-[#F4F4F6] rounded animate-pulse" /></td>
+                    ))}
+                  </tr>
+                ))}
+                {!loading && platformFiltered.length === 0 && (
+                  <tr>
+                    <td colSpan={6} className="px-5 py-10 text-center">
+                      <Globe className="w-7 h-7 text-[#C8C8D8] mx-auto mb-2" />
+                      <p className="text-[#8888A0] text-sm">No platform domains</p>
+                      <p className="text-[#B0B0C0] text-xs mt-1">Click "Add Domain" above and check "Platform Domain" to create one.</p>
+                    </td>
+                  </tr>
+                )}
+                {!loading && platformFiltered.map((d) => (
+                  <DomainRow key={d.id} d={d} onDelete={del} onRefresh={load} onShowWizard={setWizardDomain} />
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>
+      </section>
+
+      {/* ── Section 2: User Domains ────────────────────────────────── */}
+      <section>
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <h2 className="text-[15px] font-bold text-[#1A1A1F]">User Domains</h2>
+            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#10B981]/15 text-[#0F8C5C]">{userCount}</span>
+          </div>
+          <p className="text-xs text-[#8888A0]">Added by individual workspaces · scoped to that workspace only</p>
+        </div>
+        <div className="bg-white rounded-2xl border border-[#E2E8F0] overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm min-w-[680px]">
+              <thead>
+                <tr className="bg-[#F8F8FC] border-b border-[#E2E8F0]">
+                  {["Domain", "Owner", "Workspace", "Status", "Added", ""].map((h) => (
+                    <th key={h} className="text-left px-5 py-3 text-xs font-semibold text-[#8888A0] uppercase tracking-wide">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#F4F4F6]">
+                {loading && [...Array(3)].map((_, i) => (
+                  <tr key={i}>
+                    {[...Array(6)].map((_, j) => (
+                      <td key={j} className="px-5 py-4"><div className="h-4 bg-[#F4F4F6] rounded animate-pulse" /></td>
+                    ))}
+                  </tr>
+                ))}
+                {!loading && userFiltered.length === 0 && (
+                  <tr>
+                    <td colSpan={6} className="px-5 py-10 text-center">
+                      <Globe className="w-7 h-7 text-[#C8C8D8] mx-auto mb-2" />
+                      <p className="text-[#8888A0] text-sm">No user-owned custom domains</p>
+                      <p className="text-[#B0B0C0] text-xs mt-1">Users add domains from their workspace settings.</p>
+                    </td>
+                  </tr>
+                )}
+                {!loading && userFiltered.map((d) => (
+                  <DomainRow key={d.id} d={d} onDelete={del} onRefresh={load} onShowWizard={setWizardDomain} />
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
 
       {confirmModal && (
         <ConfirmModal
