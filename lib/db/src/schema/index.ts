@@ -22,3 +22,4 @@ export * from "./support";
 export * from "./api_keys";
 export * from "./utm_templates";
 export * from "./health_findings";
+export * from "./link_error_events";

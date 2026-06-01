@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState, useCallback } from "react";
-import { Activity, AlertTriangle, AlertCircle, CheckCircle2, Loader2, Play, RefreshCw, Clock } from "lucide-react";
+import { Activity, AlertTriangle, AlertCircle, CheckCircle2, Loader2, Play, RefreshCw, Clock, UserX, ChevronRight } from "lucide-react";
 import { apiFetch, fmtTime } from "../utils";
 import { useToast } from "../Toast";
 
@@ -26,6 +26,37 @@ interface HealthPayload {
   findings: Finding[];
   checks: CheckSpec[];
   summary: Record<string, { open: number; resolved: number }>;
+}
+
+interface StuckSummaryRow {
+  userId: string | null;
+  email: string | null;
+  name: string | null;
+  method: string;
+  path: string;
+  status: number;
+  errorField: string | null;
+  errorMessage: string | null;
+  attempts: number;
+  lastAt: string;
+}
+
+interface TimelineRow {
+  id: string;
+  method: string;
+  path: string;
+  status: number;
+  errorCode: string | null;
+  errorMessage: string | null;
+  errorField: string | null;
+  requestSummary: Record<string, unknown> | null;
+  createdAt: string;
+}
+
+interface StuckPayload {
+  summary: StuckSummaryRow[];
+  timeline: TimelineRow[];
+  windowMinutes: number;
 }
 
 /* ────────────────────────────────────────────────────────────────────── */
@@ -54,6 +85,8 @@ const CHECK_DESCRIPTIONS: Record<string, string> = {
   dns_verifier_smoke: "checkDomainDns() fan-out still resolves A records",
   plan_stripe_inconsistency: "No user is on a paid plan with a long-canceled Stripe sub",
   ssl_expiring_soon: "No custom-domain cert expires in <14 days",
+  user_stuck_on_links: "Real users retrying the same link mutation and failing — needs admin attention",
+  link_error_retention: "Prunes link_error_events older than 7 days (no findings)",
 };
 
 /* ────────────────────────────────────────────────────────────────────── */
@@ -67,6 +100,9 @@ export default function Health() {
   const [filter, setFilter] = useState<"open" | "all" | "resolved">("open");
   const [severity, setSeverity] = useState<"all" | "critical" | "warning" | "info">("all");
   const [running, setRunning] = useState<string | null>(null);
+  const [stuck, setStuck] = useState<StuckPayload | null>(null);
+  const [stuckWindow, setStuckWindow] = useState<60 | 240 | 1440>(60);
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -80,13 +116,24 @@ export default function Health() {
     }
   }, [filter, severity, toast]);
 
+  const loadStuck = useCallback(async () => {
+    try {
+      const qs = `?minutes=${stuckWindow}${selectedUserId ? `&userId=${selectedUserId}` : ""}`;
+      const d = await apiFetch(`/admin/health/link-errors${qs}`);
+      setStuck(d);
+    } catch (err: any) {
+      toast(`Failed to load link errors: ${err?.message ?? "unknown"}`, "error");
+    }
+  }, [stuckWindow, selectedUserId, toast]);
+
   useEffect(() => { load(); }, [load]);
+  useEffect(() => { loadStuck(); }, [loadStuck]);
 
   // Auto-refresh every 30s so the page stays fresh while admin watches.
   useEffect(() => {
-    const t = setInterval(load, 30_000);
+    const t = setInterval(() => { load(); loadStuck(); }, 30_000);
     return () => clearInterval(t);
-  }, [load]);
+  }, [load, loadStuck]);
 
   async function resolve(id: string) {
     try {
@@ -217,6 +264,118 @@ export default function Health() {
             );
           })}
         </div>
+      </div>
+
+      {/* ─── Stuck Users panel (what users are TRYING to do but failing) ─── */}
+      <div>
+        <div className="flex items-center justify-between mb-3 gap-3">
+          <div>
+            <h3 className="text-[11px] font-semibold uppercase tracking-wide text-[#5A5C60]">Stuck users</h3>
+            <p className="text-[12px] text-[#5A5C60] mt-0.5">Real users hitting the same link-mutation error repeatedly — they need help.</p>
+          </div>
+          <div className="flex items-center gap-2">
+            {selectedUserId && (
+              <button
+                onClick={() => setSelectedUserId(null)}
+                className="px-2.5 py-1.5 rounded-md border border-[#E2E2E6] text-[12px] bg-white text-[#1A1A1F] hover:bg-[#F4F4F6]"
+              >
+                ← Back to all users
+              </button>
+            )}
+            <select
+              value={stuckWindow}
+              onChange={(e) => setStuckWindow(Number(e.target.value) as any)}
+              className="px-2.5 py-1.5 rounded-md border border-[#E2E2E6] text-[12px] bg-white"
+            >
+              <option value={60}>Last 1 hour</option>
+              <option value={240}>Last 4 hours</option>
+              <option value={1440}>Last 24 hours</option>
+            </select>
+          </div>
+        </div>
+
+        {(stuck?.summary.length ?? 0) === 0 && !selectedUserId ? (
+          <div className="p-6 text-center rounded-xl bg-white border border-dashed border-[#E2E2E6]">
+            <CheckCircle2 className="w-7 h-7 text-emerald-500 mx-auto mb-2" />
+            <p className="text-sm text-[#5A5C60]">No users stuck in the last {stuckWindow >= 60 ? `${stuckWindow / 60}h` : `${stuckWindow}m`} — every link mutation succeeded or was a one-off.</p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {/* Aggregated rows when no user is selected */}
+            {!selectedUserId && stuck?.summary.map((row, i) => (
+              <div key={i} className="p-3 rounded-xl bg-white border border-[#E2E2E6] hover:border-[#728DA7] transition-colors">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-start gap-3 min-w-0 flex-1">
+                    <div className="w-9 h-9 rounded-lg bg-amber-50 flex items-center justify-center shrink-0">
+                      <UserX className="w-4 h-4 text-amber-600" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-[13px] font-semibold text-[#1A1A1F]">{row.email ?? "(no user)"}</span>
+                        <span className="inline-flex items-center text-[10px] font-bold px-1.5 py-0.5 rounded bg-red-50 text-red-700">
+                          {row.attempts} ATTEMPTS
+                        </span>
+                        <span className="inline-flex items-center text-[10px] font-bold px-1.5 py-0.5 rounded bg-[#1A1A1F]/10 text-[#1A1A1F]">
+                          HTTP {row.status}
+                        </span>
+                      </div>
+                      <code className="text-[11px] font-mono text-[#5A5C60] mt-0.5 block">{row.method} {row.path}</code>
+                      <p className="text-[12px] text-[#1A1A1F] mt-1">
+                        {row.errorMessage}
+                        {row.errorField && <span className="ml-1 text-[#5A5C60]">(field: <code className="font-mono">{row.errorField}</code>)</span>}
+                      </p>
+                      <p className="text-[10px] text-[#9B9DA0] mt-1">Last attempt: {fmtTime(row.lastAt)}</p>
+                    </div>
+                  </div>
+                  {row.userId && (
+                    <button
+                      onClick={() => setSelectedUserId(row.userId)}
+                      className="shrink-0 inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-[#1A1A1F] text-white text-[11px] font-medium hover:bg-[#2A2A2F]"
+                    >
+                      View timeline <ChevronRight className="w-3 h-3" />
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+
+            {/* Per-user timeline when one is selected */}
+            {selectedUserId && (
+              <div className="rounded-xl bg-white border border-[#E2E2E6] divide-y divide-[#F0F0F2]">
+                {(stuck?.timeline ?? []).length === 0 ? (
+                  <div className="p-6 text-center text-sm text-[#5A5C60]">No errors recorded for this user.</div>
+                ) : (
+                  (stuck?.timeline ?? []).map((t) => (
+                    <div key={t.id} className="p-3 flex items-start gap-3">
+                      <div className={`w-7 h-7 rounded-md flex items-center justify-center shrink-0 ${
+                        t.status >= 500 ? "bg-red-50" : t.status === 402 ? "bg-amber-50" : "bg-[#F4F4F6]"
+                      }`}>
+                        <span className={`text-[10px] font-bold ${
+                          t.status >= 500 ? "text-red-700" : t.status === 402 ? "text-amber-700" : "text-[#5A5C60]"
+                        }`}>{t.status}</span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <code className="text-[11px] font-mono font-semibold text-[#1A1A1F]">{t.method} {t.path}</code>
+                          {t.errorField && (
+                            <span className="text-[10px] font-mono text-[#5A5C60]">field={t.errorField}</span>
+                          )}
+                        </div>
+                        <p className="text-[12px] text-[#1A1A1F] mt-0.5">{t.errorMessage ?? t.errorCode ?? "(no message)"}</p>
+                        {t.requestSummary && (
+                          <p className="text-[10px] font-mono text-[#5A5C60] mt-0.5">
+                            {Object.entries(t.requestSummary).map(([k, v]) => `${k}=${JSON.stringify(v)}`).join("  ")}
+                          </p>
+                        )}
+                        <p className="text-[10px] text-[#9B9DA0] mt-0.5">{fmtTime(t.createdAt)}</p>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* ─── Findings list ─── */}

@@ -17,6 +17,7 @@ import {
   supportTicketsTable,
   supportMessagesTable,
   healthFindingsTable,
+  linkErrorEventsTable,
 } from "@workspace/db";
 import { asc, count, desc, eq, sql, ilike, isNull, isNotNull, and, inArray, or } from "drizzle-orm";
 import { sendVerificationEmail, sendEmail, notifySupportAdminReply } from "../lib/email";
@@ -2687,6 +2688,64 @@ router.post("/admin/health/findings/:id/resolve", requireAdmin, async (req, res)
   if (!updated) { res.status(404).json({ error: "Not found" }); return; }
   await logAuditAction("health_resolve", "finding", req.params.id, null, req.ip);
   res.json({ ok: true });
+});
+
+/**
+ * Recent link errors — used by the Health tab to show what real users are
+ * trying to do that keeps failing. Filterable by userId so admin can drill
+ * into a "stuck user" finding and see the full timeline.
+ */
+router.get("/admin/health/link-errors", requireAdmin, async (req, res): Promise<void> => {
+  const userId = (req.query.userId as string | undefined) || null;
+  const minutes = Math.min(1440, Math.max(5, Number(req.query.minutes) || 60));
+
+  // Aggregate view: top recent stuck endpoints across all users.
+  const summaryRows = await db.execute(sql`
+    SELECT
+      lee.user_id,
+      u.email,
+      u.name,
+      lee.method,
+      lee.path,
+      lee.status,
+      lee.error_field,
+      MAX(lee.error_message) AS error_message,
+      COUNT(*)::int AS attempts,
+      MAX(lee.created_at) AS last_at
+    FROM link_error_events lee
+    LEFT JOIN users u ON u.id = lee.user_id
+    WHERE lee.created_at > NOW() - (${minutes}::text || ' minutes')::interval
+      ${userId ? sql`AND lee.user_id = ${userId}` : sql``}
+    GROUP BY lee.user_id, u.email, u.name, lee.method, lee.path, lee.status, lee.error_field
+    ORDER BY attempts DESC, last_at DESC
+    LIMIT 100
+  `);
+  const summary = (((summaryRows as any).rows ?? summaryRows) as Array<any>).map((r) => ({
+    userId: r.user_id,
+    email: r.email,
+    name: r.name,
+    method: r.method,
+    path: r.path,
+    status: r.status,
+    errorField: r.error_field,
+    errorMessage: r.error_message,
+    attempts: Number(r.attempts),
+    lastAt: r.last_at,
+  }));
+
+  // Full timeline only when looking at a specific user (avoids dumping 10k rows).
+  let timeline: any[] = [];
+  if (userId) {
+    const rows = await db
+      .select()
+      .from(linkErrorEventsTable)
+      .where(eq(linkErrorEventsTable.userId, userId))
+      .orderBy(desc(linkErrorEventsTable.createdAt))
+      .limit(100);
+    timeline = rows;
+  }
+
+  res.json({ summary, timeline, windowMinutes: minutes });
 });
 
 router.post("/admin/health/run-now", requireAdmin, async (req, res): Promise<void> => {

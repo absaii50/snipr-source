@@ -545,6 +545,88 @@ const sslExpiryCheck: Check = {
   },
 };
 
+/**
+ * Check 10: Real users stuck on link mutations. Reads link_error_events
+ * (populated by the captureLinkErrors middleware on the /links router) and
+ * flags users who hit 3+ errors on the same endpoint in the last 15 min.
+ * That's the "user is trying something and it's not working" detector.
+ */
+const userStuckOnLinksCheck: Check = {
+  name: "user_stuck_on_links",
+  intervalMs: 5 * 60 * 1000, // every 5 min — fast loop because it powers support
+  timeoutMs: 8_000,
+  async run(): Promise<CheckResult> {
+    // Group by (user_id, method+path, status) — same user hitting the same
+    // failure repeatedly is the strongest signal of stuck-ness.
+    const rows = await db.execute<{
+      user_id: string | null;
+      method: string;
+      path: string;
+      status: number;
+      error_field: string | null;
+      error_message: string | null;
+      n: number;
+    }>(sql`
+      SELECT user_id, method, path, status, error_field,
+             MAX(error_message) AS error_message,
+             COUNT(*)::int AS n
+      FROM link_error_events
+      WHERE created_at > NOW() - INTERVAL '15 minutes'
+        AND user_id IS NOT NULL
+      GROUP BY user_id, method, path, status, error_field
+      HAVING COUNT(*) >= 3
+      ORDER BY n DESC
+      LIMIT 20
+    `);
+    const stuck = ((rows as any).rows ?? rows) as Array<{
+      user_id: string;
+      method: string;
+      path: string;
+      status: number;
+      error_field: string | null;
+      error_message: string | null;
+      n: number;
+    }>;
+    if (stuck.length === 0) return { ok: true };
+
+    // Emit one finding per stuck user/endpoint cluster (dedup will collapse
+    // repeat detections on the same row).
+    const severity: Severity = stuck.some((s) => s.n >= 6) ? "critical" : "warning";
+    const top = stuck.slice(0, 5).map((s) => ({
+      userId: s.user_id,
+      endpoint: `${s.method} ${s.path}`,
+      status: s.status,
+      field: s.error_field,
+      message: s.error_message,
+      attempts: s.n,
+    }));
+    return {
+      ok: false,
+      severity,
+      message: `${stuck.length} user(s) stuck — repeated link-mutation errors in last 15 min`,
+      details: { users: top, totalClusters: stuck.length },
+    };
+  },
+};
+
+/**
+ * Check 11: Retention. Trim link_error_events older than 7 days so the
+ * table doesn't grow unbounded. Always succeeds.
+ */
+const linkErrorRetentionCheck: Check = {
+  name: "link_error_retention",
+  intervalMs: 6 * 60 * 60 * 1000, // every 6 hours
+  timeoutMs: 10_000,
+  async run(): Promise<CheckResult> {
+    const result: any = await db.execute(sql`
+      DELETE FROM link_error_events WHERE created_at < NOW() - INTERVAL '7 days'
+    `);
+    const count = (result as any).rowCount ?? 0;
+    logger.info({ count }, "link_error_events: pruned old rows");
+    return { ok: true };
+  },
+};
+
 /* ────────────────────────────────────────────────────────────────────── */
 /* Registry + startup                                                      */
 /* ────────────────────────────────────────────────────────────────────── */
@@ -559,6 +641,8 @@ const checks: Check[] = [
   dnsVerifierCheck,
   planStripeInconsistencyCheck,
   sslExpiryCheck,
+  userStuckOnLinksCheck,
+  linkErrorRetentionCheck,
 ];
 
 export function startHealthMonitor(): void {

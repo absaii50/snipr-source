@@ -32,8 +32,13 @@ function rejectLink(req: any, res: any, status: number, payload: { error: string
   res.status(status).json(payload);
 }
 import { invalidateLinkCache } from "../lib/link-cache";
+import { captureLinkErrors } from "../lib/link-error-capture";
 
 const router: IRouter = Router();
+
+// Captures every 4xx/5xx on mutation routes into link_error_events. Powers
+// the "user_stuck_on_links" health check + admin per-user timeline.
+router.use(captureLinkErrors);
 
 function serializeLink(link: typeof linksTable.$inferSelect) {
   const { passwordHash, ...rest } = link;
