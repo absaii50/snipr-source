@@ -485,31 +485,80 @@ const dnsVerifierCheck: Check = {
 };
 
 /**
- * Check 8: DB inconsistency — count plans with broken Stripe state.
- * E.g. a user has plan='pro' but stripe_subscription_status='canceled' for
- * more than 1 day — likely they should be back on free but a hook missed.
+ * Check 8: DB inconsistency between users.plan and Stripe state.
+ * Catches three problem shapes:
+ *   1. Paid plan + Stripe sub canceled >24h — webhook likely missed a downgrade.
+ *   2. Paid plan + NO Stripe customer at all — admin-promoted user that never
+ *      paid (e.g. comped accounts, demo users, manual upgrades). Sometimes
+ *      legitimate but worth surfacing because it bypasses revenue.
+ *   3. Paid plan + Stripe customer but no active subscription >7d — sub got
+ *      deleted but user.plan didn't roll back.
  */
 const planStripeInconsistencyCheck: Check = {
   name: "plan_stripe_inconsistency",
   intervalMs: 60 * 60 * 1000, // every 60 min
-  timeoutMs: 5_000,
+  timeoutMs: 8_000,
   async run(): Promise<CheckResult> {
-    const rows = await db.execute<{ count: number }>(sql`
-      SELECT COUNT(*)::int as count FROM users
-      WHERE plan <> 'free'
-        AND stripe_subscription_status = 'canceled'
-        AND updated_at < NOW() - INTERVAL '1 day'
+    const rows = await db.execute(sql`
+      SELECT
+        COUNT(*) FILTER (
+          WHERE plan <> 'free'
+            AND stripe_subscription_status = 'canceled'
+            AND updated_at < NOW() - INTERVAL '1 day'
+        )::int AS canceled_stale,
+        COUNT(*) FILTER (
+          WHERE plan <> 'free'
+            AND stripe_customer_id IS NULL
+            AND created_at < NOW() - INTERVAL '5 minutes'
+        )::int AS paid_no_stripe,
+        COUNT(*) FILTER (
+          WHERE plan <> 'free'
+            AND stripe_customer_id IS NOT NULL
+            AND (stripe_subscription_status IS NULL OR stripe_subscription_status NOT IN ('active', 'trialing', 'past_due'))
+            AND updated_at < NOW() - INTERVAL '7 days'
+        )::int AS sub_orphaned
+      FROM users
     `);
-    const n = Number(((rows as any).rows ?? rows)[0]?.count ?? 0);
-    if (n > 0) {
-      return {
-        ok: false,
-        severity: "warning",
-        message: `${n} user(s) on paid plan with canceled Stripe subscription >24h`,
-        details: { count: n },
-      };
-    }
-    return { ok: true };
+    const r = ((rows as any).rows ?? rows)[0] ?? {};
+    const canceledStale = Number(r.canceled_stale ?? 0);
+    const paidNoStripe = Number(r.paid_no_stripe ?? 0);
+    const subOrphaned = Number(r.sub_orphaned ?? 0);
+    const total = canceledStale + paidNoStripe + subOrphaned;
+    if (total === 0) return { ok: true };
+
+    const parts: string[] = [];
+    if (canceledStale > 0) parts.push(`${canceledStale} canceled-stale`);
+    if (paidNoStripe > 0) parts.push(`${paidNoStripe} paid-no-stripe (admin-promoted)`);
+    if (subOrphaned > 0) parts.push(`${subOrphaned} sub-orphaned`);
+
+    // Pull a sample of offending emails so the admin can act without an SQL query.
+    const sample = await db.execute(sql`
+      SELECT email, plan,
+        CASE
+          WHEN stripe_subscription_status = 'canceled' THEN 'canceled_stale'
+          WHEN stripe_customer_id IS NULL THEN 'paid_no_stripe'
+          ELSE 'sub_orphaned'
+        END AS shape
+      FROM users
+      WHERE plan <> 'free'
+        AND (
+          (stripe_subscription_status = 'canceled' AND updated_at < NOW() - INTERVAL '1 day')
+          OR (stripe_customer_id IS NULL AND created_at < NOW() - INTERVAL '5 minutes')
+          OR (stripe_customer_id IS NOT NULL
+              AND (stripe_subscription_status IS NULL OR stripe_subscription_status NOT IN ('active','trialing','past_due'))
+              AND updated_at < NOW() - INTERVAL '7 days')
+        )
+      ORDER BY updated_at DESC
+      LIMIT 10
+    `);
+    const sampleRows = ((sample as any).rows ?? sample) as Array<{ email: string; plan: string; shape: string }>;
+
+    return {
+      ok: false,
+      severity: "warning",
+      message: `${total} user(s) on paid plan with bad Stripe state — ${parts.join(", ")}`,
+      details: { canceledStale, paidNoStripe, subOrphaned, sample: sampleRows },
+    };
   },
 };
 
