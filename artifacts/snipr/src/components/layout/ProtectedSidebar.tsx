@@ -26,6 +26,7 @@ import {
   Search,
   Command,
   LifeBuoy,
+  BookOpen,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { SniprLogo } from "@/components/SniprLogo";
@@ -68,6 +69,7 @@ const NAV_GROUPS = [
   {
     title: "Help",
     items: [
+      { label: "Guide",   href: "/guide",   icon: BookOpen },
       { label: "Support", href: "/support", icon: LifeBuoy },
     ],
   },
