@@ -4,7 +4,7 @@ import bcrypt from "bcryptjs";
 import { db, linksTable, linkRulesTable, pixelsTable, clickEventsTable, domainsTable } from "@workspace/db";
 import { getLinkBySlug } from "../lib/link-cache";
 import { trackClick } from "../lib/click-tracker";
-import { buildPixelPage } from "../lib/pixels";
+import { buildPixelPage, renderPixelScripts } from "../lib/pixels";
 import { isBot } from "../lib/bot-detector";
 
 const router: IRouter = Router();
@@ -165,7 +165,7 @@ button:hover{background:#4f46e5}
 </html>`);
 }
 
-function serveDeepLinkPage(res: any, destination: string, iosDeepLink: string | null, androidDeepLink: string | null): void {
+function serveDeepLinkPage(res: any, destination: string, iosDeepLink: string | null, androidDeepLink: string | null, pixelScripts = ""): void {
   const safeDest = escapeJsString(destination);
   const iosBlock = iosDeepLink && isSafeDeepLink(iosDeepLink)
     ? `if(/iPhone|iPad|iPod/i.test(ua)){window.location.href="${escapeJsString(iosDeepLink)}";setTimeout(function(){window.location.href="${safeDest}"},1500);return;}`
@@ -179,6 +179,7 @@ function serveDeepLinkPage(res: any, destination: string, iosDeepLink: string | 
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Redirecting...</title>
+${pixelScripts}
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{min-height:100vh;display:flex;align-items:center;justify-content:center;background:#f8fafc;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}
@@ -201,7 +202,7 @@ window.location.href="${safeDest}";
 </html>`);
 }
 
-function serveCloakedPage(res: any, destination: string): void {
+function serveCloakedPage(res: any, destination: string, pixelScripts = ""): void {
   const safeDest = escapeHtml(destination);
   const safeDestJs = escapeJsString(destination);
   res.status(200).send(`<!DOCTYPE html>
@@ -210,6 +211,7 @@ function serveCloakedPage(res: any, destination: string): void {
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Loading...</title>
+${pixelScripts}
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{width:100%;height:100%;overflow:hidden}
@@ -505,20 +507,38 @@ router.use(async (req, res, next): Promise<void> => {
     ? mergeUtmIntoUrl(link.destinationUrl, req.query as Record<string, any>)
     : link.destinationUrl;
 
+  // Fetch any pixels attached to this workspace ONCE, then compose the
+  // scripts into whichever redirect mode this link uses. This was the
+  // missing piece for custom-domain links — previously a Pro user's
+  // pixels never fired here because the handler bypassed buildPixelPage.
+  const workspacePixels = await db
+    .select()
+    .from(pixelsTable)
+    .where(eq(pixelsTable.workspaceId, link.workspaceId));
+  const pixelScripts = workspacePixels.length > 0 ? renderPixelScripts(workspacePixels) : "";
+
   if (link.iosDeepLink || link.androidDeepLink) {
-    serveDeepLinkPage(res, finalDestination, link.iosDeepLink, link.androidDeepLink);
+    serveDeepLinkPage(res, finalDestination, link.iosDeepLink, link.androidDeepLink, pixelScripts);
     return;
   }
 
   if (link.isCloaked) {
-    serveCloakedPage(res, finalDestination);
+    serveCloakedPage(res, finalDestination, pixelScripts);
     return;
   }
 
   if (link.hideReferrer) {
     res.setHeader("Referrer-Policy", "no-referrer");
     res.status(200).send(`<!DOCTYPE html>
-<html><head><meta charset="utf-8"><meta name="referrer" content="no-referrer"><meta http-equiv="refresh" content="0;url=${escapeHtml(finalDestination)}"><title>Redirecting...</title></head><body></body></html>`);
+<html><head><meta charset="utf-8"><meta name="referrer" content="no-referrer">${pixelScripts}<meta http-equiv="refresh" content="0;url=${escapeHtml(finalDestination)}"><title>Redirecting...</title></head><body></body></html>`);
+    return;
+  }
+
+  // If pixels but no other render mode — render the pixel page (which
+  // does its own delayed redirect so async beacons have time to fire).
+  if (pixelScripts) {
+    res.setHeader("Cache-Control", "private, no-store, no-cache, max-age=0, must-revalidate");
+    res.send(buildPixelPage(workspacePixels, finalDestination));
     return;
   }
 
@@ -691,26 +711,31 @@ router.get("/r/:slug", async (req, res): Promise<void> => {
     .select()
     .from(pixelsTable)
     .where(eq(pixelsTable.workspaceId, link.workspaceId));
+  const pixelScripts = pixels.length > 0 ? renderPixelScripts(pixels) : "";
 
-  if (pixels.length > 0) {
-    res.send(buildPixelPage(pixels, destination));
-    return;
-  }
-
+  // Pixels compose with every other render mode now — previously a workspace
+  // with any pixel would bypass cloak / hideReferrer / deep-link entirely.
   if (link.iosDeepLink || link.androidDeepLink) {
-    serveDeepLinkPage(res, destination, link.iosDeepLink, link.androidDeepLink);
+    serveDeepLinkPage(res, destination, link.iosDeepLink, link.androidDeepLink, pixelScripts);
     return;
   }
 
   if (link.isCloaked) {
-    serveCloakedPage(res, destination);
+    serveCloakedPage(res, destination, pixelScripts);
     return;
   }
 
   if (link.hideReferrer) {
     res.setHeader("Referrer-Policy", "no-referrer");
     res.status(200).send(`<!DOCTYPE html>
-<html><head><meta charset="utf-8"><meta name="referrer" content="no-referrer"><meta http-equiv="refresh" content="0;url=${escapeHtml(destination)}"><title>Redirecting...</title></head><body></body></html>`);
+<html><head><meta charset="utf-8"><meta name="referrer" content="no-referrer">${pixelScripts}<meta http-equiv="refresh" content="0;url=${escapeHtml(destination)}"><title>Redirecting...</title></head><body></body></html>`);
+    return;
+  }
+
+  // No special mode — render the dedicated pixel page if any pixel exists,
+  // otherwise fall through to the plain redirect.
+  if (pixelScripts) {
+    res.send(buildPixelPage(pixels, destination));
     return;
   }
 

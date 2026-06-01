@@ -36,8 +36,17 @@ function tiktokScript(pixelId: string): string {
 </script>`;
 }
 
-export function buildPixelPage(pixels: Pixel[], destinationUrl: string): string {
-  const scripts = pixels
+/**
+ * Render just the <script> tags for a list of pixels, with no surrounding
+ * HTML. This is the building block used by buildPixelPage (the plain
+ * redirect case) AND by the cloak / deep-link / hideReferrer pages, so a
+ * workspace's pixels fire no matter which redirect mode the link uses.
+ *
+ * Returns "" when no pixels would render, so callers can do `if (s)` to
+ * decide between pixel-aware and pixel-less rendering paths.
+ */
+export function renderPixelScripts(pixels: Pixel[]): string {
+  return pixels
     .map((p) => {
       switch (p.type) {
         case "meta":
@@ -56,16 +65,23 @@ export function buildPixelPage(pixels: Pixel[], destinationUrl: string): string 
     })
     .filter(Boolean)
     .join("\n");
+}
 
+export function buildPixelPage(pixels: Pixel[], destinationUrl: string): string {
+  const scripts = renderPixelScripts(pixels);
   const dest = escapeHtml(destinationUrl);
 
+  // Slight delay (50ms) before redirect to give async pixel beacons a chance
+  // to fire. Most pixel SDKs use sendBeacon / queued XHR which survives the
+  // navigation, but a tiny gap helps the laggards (slow networks, throttled
+  // CPU). Meta-refresh is the no-JS fallback.
   return `<!DOCTYPE html>
 <html>
 <head>
 <meta charset="utf-8">
 <meta http-equiv="refresh" content="0;url=${dest}">
 ${scripts}
-<script>window.location.href=${JSON.stringify(destinationUrl).replace(/</g, "\\u003c")};</script>
+<script>setTimeout(function(){window.location.replace(${JSON.stringify(destinationUrl).replace(/</g, "\\u003c")});},50);</script>
 </head>
 <body></body>
 </html>`;
