@@ -1,6 +1,7 @@
 import app from "./app";
 import { logger } from "./lib/logger";
 import { startDomainVerifierWatcher } from "./lib/domain-verifier-watcher";
+import { startHealthMonitor } from "./lib/health-monitor";
 
 const rawPort = process.env["PORT"];
 
@@ -31,4 +32,6 @@ app.listen(port, () => {
   logger.info({ port }, "Server listening");
   // Background watcher: auto-verifies pending custom domains once DNS propagates
   startDomainVerifierWatcher();
+  // 24/7 synthetic bug detector — see lib/health-monitor.ts
+  startHealthMonitor();
 });

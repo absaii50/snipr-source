@@ -4,7 +4,7 @@ import {
   LayoutDashboard, Users, Link2, Globe, BarChart3,
   CreditCard, FileText, Sparkles, Settings, LogOut, ShieldCheck,
   ChevronRight, Menu, X, BookOpen, Mail, ScrollText, Bell, Search,
-  LifeBuoy,
+  LifeBuoy, Activity,
 } from "lucide-react";
 import { apiFetch } from "./utils";
 import CommandPalette from "./CommandPalette";
@@ -12,7 +12,7 @@ import NotificationsDropdown from "./NotificationsDropdown";
 
 export type AdminTab =
   | "overview" | "users" | "links" | "domains"
-  | "analytics" | "plans" | "reports" | "email" | "support" | "ai" | "audit" | "settings" | "guide";
+  | "analytics" | "plans" | "reports" | "email" | "support" | "ai" | "health" | "audit" | "settings" | "guide";
 
 const NAV: { id: AdminTab; label: string; icon: React.ElementType; divider?: boolean }[] = [
   { id: "overview",  label: "Overview",    icon: LayoutDashboard },
@@ -25,6 +25,7 @@ const NAV: { id: AdminTab; label: string; icon: React.ElementType; divider?: boo
   { id: "email",     label: "Email",       icon: Mail },
   { id: "support",   label: "Support",     icon: LifeBuoy },
   { id: "ai",        label: "AI Insights", icon: Sparkles },
+  { id: "health",    label: "Health",      icon: Activity },
   { id: "audit",     label: "Audit Log",   icon: ScrollText },
   { id: "settings",  label: "Settings",    icon: Settings },
   { id: "guide",     label: "How-To Guide", icon: BookOpen },
@@ -41,6 +42,7 @@ const TAB_TITLES: Record<AdminTab, { title: string; sub: string }> = {
   email:     { title: "Email",              sub: "Email logs, verification, and delivery" },
   support:   { title: "Support Tickets",     sub: "Manage customer support conversations" },
   ai:        { title: "AI Insights",         sub: "Intelligent platform summaries" },
+  health:    { title: "Health",              sub: "24/7 synthetic bug detector — live findings" },
   audit:     { title: "Audit Log",           sub: "Track all admin actions and changes" },
   settings:  { title: "Settings",            sub: "Platform configuration and controls" },
   guide:     { title: "How-To Guide",        sub: "Setup instructions and platform documentation" },

@@ -16,6 +16,7 @@ import {
   workspaceMembersTable,
   supportTicketsTable,
   supportMessagesTable,
+  healthFindingsTable,
 } from "@workspace/db";
 import { asc, count, desc, eq, sql, ilike, isNull, isNotNull, and, inArray, or } from "drizzle-orm";
 import { sendVerificationEmail, sendEmail, notifySupportAdminReply } from "../lib/email";
@@ -2637,6 +2638,67 @@ router.patch("/admin/support/tickets/:id", requireAdmin, async (req, res): Promi
 
   await db.update(supportTicketsTable).set(updates).where(eq(supportTicketsTable.id, id));
   await logAuditAction("support_update", "ticket", id, updates, req.ip);
+  res.json({ ok: true });
+});
+
+/* ─── Health Monitor (bug detector) ──────────────────────────────────── */
+
+router.get("/admin/health/findings", requireAdmin, async (req, res): Promise<void> => {
+  // Default to open + most-recent-first so admins land on actionable items.
+  const status = (req.query.status as string) ?? "open";
+  const severity = req.query.severity as string | undefined;
+
+  const conditions = [] as any[];
+  if (status !== "all") conditions.push(eq(healthFindingsTable.status, status));
+  if (severity && severity !== "all") conditions.push(eq(healthFindingsTable.severity, severity));
+
+  const findings = await db
+    .select()
+    .from(healthFindingsTable)
+    .where(conditions.length > 0 ? and(...conditions) : undefined)
+    .orderBy(desc(healthFindingsTable.lastSeenAt))
+    .limit(500);
+
+  // Also return list of registered checks + last-run state so the UI can show
+  // "everything healthy" or "checks: 9, all passing"
+  const { listChecks } = await import("../lib/health-monitor");
+
+  // Group findings by check_name for the summary row
+  const summary: Record<string, { open: number; resolved: number }> = {};
+  for (const f of findings) {
+    summary[f.checkName] ??= { open: 0, resolved: 0 };
+    if (f.status === "open") summary[f.checkName].open++;
+    else summary[f.checkName].resolved++;
+  }
+
+  res.json({
+    findings,
+    checks: listChecks(),
+    summary,
+  });
+});
+
+router.post("/admin/health/findings/:id/resolve", requireAdmin, async (req, res): Promise<void> => {
+  const [updated] = await db
+    .update(healthFindingsTable)
+    .set({ status: "resolved", resolvedAt: new Date() })
+    .where(eq(healthFindingsTable.id, req.params.id))
+    .returning({ id: healthFindingsTable.id });
+  if (!updated) { res.status(404).json({ error: "Not found" }); return; }
+  await logAuditAction("health_resolve", "finding", req.params.id, null, req.ip);
+  res.json({ ok: true });
+});
+
+router.post("/admin/health/run-now", requireAdmin, async (req, res): Promise<void> => {
+  const { check } = req.body as { check?: string };
+  if (!check || typeof check !== "string") {
+    res.status(400).json({ error: "check name required" });
+    return;
+  }
+  const { runCheckNow } = await import("../lib/health-monitor");
+  const result = await runCheckNow(check);
+  if (!result.ok) { res.status(404).json({ error: `Unknown check: ${check}` }); return; }
+  await logAuditAction("health_run_now", "check", check, null, req.ip);
   res.json({ ok: true });
 });
 

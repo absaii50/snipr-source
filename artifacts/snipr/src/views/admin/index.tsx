@@ -11,6 +11,7 @@ import AnalyticsTab from "./tabs/Analytics";
 import PlansTab from "./tabs/Plans";
 import ReportsTab from "./tabs/Reports";
 import AIInsightsTab from "./tabs/AIInsights";
+import HealthTab from "./tabs/Health";
 import AuditLogTab from "./tabs/AuditLog";
 import SettingsTab from "./tabs/Settings";
 import GuideTab from "./tabs/Guide";
@@ -21,7 +22,7 @@ import { ToastProvider } from "./Toast";
 
 const VALID_TABS: AdminTab[] = [
   "overview", "users", "links", "domains",
-  "analytics", "plans", "reports", "email", "support", "ai", "audit", "settings", "guide",
+  "analytics", "plans", "reports", "email", "support", "ai", "health", "audit", "settings", "guide",
 ];
 
 function TabContent({ tab }: { tab: AdminTab }) {
@@ -36,6 +37,7 @@ function TabContent({ tab }: { tab: AdminTab }) {
     case "email":     return <EmailTab />;
     case "support":   return <SupportTab />;
     case "ai":        return <AIInsightsTab />;
+    case "health":    return <HealthTab />;
     case "audit":     return <AuditLogTab />;
     case "settings":  return <SettingsTab />;
     case "guide":     return <GuideTab />;
