@@ -486,13 +486,15 @@ const dnsVerifierCheck: Check = {
 
 /**
  * Check 8: DB inconsistency between users.plan and Stripe state.
- * Catches three problem shapes:
- *   1. Paid plan + Stripe sub canceled >24h — webhook likely missed a downgrade.
- *   2. Paid plan + NO Stripe customer at all — admin-promoted user that never
- *      paid (e.g. comped accounts, demo users, manual upgrades). Sometimes
- *      legitimate but worth surfacing because it bypasses revenue.
- *   3. Paid plan + Stripe customer but no active subscription >7d — sub got
- *      deleted but user.plan didn't roll back.
+ * Catches two problem shapes — both indicate a webhook the system missed:
+ *   1. canceled_stale — paid plan + Stripe sub canceled >24h, plan didn't roll back.
+ *   2. sub_orphaned — paid plan + Stripe customer but no active subscription >7d.
+ *
+ * Intentionally does NOT flag:
+ *   - paid_no_stripe — users admin manually promoted (comp accounts, demos,
+ *     partnerships). We detect "admin-promoted" by looking for any
+ *     admin_audit_log entry with action='change_plan' on the user. Those are
+ *     legitimate and not actionable.
  */
 const planStripeInconsistencyCheck: Check = {
   name: "plan_stripe_inconsistency",
@@ -500,55 +502,58 @@ const planStripeInconsistencyCheck: Check = {
   timeoutMs: 8_000,
   async run(): Promise<CheckResult> {
     const rows = await db.execute(sql`
+      WITH admin_promoted AS (
+        -- Anyone with a change_plan audit entry — these are intentional comps.
+        SELECT DISTINCT target_id FROM admin_audit_log
+        WHERE action = 'change_plan' AND target_type = 'user'
+      )
       SELECT
         COUNT(*) FILTER (
-          WHERE plan <> 'free'
-            AND stripe_subscription_status = 'canceled'
-            AND updated_at < NOW() - INTERVAL '1 day'
+          WHERE u.plan <> 'free'
+            AND u.stripe_subscription_status = 'canceled'
+            AND u.updated_at < NOW() - INTERVAL '1 day'
+            AND u.id::text NOT IN (SELECT target_id FROM admin_promoted)
         )::int AS canceled_stale,
         COUNT(*) FILTER (
-          WHERE plan <> 'free'
-            AND stripe_customer_id IS NULL
-            AND created_at < NOW() - INTERVAL '5 minutes'
-        )::int AS paid_no_stripe,
-        COUNT(*) FILTER (
-          WHERE plan <> 'free'
-            AND stripe_customer_id IS NOT NULL
-            AND (stripe_subscription_status IS NULL OR stripe_subscription_status NOT IN ('active', 'trialing', 'past_due'))
-            AND updated_at < NOW() - INTERVAL '7 days'
+          WHERE u.plan <> 'free'
+            AND u.stripe_customer_id IS NOT NULL
+            AND (u.stripe_subscription_status IS NULL OR u.stripe_subscription_status NOT IN ('active', 'trialing', 'past_due'))
+            AND u.updated_at < NOW() - INTERVAL '7 days'
+            AND u.id::text NOT IN (SELECT target_id FROM admin_promoted)
         )::int AS sub_orphaned
-      FROM users
+      FROM users u
     `);
     const r = ((rows as any).rows ?? rows)[0] ?? {};
     const canceledStale = Number(r.canceled_stale ?? 0);
-    const paidNoStripe = Number(r.paid_no_stripe ?? 0);
     const subOrphaned = Number(r.sub_orphaned ?? 0);
-    const total = canceledStale + paidNoStripe + subOrphaned;
+    const total = canceledStale + subOrphaned;
     if (total === 0) return { ok: true };
 
     const parts: string[] = [];
     if (canceledStale > 0) parts.push(`${canceledStale} canceled-stale`);
-    if (paidNoStripe > 0) parts.push(`${paidNoStripe} paid-no-stripe (admin-promoted)`);
     if (subOrphaned > 0) parts.push(`${subOrphaned} sub-orphaned`);
 
-    // Pull a sample of offending emails so the admin can act without an SQL query.
+    // Pull a sample of offending emails so the admin can act from the UI.
     const sample = await db.execute(sql`
-      SELECT email, plan,
+      WITH admin_promoted AS (
+        SELECT DISTINCT target_id FROM admin_audit_log
+        WHERE action = 'change_plan' AND target_type = 'user'
+      )
+      SELECT u.email, u.plan,
         CASE
-          WHEN stripe_subscription_status = 'canceled' THEN 'canceled_stale'
-          WHEN stripe_customer_id IS NULL THEN 'paid_no_stripe'
+          WHEN u.stripe_subscription_status = 'canceled' THEN 'canceled_stale'
           ELSE 'sub_orphaned'
         END AS shape
-      FROM users
-      WHERE plan <> 'free'
+      FROM users u
+      WHERE u.plan <> 'free'
+        AND u.id::text NOT IN (SELECT target_id FROM admin_promoted)
         AND (
-          (stripe_subscription_status = 'canceled' AND updated_at < NOW() - INTERVAL '1 day')
-          OR (stripe_customer_id IS NULL AND created_at < NOW() - INTERVAL '5 minutes')
-          OR (stripe_customer_id IS NOT NULL
-              AND (stripe_subscription_status IS NULL OR stripe_subscription_status NOT IN ('active','trialing','past_due'))
-              AND updated_at < NOW() - INTERVAL '7 days')
+          (u.stripe_subscription_status = 'canceled' AND u.updated_at < NOW() - INTERVAL '1 day')
+          OR (u.stripe_customer_id IS NOT NULL
+              AND (u.stripe_subscription_status IS NULL OR u.stripe_subscription_status NOT IN ('active','trialing','past_due'))
+              AND u.updated_at < NOW() - INTERVAL '7 days')
         )
-      ORDER BY updated_at DESC
+      ORDER BY u.updated_at DESC
       LIMIT 10
     `);
     const sampleRows = ((sample as any).rows ?? sample) as Array<{ email: string; plan: string; shape: string }>;
@@ -557,7 +562,7 @@ const planStripeInconsistencyCheck: Check = {
       ok: false,
       severity: "warning",
       message: `${total} user(s) on paid plan with bad Stripe state — ${parts.join(", ")}`,
-      details: { canceledStale, paidNoStripe, subOrphaned, sample: sampleRows },
+      details: { canceledStale, subOrphaned, sample: sampleRows },
     };
   },
 };
