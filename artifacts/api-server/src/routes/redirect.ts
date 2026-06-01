@@ -440,7 +440,12 @@ router.use(async (req, res, next): Promise<void> => {
     return;
   }
 
-  // Handle POST for password unlock on custom domains
+  // Handle POST for password unlock on custom domains.
+  // Strategy: validate password → set a ONE-SHOT pending-unlock flag in the
+  // session that expires in 10s → bounce back to GET. The GET handler
+  // consumes (deletes) the flag immediately. This means every fresh visit to
+  // the short-link URL re-prompts for the password — there is no 30-minute
+  // bypass cache anymore.
   if (req.method === "POST" && link.passwordHash) {
     const { password } = ((req.body ?? {}) as { password?: string });
     if (!password) {
@@ -452,11 +457,11 @@ router.use(async (req, res, next): Promise<void> => {
       servePasswordPage(req, res, slug, "Incorrect password. Please try again.", true);
       return;
     }
-    if (!(req.session as any).unlockedLinks) {
-      (req.session as any).unlockedLinks = {};
+    if (!(req.session as any).pendingUnlocks) {
+      (req.session as any).pendingUnlocks = {};
     }
-    (req.session as any).unlockedLinks[link.id] = Date.now();
-    // Save session before redirect so unlock persists
+    // 10s window covers the POST→GET hop on any reasonable network
+    (req.session as any).pendingUnlocks[link.id] = Date.now() + 10_000;
     req.session.save(() => {
       res.redirect(302, `/${slug}`);
     });
@@ -465,14 +470,16 @@ router.use(async (req, res, next): Promise<void> => {
 
   // Check password protection (custom domain — form posts to /:slug)
   if (link.passwordHash) {
-    const unlockedLinks = (req.session as any).unlockedLinks as Record<string, number> | undefined;
-    const unlockedTime = unlockedLinks?.[link.id];
-    const UNLOCK_DURATION_MS = 30 * 60 * 1000;
-    const isExpired = !unlockedTime || (Date.now() - unlockedTime) > UNLOCK_DURATION_MS;
-    if (isExpired) {
+    const pending = (req.session as any).pendingUnlocks as Record<string, number> | undefined;
+    const expiresAt = pending?.[link.id];
+    const stillValid = !!expiresAt && Date.now() < expiresAt;
+    if (!stillValid) {
       servePasswordPage(req, res, slug, undefined, true);
       return;
     }
+    // Consume the one-shot flag so a back-button click re-prompts.
+    delete pending![link.id];
+    req.session.save(() => {});
   }
 
   // Check click limit
@@ -555,17 +562,17 @@ router.get("/r/:slug", async (req, res): Promise<void> => {
   }
 
   if (link.passwordHash) {
-    const unlockedLinks = (req.session as any).unlockedLinks as Record<string, number> | undefined;
-    const unlockedTime = unlockedLinks?.[link.id];
-
-    // Check if link is unlocked and hasn't expired (30-minute window)
-    const UNLOCK_DURATION_MS = 30 * 60 * 1000;
-    const isExpired = !unlockedTime || (Date.now() - unlockedTime) > UNLOCK_DURATION_MS;
-
-    if (isExpired) {
+    // One-shot unlock — see POST handler below. Every fresh visit re-prompts.
+    const pending = (req.session as any).pendingUnlocks as Record<string, number> | undefined;
+    const expiresAt = pending?.[link.id];
+    const stillValid = !!expiresAt && Date.now() < expiresAt;
+    if (!stillValid) {
       servePasswordPage(req, res, slug);
       return;
     }
+    // Consume the flag so a refresh / back-button re-prompts.
+    delete pending![link.id];
+    req.session.save(() => {});
   }
 
   if (link.clickLimit !== null && link.clickLimit !== undefined) {
@@ -735,13 +742,13 @@ router.post("/r/:slug", async (req, res): Promise<void> => {
     return;
   }
 
-  // Store unlock timestamp for 30-minute expiration
-  if (!(req.session as any).unlockedLinks) {
-    (req.session as any).unlockedLinks = {};
+  // One-shot unlock — 10s window for the POST→GET hop. The GET handler
+  // consumes it, so every fresh visit to /r/:slug re-prompts for the password.
+  if (!(req.session as any).pendingUnlocks) {
+    (req.session as any).pendingUnlocks = {};
   }
-  (req.session as any).unlockedLinks[link.id] = Date.now();
+  (req.session as any).pendingUnlocks[link.id] = Date.now() + 10_000;
 
-  // Save session before redirect so unlock persists
   req.session.save(() => {
     res.redirect(302, `/r/${slug}`);
   });
