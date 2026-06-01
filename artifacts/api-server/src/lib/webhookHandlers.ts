@@ -120,6 +120,8 @@ export class WebhookHandlers {
         planRenewsAt: periodEnd ? new Date(periodEnd * 1000) : null,
       }).where(eq(usersTable.id, invUser.id));
 
+      invalidatePlanCache(invUser.id);
+
       // Immediately unflag links now that they've paid — no need to wait for the 6h scanner.
       try {
         const unflagged = await unflagLinksIfUnderCap(invUser.id, plan);
@@ -150,6 +152,8 @@ export class WebhookHandlers {
         stripeSubscriptionStatus: realStatus,
         ...(realStatus === "incomplete" ? { plan: "free" } : {}),
       }).where(eq(usersTable.id, failUser.id));
+
+      invalidatePlanCache(failUser.id);
 
       logger.warn({ userId: failUser.id, status: realStatus, invoiceId: invoice.id }, "Payment failed");
 

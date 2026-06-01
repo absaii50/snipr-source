@@ -146,7 +146,7 @@ export const CreateLinkBody = zod.object({
   title: zod.string().nullish(),
   expiresAt: zod.coerce.date().nullish(),
   folderId: zod.string().nullish(),
-  clickLimit: zod.number().nullish(),
+  clickLimit: zod.coerce.number().nullish(),
   fallbackUrl: zod.string().nullish(),
   password: zod.string().nullish(),
 });
@@ -228,7 +228,7 @@ export const UpdateLinkBody = zod.object({
   enabled: zod.boolean().nullish(),
   expiresAt: zod.coerce.date().nullish(),
   folderId: zod.string().nullish(),
-  clickLimit: zod.number().nullish(),
+  clickLimit: zod.coerce.number().nullish(),
   fallbackUrl: zod.string().nullish(),
   password: zod
     .string()
@@ -360,7 +360,7 @@ export const SetLinkRulesBody = zod.object({
   rules: zod.array(
     zod.object({
       type: zod.enum(["geo", "city", "device", "ab", "rotator"]),
-      priority: zod.number().optional(),
+      priority: zod.coerce.number().optional(),
       conditions: zod.object({}).passthrough().optional(),
       destinationUrl: zod.string(),
       label: zod.string().nullish(),
@@ -1057,7 +1057,7 @@ export const TrackConversionBody = zod.object({
   linkId: zod.string().nullish(),
   clickEventId: zod.string().nullish(),
   eventName: zod.string().optional(),
-  revenue: zod.number().nullish(),
+  revenue: zod.coerce.number().nullish(),
   currency: zod.string().nullish(),
   utmCampaign: zod.string().nullish(),
   utmSource: zod.string().nullish(),

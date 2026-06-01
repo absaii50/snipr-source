@@ -484,17 +484,34 @@ router.get("/admin/links", requireAdmin, async (req, res): Promise<void> => {
 });
 
 router.patch("/admin/links/:id/toggle", requireAdmin, async (req, res): Promise<void> => {
-  const [link] = await db.select({ enabled: linksTable.enabled }).from(linksTable).where(eq(linksTable.id, req.params.id));
+  // Read slug too so we can bust the redirect cache after the toggle.
+  const [link] = await db
+    .select({ enabled: linksTable.enabled, slug: linksTable.slug })
+    .from(linksTable)
+    .where(eq(linksTable.id, req.params.id));
   if (!link) { res.status(404).json({ error: "Not found" }); return; }
   const newEnabled = !link.enabled;
   await db.update(linksTable).set({ enabled: newEnabled }).where(eq(linksTable.id, req.params.id));
   await logAuditAction("toggle_link", "link", req.params.id, { enabled: newEnabled }, req.ip);
+  // Without this, the 30s in-process cache keeps serving the link as enabled
+  // (or disabled) even after admin toggles it.
+  const { invalidateLinkCache } = await import("../lib/link-cache");
+  invalidateLinkCache(link.slug);
   res.json({ enabled: newEnabled });
 });
 
 router.delete("/admin/links/:id", requireAdmin, async (req, res): Promise<void> => {
+  // Grab slug BEFORE deleting so we can bust the cache afterwards.
+  const [link] = await db
+    .select({ slug: linksTable.slug })
+    .from(linksTable)
+    .where(eq(linksTable.id, req.params.id));
   await db.delete(linksTable).where(eq(linksTable.id, req.params.id));
   await logAuditAction("delete_link", "link", req.params.id, null, req.ip);
+  if (link) {
+    const { invalidateLinkCache } = await import("../lib/link-cache");
+    invalidateLinkCache(link.slug);
+  }
   res.json({ ok: true });
 });
 
@@ -1759,6 +1776,23 @@ router.post("/admin/users/bulk", requireAdmin, async (req, res): Promise<void> =
         return;
       }
       await db.update(usersTable).set({ plan }).where(inArray(usersTable.id, userIds));
+      // Bust the in-process plan cache for every affected user (and their
+      // workspace) — otherwise paid endpoints would 402 / 200 incorrectly for
+      // up to 60s after the bulk change.
+      for (const uid of userIds) {
+        const [ws] = await db
+          .select({ id: workspacesTable.id })
+          .from(workspacesTable)
+          .where(eq(workspacesTable.userId, uid))
+          .limit(1);
+        invalidatePlanCache(uid, ws?.id);
+        // If the new plan's cap covers existing usage, unflag their links too.
+        try {
+          await unflagLinksIfUnderCap(uid, plan);
+        } catch (err) {
+          logger.warn({ err, userId: uid, plan }, "bulk_plan_change: unflag failed");
+        }
+      }
       affected = userIds.length;
       await logAuditAction("bulk_plan_change", "user", null, { count: affected, plan, userIds }, req.ip);
       break;

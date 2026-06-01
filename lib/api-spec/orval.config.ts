@@ -62,9 +62,11 @@ export default defineConfig({
             param: ['boolean', 'number', 'string'],
             // JSON bodies cannot carry a JS Date — only an ISO string. With
             // useDates: true Orval emits z.date() which then rejects the
-            // incoming string with "Expected date, received string". Coercing
-            // 'date' on body makes Zod accept ISO strings and convert them.
-            body: ['date'],
+            // incoming string with "Expected date, received string". Coerce
+            // 'date' so ISO strings are converted. Also coerce 'number'
+            // because form inputs and number-string roundtrips (e.g.
+            // clickLimit="5" from a text input) would otherwise be rejected.
+            body: ['date', 'number'],
           },
         },
         useDates: true,

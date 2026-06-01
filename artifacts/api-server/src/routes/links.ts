@@ -215,7 +215,16 @@ router.post("/links", requireAuth, async (req, res): Promise<void> => {
   }
 
   const passwordHash = password ? await bcrypt.hash(password, 10) : null;
-  const clickLimit = typeof body.clickLimit === "number" ? body.clickLimit : null;
+  // Accept both number and stringified-number so form inputs (which always
+  // send strings) work. Anything that doesn't parse to a finite positive
+  // integer is treated as "no limit".
+  const rawClickLimit = body.clickLimit;
+  const parsedClickLimit = typeof rawClickLimit === "number"
+    ? rawClickLimit
+    : (typeof rawClickLimit === "string" && rawClickLimit.trim() !== "" ? Number(rawClickLimit) : NaN);
+  const clickLimit = Number.isFinite(parsedClickLimit) && parsedClickLimit > 0
+    ? Math.floor(parsedClickLimit)
+    : null;
 
   // SECURITY: Validate fallbackUrl is a valid URL if provided
   let fallbackUrl: string | null = null;
@@ -775,6 +784,9 @@ router.put("/links/:id", requireAuth, async (req, res): Promise<void> => {
     updateData.enabled = parsed.data.enabled;
   }
   if (parsed.data.expiresAt !== undefined) {
+    // parsed.data.expiresAt is already a Date (z.coerce.date() in the schema).
+    // Keep the new Date() wrap defensively in case the schema ever changes
+    // back to z.string() — JS Date constructor accepts both Date and ISO string.
     updateData.expiresAt = parsed.data.expiresAt ? new Date(parsed.data.expiresAt) : null;
   }
   if (parsed.data.slug !== undefined && parsed.data.slug !== null) {
