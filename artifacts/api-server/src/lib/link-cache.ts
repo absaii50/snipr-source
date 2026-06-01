@@ -61,10 +61,24 @@ export async function getLinkBySlug(slug: string, domainId?: string | null): Pro
 }
 
 /**
- * Invalidate cache for a specific link
- * SUBDOMAIN SUPPORT: Invalidate by slug and domain to affect only the right link
+ * Invalidate cache for a specific link.
+ *
+ * When called without a domainId we clear EVERY entry that ends with `:slug`.
+ * That covers both `default:slug` (the platform-domain key used by /r/:slug)
+ * AND every `<domainId>:slug` key — which is what we want when a link is
+ * edited from the dashboard, because callers don't always know which
+ * domain(s) cache an entry for this slug.
  */
 export function invalidateLinkCache(slug: string, domainId?: string | null): void {
-  const cacheKey = getCacheKey(slug, domainId);
-  cache.delete(cacheKey);
+  if (domainId !== undefined) {
+    cache.delete(getCacheKey(slug, domainId));
+    return;
+  }
+  // No domain specified — sweep all keys ending in `:slug`. This is O(n)
+  // over the cache but n is bounded by CACHE_MAX_SIZE (10k) and only runs
+  // on link mutations, which are rare relative to redirects.
+  const suffix = `:${slug}`;
+  for (const key of cache.keys()) {
+    if (key.endsWith(suffix)) cache.delete(key);
+  }
 }

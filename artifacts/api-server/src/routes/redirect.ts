@@ -522,12 +522,17 @@ router.use(async (req, res, next): Promise<void> => {
     return;
   }
 
-  // Bots/crawlers get a clean 301 for SEO link juice
+  // Bots/crawlers get a 302 + no-cache. We previously sent 301 ("good for SEO")
+  // but link destinations are user-editable — a 301 caches forever in some
+  // crawlers/browsers and breaks editing. 302 still passes through bots and
+  // keeps the destination editable.
   if (bot) {
-    res.redirect(301, finalDestination);
+    res.setHeader("Cache-Control", "private, no-store, no-cache, max-age=0, must-revalidate");
+    res.redirect(302, finalDestination);
     return;
   }
   // Real browsers get an instant HTML redirect — never cached by browser
+  res.setHeader("Cache-Control", "private, no-store, no-cache, max-age=0, must-revalidate");
   res.status(200).send(`<!DOCTYPE html><html><head><meta charset="utf-8"><meta http-equiv="refresh" content="0;url=${escapeHtml(finalDestination)}"><script>window.location.replace("${escapeJsString(finalDestination)}")</script><title>Redirecting…</title></head><body></body></html>`);
 });
 
@@ -709,12 +714,15 @@ router.get("/r/:slug", async (req, res): Promise<void> => {
     return;
   }
 
-  // Bots/crawlers get a clean 301 for SEO link juice
+  // Bots/crawlers — see comment in the custom-domain block above. We use 302
+  // + no-cache so destination edits propagate immediately.
   if (bot) {
-    res.redirect(301, destination);
+    res.setHeader("Cache-Control", "private, no-store, no-cache, max-age=0, must-revalidate");
+    res.redirect(302, destination);
     return;
   }
   // Real browsers get an instant HTML redirect — never cached by browser
+  res.setHeader("Cache-Control", "private, no-store, no-cache, max-age=0, must-revalidate");
   res.status(200).send(`<!DOCTYPE html><html><head><meta charset="utf-8"><meta http-equiv="refresh" content="0;url=${escapeHtml(destination)}"><script>window.location.replace("${escapeJsString(destination)}")</script><title>Redirecting…</title></head><body></body></html>`);
 });
 
