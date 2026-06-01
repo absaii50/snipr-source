@@ -124,7 +124,7 @@ export default function Domains() {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               {[
                 { step: "1", title: "Enter your domain", desc: "Type your domain or subdomain (e.g. go.company.com)", icon: Globe, color: "from-blue-900/30 to-blue-800/20", iconColor: "text-blue-400" },
-                { step: "2", title: "Add a DNS record", desc: "Add one CNAME or A record at your registrar", icon: Shield, color: "from-amber-900/30 to-amber-800/20", iconColor: "text-amber-400" },
+                { step: "2", title: "Add a DNS record", desc: "Add one A record at your registrar pointing to our server", icon: Shield, color: "from-amber-900/30 to-amber-800/20", iconColor: "text-amber-400" },
                 { step: "3", title: "Start using it", desc: "Create short links and pick your domain", icon: Zap, color: "from-emerald-900/30 to-emerald-800/20", iconColor: "text-emerald-400" },
               ].map((item) => (
                 <div
@@ -204,10 +204,9 @@ export default function Domains() {
                           <div className="text-[11px] text-amber-400/80 space-y-0.5">
                             <p className="font-semibold">DNS record required at your registrar:</p>
                             <p>
-                              {domain.domain.split(".").length <= 2
-                                ? <>Add an <strong>A record</strong> with name <CopyText value="@" /> pointing to the IP shown in setup.</>
-                                : <>Add a <strong>CNAME record</strong> with name <CopyText value={domain.domain.split(".").slice(0, -2).join(".")} /> pointing to the value shown in setup.</>
-                              }
+                              Add an <strong>A record</strong> with name{" "}
+                              <CopyText value={domain.domain.split(".").length <= 2 ? "@" : domain.domain.split(".").slice(0, -2).join(".")} />{" "}
+                              pointing to the IP shown in setup.
                             </p>
                           </div>
                         </div>
