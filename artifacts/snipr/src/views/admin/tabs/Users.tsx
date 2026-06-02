@@ -19,10 +19,22 @@ interface PerformanceUser {
   email: string;
   plan: string;
   suspended_at: string | null;
-  created_at: string;
+  created_at: string;                       // signup date — always present
   email_verified: boolean;
+  has_stripe_customer: boolean;
   stripe_subscription_status: string | null;
   has_stripe_subscription: boolean;
+  plan_renews_at: string | null;            // next billing date for paid users
+  plan_expires_at: string | null;           // when a canceled sub finally ends
+  // Derived: how did this user end up on their current plan?
+  //   free                  — still on Free tier
+  //   paid_via_stripe       — has active/trialing/past_due Stripe sub  ✓ paid customer
+  //   stripe_canceled_stuck — Stripe canceled but plan didn't roll back (data bug)
+  //   admin_promoted        — manually upgraded by admin (comp / partner / demo)
+  //   unknown               — paid plan, no Stripe, no admin trail (data anomaly)
+  plan_source: "free" | "paid_via_stripe" | "stripe_canceled_stuck" | "admin_promoted" | "unknown";
+  last_promotion_at: string | null;
+  admin_promotion_count: number;
   workspace_name: string | null;
   workspace_slug: string | null;
   total_links: number;
@@ -37,12 +49,25 @@ interface PerformanceUser {
 type SortKey = "clicks" | "links" | "avg" | "name";
 type PlanFilter = "all" | "free" | "starter" | "growth" | "pro" | "business" | "enterprise";
 type StatusFilter = "all" | "active" | "suspended";
+type SourceFilter = "all" | "paid_via_stripe" | "admin_promoted" | "free" | "stripe_canceled_stuck";
+
+const SOURCE_LABEL: Record<SourceFilter, string> = {
+  all:                    "All sources",
+  paid_via_stripe:        "💳 Paid",
+  admin_promoted:         "👤 Comped",
+  free:                   "Free tier",
+  stripe_canceled_stuck:  "⚠ Stuck",
+};
 
 function PlanBadge({ plan }: { plan: string }) {
   const cfg = plan === "business"
     ? "bg-purple-50 text-purple-700 border-purple-200"
     : plan === "pro"
     ? "bg-blue-50 text-blue-700 border-blue-200"
+    : plan === "growth"
+    ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+    : plan === "starter"
+    ? "bg-cyan-50 text-cyan-700 border-cyan-200"
     : "bg-gray-100 text-gray-500 border-gray-200";
   return (
     <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold border ${cfg} capitalize`}>
@@ -58,6 +83,25 @@ function StatusBadge({ suspended }: { suspended: boolean }) {
     }`}>
       <span className={`w-1.5 h-1.5 rounded-full ${suspended ? "bg-red-400" : "bg-green-500"}`} />
       {suspended ? "Suspended" : "Active"}
+    </span>
+  );
+}
+
+/** How did this user end up on their current plan? */
+function PlanSourceBadge({ source, plan }: { source: PerformanceUser["plan_source"]; plan: string }) {
+  if (plan === "free" || source === "free") return <span className="text-[10px] text-[#8888A0]">—</span>;
+
+  const cfg = source === "paid_via_stripe"
+    ? { bg: "bg-emerald-50 text-emerald-700 border-emerald-200", label: "💳 Paid", title: "Active Stripe subscription" }
+    : source === "admin_promoted"
+    ? { bg: "bg-amber-50 text-amber-700 border-amber-200", label: "👤 Comp", title: "Manually upgraded by admin (no payment)" }
+    : source === "stripe_canceled_stuck"
+    ? { bg: "bg-red-50 text-red-700 border-red-200", label: "⚠ Stuck", title: "Stripe canceled — plan didn't roll back to free" }
+    : { bg: "bg-gray-100 text-gray-600 border-gray-200", label: "? Unknown", title: "Paid plan with no Stripe record and no admin trail" };
+
+  return (
+    <span title={cfg.title} className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold border ${cfg.bg} whitespace-nowrap`}>
+      {cfg.label}
     </span>
   );
 }
@@ -109,6 +153,7 @@ export default function UsersTab() {
     return "";
   });
   const [plan, setPlan] = useState<PlanFilter>("all");
+  const [source, setSource] = useState<SourceFilter>("all");
   const [status, setStatus] = useState<StatusFilter>("all");
   const [sort, setSort] = useState<SortKey>("clicks");
   const [actionId, setActionId] = useState<string | null>(null);
@@ -291,10 +336,12 @@ export default function UsersTab() {
     downloadBlob(blob, `snipr-users-selected-${selectedUsers.length}.csv`);
   }
 
-  const filtered = users.filter((u) =>
-    status === "suspended" ? !!u.suspended_at :
-    status === "active" ? !u.suspended_at : true
-  );
+  const filtered = users.filter((u) => {
+    if (status === "suspended" && !u.suspended_at) return false;
+    if (status === "active" && u.suspended_at) return false;
+    if (source !== "all" && u.plan_source !== source) return false;
+    return true;
+  });
 
   const maxClicks = Math.max(...filtered.map((u) => Number(u.total_clicks)), 1);
   const sortLabel: Record<SortKey, string> = {
@@ -332,6 +379,16 @@ export default function UsersTab() {
               </button>
             ))}
           </div>
+          <select
+            value={source}
+            onChange={(e) => setSource(e.target.value as SourceFilter)}
+            title="Filter by plan source — paid customers, comps, or stuck billing states"
+            className="px-3 py-2 bg-white border border-[#E2E8F0] rounded-xl text-xs text-[#3A3A3E] hover:bg-[#F4F4F6] transition-all cursor-pointer"
+          >
+            {(Object.keys(SOURCE_LABEL) as SourceFilter[]).map((s) => (
+              <option key={s} value={s}>{SOURCE_LABEL[s]}</option>
+            ))}
+          </select>
           <div className="relative">
             <button onClick={() => setSortOpen((v) => !v)}
               className="flex items-center gap-1.5 px-3 py-2 bg-white border border-[#E2E8F0] rounded-xl text-xs text-[#3A3A3E] hover:bg-[#F4F4F6] transition-all">
@@ -408,19 +465,19 @@ export default function UsersTab() {
                       : <Square className="w-4 h-4" />}
                   </button>
                 </th>
-                {["User", "Plan", "Links", "Total Clicks", "Avg/Link", "7d Clicks", "Last Active", "Status", ""].map((h) => (
+                {["User", "Plan", "Source", "Signed up", "Renews", "Links", "Clicks (total)", "7d", "Last active", "Status", ""].map((h) => (
                   <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-[#8888A0] uppercase tracking-wide whitespace-nowrap">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-[#F4F4F6]">
               {loading && [...Array(5)].map((_, i) => (
-                <tr key={i}>{[...Array(10)].map((_, j) => (
+                <tr key={i}>{[...Array(12)].map((_, j) => (
                   <td key={j} className="px-4 py-4"><div className="h-4 bg-[#F4F4F6] rounded animate-pulse" /></td>
                 ))}</tr>
               ))}
               {!loading && filtered.length === 0 && (
-                <tr><td colSpan={10} className="px-4 py-12 text-center text-[#8888A0]">No users found</td></tr>
+                <tr><td colSpan={12} className="px-4 py-12 text-center text-[#8888A0]">No users found</td></tr>
               )}
               {!loading && filtered.map((u, idx) => (
                 <tr key={u.id} className={`hover:bg-[#F8F8FC] transition-colors group ${selected.has(u.id) ? "bg-[#EEF3F7]/50" : ""}`}>
@@ -451,6 +508,15 @@ export default function UsersTab() {
                     </div>
                   </td>
                   <td className="px-4 py-3.5"><PlanBadge plan={u.plan} /></td>
+                  <td className="px-4 py-3.5"><PlanSourceBadge source={u.plan_source} plan={u.plan} /></td>
+                  <td className="px-4 py-3.5 text-xs text-[#3A3A3E] whitespace-nowrap">{fmtDate(u.created_at)}</td>
+                  <td className="px-4 py-3.5 text-xs whitespace-nowrap">
+                    {u.plan_renews_at
+                      ? <span className="text-[#3A3A3E]">{fmtDate(u.plan_renews_at)}</span>
+                      : u.plan === "free"
+                        ? <span className="text-[#C0C0CC]">—</span>
+                        : <span className="text-[#C0C0CC]" title="No upcoming Stripe renewal date">No renewal</span>}
+                  </td>
                   <td className="px-4 py-3.5">
                     <div className="flex items-center gap-1.5">
                       <Link2 className="w-3 h-3 text-[#8888A0]" />
@@ -458,12 +524,6 @@ export default function UsersTab() {
                     </div>
                   </td>
                   <td className="px-4 py-3.5"><MiniBar value={Number(u.total_clicks)} max={maxClicks} /></td>
-                  <td className="px-4 py-3.5">
-                    <div className="flex items-center gap-1.5 text-xs text-[#3A3A3E]">
-                      <BarChart3 className="w-3 h-3 text-[#8888A0]" />
-                      <span className="font-medium">{Number(u.avg_clicks).toFixed(1)}</span>
-                    </div>
-                  </td>
                   <td className="px-4 py-3.5">
                     <span className={`text-xs font-semibold ${Number(u.clicks_7d) > 0 ? "text-green-600" : "text-[#8888A0]"}`}>
                       {fmtNum(Number(u.clicks_7d))}

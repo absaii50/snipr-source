@@ -1301,6 +1301,17 @@ router.get("/admin/users/performance", requireAdmin, async (req, res): Promise<v
                   allowSort === "name"  ? "u.name ASC" : "total_clicks DESC";
 
   const rows = await db.execute(sql`
+    WITH admin_promoted AS (
+      -- Users who ever had their plan manually changed by admin. Used to
+      -- distinguish 'admin_promoted' from 'paid_via_stripe' in the UI.
+      SELECT
+        target_id,
+        MAX(created_at) AS last_promotion_at,
+        COUNT(*)::int   AS promotion_count
+      FROM admin_audit_log
+      WHERE action = 'change_plan' AND target_type = 'user'
+      GROUP BY target_id
+    )
     SELECT
       u.id,
       u.name,
@@ -1309,8 +1320,22 @@ router.get("/admin/users/performance", requireAdmin, async (req, res): Promise<v
       u.suspended_at,
       u.created_at,
       u.email_verified,
+      u.stripe_customer_id IS NOT NULL                                AS has_stripe_customer,
       u.stripe_subscription_status,
       u.stripe_subscription_id IS NOT NULL                            AS has_stripe_subscription,
+      u.plan_renews_at,
+      u.plan_expires_at,
+      -- Derived plan source — the value the admin actually cares about.
+      CASE
+        WHEN u.plan = 'free' THEN 'free'
+        WHEN u.stripe_subscription_id IS NOT NULL
+             AND u.stripe_subscription_status IN ('active', 'trialing', 'past_due') THEN 'paid_via_stripe'
+        WHEN u.stripe_subscription_status = 'canceled' THEN 'stripe_canceled_stuck'
+        WHEN ap.target_id IS NOT NULL THEN 'admin_promoted'
+        ELSE 'unknown'
+      END                                                             AS plan_source,
+      ap.last_promotion_at,
+      COALESCE(ap.promotion_count, 0)::int                            AS admin_promotion_count,
       w.name   AS workspace_name,
       w.slug   AS workspace_slug,
       COUNT(DISTINCT l.id)::int                                       AS total_links,
@@ -1323,6 +1348,7 @@ router.get("/admin/users/performance", requireAdmin, async (req, res): Promise<v
       MAX(ce.timestamp)                                               AS last_click_at,
       COUNT(DISTINCT CASE WHEN ce.timestamp >= NOW() - INTERVAL '7 days' THEN ce.id END)::int AS clicks_7d
     FROM users u
+    LEFT JOIN admin_promoted ap ON ap.target_id = u.id::text
     LEFT JOIN workspaces w ON w.user_id = u.id
     LEFT JOIN links l ON l.workspace_id = w.id
     LEFT JOIN click_events ce ON ce.link_id = l.id
@@ -1331,7 +1357,9 @@ router.get("/admin/users/performance", requireAdmin, async (req, res): Promise<v
       ${search ? sql`AND (lower(u.name) LIKE ${"%" + escapeLike(search) + "%"} OR lower(u.email) LIKE ${"%" + escapeLike(search) + "%"})` : sql``}
       ${plan ? sql`AND u.plan = ${plan}` : sql``}
     GROUP BY u.id, u.name, u.email, u.plan, u.suspended_at, u.created_at, u.email_verified,
-             u.stripe_subscription_status, u.stripe_subscription_id,
+             u.stripe_customer_id, u.stripe_subscription_status, u.stripe_subscription_id,
+             u.plan_renews_at, u.plan_expires_at,
+             ap.target_id, ap.last_promotion_at, ap.promotion_count,
              w.name, w.slug
     ORDER BY ${sql.raw(orderBy)}
     LIMIT 200
