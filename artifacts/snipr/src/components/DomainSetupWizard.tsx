@@ -16,10 +16,19 @@ interface DomainSetupWizardProps {
   onDomainCreated?: (domain: any) => void;
 }
 
+interface DnsProvider {
+  id: string;
+  label: string;
+  nameservers: string[];
+  consoleUrl: string;
+  steps: string[];
+}
+
 interface SetupInfo {
   token: string; cnameHost: string; cnameTarget: string;
   txtHost: string; txtValue: string; purpose: string;
   domainType: string; isRootDomain: boolean; rootDomain: string;
+  provider: DnsProvider | null;
   recommendations: {
     records: { type: string; name: string; value: string; priority?: string }[];
     warnings: string[]; suggestedSubdomains: string[]; cloudflareUrl: string;
@@ -646,6 +655,39 @@ export default function DomainSetupWizard({
                 </p>
               </div>
 
+              {/* Provider-aware shortcut — only renders when we identified
+                  the user's DNS host from their nameservers. Opens their
+                  console in a new tab with the exact step list above the
+                  generic copy-paste record cards below. */}
+              {setupInfo?.provider && (
+                <div className="rounded-xl border border-[#8B5CF6]/30 bg-gradient-to-br from-[#8B5CF6]/10 to-[#06B6D4]/10 p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-[#8B5CF6]/20 flex items-center justify-center shrink-0">
+                      <Zap className="w-4 h-4 text-[#A78BFA]" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[13px] font-semibold text-[#FAFAFA]">
+                        Detected: {setupInfo.provider.label}
+                      </p>
+                      <p className="text-[11px] text-[#A1A1AA] mt-0.5">
+                        We checked your nameservers — your DNS is hosted at {setupInfo.provider.label}.
+                      </p>
+                      <ol className="mt-2.5 space-y-1 text-[11.5px] text-[#D4D4D8] list-decimal list-inside leading-relaxed">
+                        {setupInfo.provider.steps.map((s, i) => <li key={i}>{s}</li>)}
+                      </ol>
+                      <a
+                        href={setupInfo.provider.consoleUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#8B5CF6] hover:bg-[#7C3AED] text-white text-[12px] font-semibold transition-all"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5" /> Open {setupInfo.provider.label} DNS console
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {setupInfo?.recommendations.warnings.map((w, i) => (
                 <div key={i} className={`flex items-start gap-2.5 p-3 rounded-xl text-xs ${
                   w.includes("stop working") || w.includes("break")
@@ -1018,19 +1060,35 @@ export default function DomainSetupWizard({
                   <li className="flex items-start gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" /> Track click analytics per link</li>
                 </ul>
               </div>
-              <div className="flex gap-3 justify-center">
+              <div className="flex gap-3 justify-center flex-wrap">
+                {/* Primary CTA: jump to Links page so the user creates their
+                    first link on the new domain right away. */}
+                <a
+                  href="/links"
+                  className="inline-flex items-center gap-2 px-5 py-2 rounded-xl bg-[#8B5CF6] text-white text-sm font-semibold hover:bg-[#7C3AED] transition-all"
+                >
+                  <Link2 className="w-4 h-4" /> Create first link
+                </a>
+                {/* Test button is disabled until SSL is active — clicking it
+                    before that would show a TLS error in the new tab. */}
                 <a
                   href={`https://${currentDomain?.domain || domain?.domain}`}
                   target="_blank" rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#27272A] border border-[#3F3F46] text-sm font-semibold text-[#E4E4E7] hover:bg-[#3F3F46] transition-all"
+                  onClick={(e) => { if (sslState !== "active") { e.preventDefault(); } }}
+                  className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-xl border text-sm font-semibold transition-all ${
+                    sslState === "active"
+                      ? "bg-[#27272A] border-[#3F3F46] text-[#E4E4E7] hover:bg-[#3F3F46]"
+                      : "bg-[#18181B] border-[#27272A] text-[#52525B] cursor-not-allowed"
+                  }`}
+                  title={sslState === "active" ? "Open your domain in a new tab" : "Waiting for SSL — usually ~60s"}
                 >
                   <ExternalLink className="w-3.5 h-3.5" /> Test domain
                 </a>
                 <button
                   onClick={onClose}
-                  className="inline-flex items-center gap-2 px-5 py-2 rounded-xl bg-[#8B5CF6] text-white text-sm font-semibold hover:bg-[#7C3AED] transition-all"
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#27272A] border border-[#3F3F46] text-sm font-medium text-[#E4E4E7] hover:bg-[#3F3F46] transition-all"
                 >
-                  Done <CheckCircle2 className="w-4 h-4" />
+                  Close
                 </button>
               </div>
             </div>

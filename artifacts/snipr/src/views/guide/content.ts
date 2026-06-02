@@ -172,6 +172,107 @@ const SECTION_CUSTOM_DOMAINS: Section = {
         { kind: "callout", tone: "info", title: "Stuck on 'pending' for more than 15 minutes?", text: "Most often it's a typo in the DNS record name (e.g. 'go' vs 'go.yourdomain.com') or a Cloudflare proxy that's intercepting verification. Use the 'Re-check DNS' button to see what each public resolver is returning." },
       ],
     },
+    {
+      id: "provider-steps",
+      title: "Quick steps by DNS provider",
+      blurb: "Cloudflare / GoDaddy / Namecheap / Route 53 / Google / Vercel.",
+      blocks: [
+        { kind: "p", text: "The wizard auto-detects your DNS host from your nameservers and shows a one-click 'Open <provider> DNS console' button. Below is the exact menu path for the most common providers in case you want to do it manually." },
+
+        { kind: "h2", text: "Cloudflare" },
+        { kind: "ol", items: [
+          "Sign in at dash.cloudflare.com → pick your domain.",
+          "Left sidebar: DNS → Records → Add record.",
+          "Type: A · Name: copy from wizard · IPv4 address: 163.245.216.153.",
+          "Proxy status: DNS only (gray cloud). Switch to proxied (orange cloud) AFTER your SSL is active in Snipr — otherwise Cloudflare intercepts our Let's Encrypt verification.",
+          "Save.",
+        ] },
+
+        { kind: "h2", text: "GoDaddy" },
+        { kind: "ol", items: [
+          "Sign in at godaddy.com → My Products → DNS next to your domain.",
+          "Click Add record (or Add at the top of the DNS Records table).",
+          "Type: A · Name: copy from wizard · Value: 163.245.216.153 · TTL: 1 hour.",
+          "Save. GoDaddy can take 5–60 min to propagate.",
+        ] },
+
+        { kind: "h2", text: "Namecheap" },
+        { kind: "ol", items: [
+          "Sign in at namecheap.com → Domain List → Manage next to your domain.",
+          "Advanced DNS tab → Add New Record.",
+          "Type: A Record · Host: copy from wizard · Value: 163.245.216.153 · TTL: Automatic.",
+          "Save (green checkmark).",
+        ] },
+
+        { kind: "h2", text: "AWS Route 53" },
+        { kind: "ol", items: [
+          "Open the Route 53 console → Hosted Zones → click your domain.",
+          "Click Create record.",
+          "Record name: leave blank for root, OR enter just the subdomain (e.g. 'go') — do NOT add the full domain.",
+          "Record type: A.",
+          "Value: 163.245.216.153.",
+          "TTL: 300 s.",
+          "Create.",
+        ] },
+
+        { kind: "h2", text: "Google Domains / Squarespace Domains" },
+        { kind: "ol", items: [
+          "Sign in at domains.google.com → click your domain → DNS tab.",
+          "Scroll to 'Custom records' → Manage custom records → Create new record.",
+          "Type: A · Host name: copy from wizard · TTL: 1H · Data: 163.245.216.153.",
+          "Save.",
+        ] },
+
+        { kind: "h2", text: "Vercel / Netlify / DigitalOcean / Shopify" },
+        { kind: "p", text: "These all expose a similar UI: a 'DNS' or 'Custom records' section with an 'Add record' button. Pick Type=A, set Name/Host to the value the wizard shows, and Value/Points-to to 163.245.216.153. Use the auto/default TTL." },
+
+        { kind: "callout", tone: "tip", title: "After saving the record", text: "You don't need to come back to Snipr — our background watcher checks every 30 seconds and verifies the domain automatically when DNS propagates. You'll see the status change in your Domains list, and we email you when SSL goes live." },
+      ],
+    },
+    {
+      id: "troubleshooting",
+      title: "Troubleshooting domain setup",
+      blurb: "DNS not resolving, SSL stuck pending, Cloudflare proxy issues.",
+      blocks: [
+        { kind: "p", text: "If your domain is stuck in any state, work through the diagnostics here from top to bottom. The wizard's per-resolver dots are your fastest signal — they show what Google, Cloudflare, OpenDNS, and Quad9 each see right now." },
+
+        { kind: "h2", text: "DNS doesn't propagate after 30 minutes" },
+        { kind: "ul", items: [
+          "Open the Domains tab → click your domain → wizard → step 4 (Verify). The 'Resolver Status' grid tells you which public DNS servers see your record and which don't.",
+          "If ALL 4 resolvers show NXDOMAIN: the record didn't save at your registrar, or you saved it on the wrong zone. Re-check the registrar's DNS UI.",
+          "If 3 or 4 resolvers show 'Wrong target': you added the A record but pointed it to the wrong IP. The correct value is 163.245.216.153 — copy it from the wizard, don't type.",
+          "If some resolvers are green and some still red: DNS is propagating normally — wait another 5–10 minutes.",
+          "If the Resolver row shows a TTL much higher than expected (e.g. 86400 s = 1 day), you'll be waiting up to that long for any future DNS changes. Lower the TTL to 300 s at your registrar BEFORE making changes.",
+        ] },
+
+        { kind: "h2", text: "SSL stuck on 'pending' for >5 minutes" },
+        { kind: "ul", items: [
+          "The most common cause is Cloudflare's orange-cloud proxy. Let's Encrypt needs to reach our server directly on port 80 — if Cloudflare is intercepting it, the validation fails. Set the record to 'DNS only' (gray cloud) until SSL goes active, then you can flip it back.",
+          "Other proxy services (Sucuri, Imperva, Akamai) cause the same issue.",
+          "If the wizard says 'SSL certificate failed' with an error like 'Connection refused' or 'Timeout', it's almost always a proxy/firewall issue at your end.",
+          "Let's Encrypt rate-limits to 5 failed validations per hour per domain. If you've retried several times, wait 60 minutes before trying again.",
+        ] },
+
+        { kind: "h2", text: "Custom domain works but visitors get an SSL warning" },
+        { kind: "ul", items: [
+          "Make sure you're using https:// (not http://) when sharing your short links.",
+          "Check that ssl_status shows 'active' on the Domains page (not 'pending' or 'failed').",
+          "If you toggled Cloudflare's proxy ON without setting SSL/TLS mode to 'Full' or 'Full (strict)', visitors get a redirect loop. Cloudflare → SSL/TLS → Overview → set to Full.",
+        ] },
+
+        { kind: "h2", text: "I have a website on the root domain" },
+        { kind: "ul", items: [
+          "Pointing yours.com (root) at Snipr will break your existing website. Use a subdomain like links.yours.com or go.yours.com instead.",
+          "When you add the root domain in the wizard, we detect this and offer to switch to a subdomain with one click.",
+          "Subdomains also work with email — adding go.yours.com as an A record won't touch your MX records for yours.com.",
+        ] },
+
+        { kind: "h2", text: "How to remove a domain" },
+        { kind: "p", text: "On the Domains page, click the trash icon next to the domain. We delete the row + revoke the SSL cert. Existing links on that domain will stop redirecting immediately, so update or delete them first." },
+
+        { kind: "callout", tone: "danger", title: "Still stuck?", text: "Open a support ticket from the Support tab with: (1) your domain name, (2) the current DNS provider, (3) a screenshot of the wizard's Resolver Status grid. That's everything we need to diagnose in 2 minutes." },
+      ],
+    },
   ],
 };
 

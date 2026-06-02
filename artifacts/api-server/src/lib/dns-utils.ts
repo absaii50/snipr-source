@@ -47,6 +47,96 @@ export function getDomainVerifyToken(domainId: string): string {
   return "sniprverify-" + createHash("sha256").update(domainId + "snipr-dns-verify-2025").digest("hex").slice(0, 16);
 }
 
+/** Recognized DNS providers and the URL pattern for their console. The
+ *  matcher is fuzzy: we just check if any NS record contains the keyword.
+ *  When we identify a provider the wizard shows a one-click "Open <provider>
+ *  DNS console" button instead of generic instructions. */
+const PROVIDERS: Array<{
+  id: string;
+  label: string;
+  match: RegExp;
+  consoleUrl: (rootDomain: string) => string;
+  /** Short, registrar-accurate menu path the user needs to follow. */
+  steps: string[];
+}> = [
+  { id: "cloudflare",   label: "Cloudflare",     match: /\.cloudflare\.com$|\.ns\.cloudflare\.com$/i,
+    consoleUrl: (d) => `https://dash.cloudflare.com/?to=/:account/${d}/dns/records`,
+    steps: ["Click DNS → Records → Add record", "Type: A · Name: paste below · IPv4 address: paste below", "Proxy status: DNS only (gray cloud) — switch to proxied AFTER SSL is active"],
+  },
+  { id: "godaddy",      label: "GoDaddy",        match: /\.domaincontrol\.com$/i,
+    consoleUrl: (d) => `https://dcc.godaddy.com/domains/${d}/dns`,
+    steps: ["Click DNS → Manage Zones → Add record", "Type: A · Name: paste below · Value: paste below · TTL: 1 hour"],
+  },
+  { id: "namecheap",    label: "Namecheap",      match: /\.registrar-servers\.com$|\.namecheap\.com$/i,
+    consoleUrl: (d) => `https://ap.www.namecheap.com/domains/domaincontrolpanel/${d}/advancedns`,
+    steps: ["Advanced DNS → Add New Record", "Type: A Record · Host: paste below · Value: paste below · TTL: Automatic"],
+  },
+  { id: "route53",      label: "AWS Route 53",   match: /\.awsdns-/i,
+    consoleUrl: (d) => `https://us-east-1.console.aws.amazon.com/route53/v2/hostedzones?#ListRecordSets`,
+    steps: ["Open the Hosted Zone for your domain → Create record", "Record type: A · Record name: paste below · Value: paste below"],
+  },
+  { id: "google",       label: "Google Domains", match: /\.googledomains\.com$|\.ns-google\.com$/i,
+    consoleUrl: (d) => `https://domains.google.com/registrar/${d}/dns`,
+    steps: ["DNS → Custom records → Add a new record", "Type: A · Host name: paste below · Data: paste below"],
+  },
+  { id: "vercel",       label: "Vercel",         match: /\.vercel-dns\.com$/i,
+    consoleUrl: (d) => `https://vercel.com/dashboard/domains/${d}`,
+    steps: ["Domain settings → DNS Records → Add", "Type: A · Name: paste below · Value: paste below"],
+  },
+  { id: "digitalocean", label: "DigitalOcean",   match: /\.digitalocean\.com$/i,
+    consoleUrl: (d) => `https://cloud.digitalocean.com/networking/domains/${d}`,
+    steps: ["Add record → A", "Hostname: paste below · Will direct to: paste below"],
+  },
+  { id: "squarespace",  label: "Squarespace",    match: /\.squarespacedns\.com$/i,
+    consoleUrl: (_d) => `https://account.squarespace.com/domains`,
+    steps: ["Open your domain → DNS Settings → Custom Records → Add a record", "Type: A · Host: paste below · Data: paste below"],
+  },
+  { id: "shopify",      label: "Shopify",        match: /\.shopifydns\.com$/i,
+    consoleUrl: (_d) => `https://admin.shopify.com/settings/domains`,
+    steps: ["Settings → Domains → click your domain → DNS settings → Add custom record", "Type: A · Name: paste below · Points to: paste below"],
+  },
+];
+
+export interface DnsProviderHint {
+  id: string;
+  label: string;
+  nameservers: string[];
+  consoleUrl: string;
+  steps: string[];
+}
+
+/** Look up the domain's NS records and match against the known providers.
+ *  Returns null if we can't identify the provider — falls back to the
+ *  generic "Add an A record at your DNS provider" copy in the wizard. */
+export async function detectDnsProvider(domainName: string): Promise<DnsProviderHint | null> {
+  // NS records live on the registered (apex) domain. For "links.example.com"
+  // we want NS for "example.com". Strip subdomain prefixes.
+  const parts = domainName.split(".");
+  const root = parts.length > 2 ? parts.slice(-2).join(".") : domainName;
+
+  try {
+    const resolver = new dns.Resolver({ timeout: 3000 });
+    resolver.setServers(["1.1.1.1", "8.8.8.8"]);
+    const ns = await resolver.resolveNs(root);
+    if (ns.length === 0) return null;
+
+    for (const p of PROVIDERS) {
+      if (ns.some((n) => p.match.test(n))) {
+        return {
+          id: p.id,
+          label: p.label,
+          nameservers: ns,
+          consoleUrl: p.consoleUrl(root),
+          steps: p.steps,
+        };
+      }
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 const RESOLVER_TIMEOUT_MS = 4000;
 
 async function resolveWithServer(

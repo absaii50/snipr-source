@@ -3,7 +3,7 @@ import { eq, and, or } from "drizzle-orm";
 import { db, domainsTable, platformSettingsTable } from "@workspace/db";
 import { requireAuth } from "../lib/auth";
 import { requirePlan } from "../lib/plan-gate";
-import { getDomainVerifyToken, checkDomainDns, CNAME_TARGET } from "../lib/dns-utils";
+import { getDomainVerifyToken, checkDomainDns, CNAME_TARGET, detectDnsProvider } from "../lib/dns-utils";
 
 const SERVER_IP = process.env.SERVER_IP || "163.245.216.153";
 
@@ -173,6 +173,12 @@ router.get("/domains/:id/setup-info", requireAuth, async (req, res): Promise<voi
 
   const cloudflareUrl = `https://dash.cloudflare.com/?to=/:account/${rootDomain}/dns`;
 
+  // Best-effort NS lookup → identify the user's DNS provider so we can show
+  // a one-click "open <Provider> DNS console" button + provider-specific
+  // step-by-step instead of generic copy. Bounded by detectDnsProvider's own
+  // 3s timeout; null if unrecognized or the lookup fails.
+  const provider = await detectDnsProvider(domain.domain);
+
   res.json({
     id: domain.id,
     domain: domain.domain,
@@ -186,6 +192,7 @@ router.get("/domains/:id/setup-info", requireAuth, async (req, res): Promise<voi
     cnameTarget: CNAME_TARGET,
     txtHost: `_snipr-verify.${domain.domain}`,
     txtValue: token,
+    provider,                  // null when we can't identify the registrar
     recommendations: {
       records,
       warnings,
